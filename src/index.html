@@ -463,20 +463,32 @@
   }
   .menu-actions { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.6vh, 14px); }
   .menu-note {
-    position: absolute; left: 50%; bottom: max(16px, 5vh); z-index: 1; margin: 0;
+    position: fixed; left: 50%; bottom: max(16px, 5vh); z-index: 1; margin: 0;
     width: max-content; max-width: min(520px, calc(100vw - 32px)); padding: 10px 18px; border-radius: 6px;
     font: 14px/1.4 Georgia, "Times New Roman", serif; color: #3b2814; text-align: center;
     background: linear-gradient(#f4e6c6, #e2cb98); box-shadow: 0 8px 22px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(90, 60, 25, .25);
     opacity: 0; transform: translate(-50%, 8px); pointer-events: none; transition: opacity .35s ease, transform .35s ease;
   }
   .menu-note.on { opacity: 1; transform: translate(-50%, 0); }
-  .menu-note:empty { display: none; }
   #intro-menu .menu-snd { position: absolute; right: 16px; bottom: 16px; z-index: 1; width: 36px; height: 36px; border-radius: 8px; }
   #intro-menu .menu-snd svg { width: 20px; height: 20px; }
+  @media (max-height: 700px) {
+    .menu-stack { --plank-w: min(370px, 82vw, 61vh); padding-block: 10px; }
+    .menu-logo { height: min(28vh, 64vw, 400px); }
+    .menu-note { position: static; max-width: var(--plank-w); min-height: 34px; padding: 7px 10px; transform: translateY(5px); }
+    .menu-note.on { transform: none; }
+  }
   @media (orientation: landscape) and (max-height: 480px) {
-    .menu-stack { flex-direction: row; gap: 4vw; --plank-w: min(300px, 44vw); }
+    .menu-stack { flex-direction: row; gap: 4vw; --plank-w: min(300px, 44vw, 82vh); }
     .menu-logo { height: min(70vh, 40vw); margin: 0; }
     #intro-menu .menu-snd { right: 10px; bottom: 10px; }
+  }
+  @media (orientation: landscape) and (max-width: 540px) and (max-height: 480px) {
+    #intro-menu .menu-snd { left: 10px; right: auto; }
+  }
+  @media (orientation: landscape) and (max-height: 280px) {
+    .menu-actions { gap: 5px; }
+    .menu-note { font-size: 12px; line-height: 1.2; min-height: 25px; padding: 5px 8px; }
   }
 
   /* ---- the club of the tavern (src/online.js): tables waiting for players, a table, the draw — on parchment */
@@ -686,6 +698,10 @@
       <button id="menu-online" class="plank" type="button" aria-describedby="menu-note">
         <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети, можно с ботами</span>
       </button>
+      <button id="menu-rules" class="plank" type="button" aria-describedby="menu-note">
+        <span class="plank-title">Правила игры</span>
+      </button>
+      <p id="menu-note" class="menu-note" role="status" aria-live="polite"></p>
     </nav>
   </div>
   <section id="online" class="club" aria-labelledby="ol-heading" hidden>
@@ -748,7 +764,6 @@
       <p id="ol-msg" class="club-msg" role="status" aria-live="polite"></p>
     </div>
   </section>
-  <p id="menu-note" class="menu-note" role="status" aria-live="polite"></p>
   <button class="t-snd menu-snd" type="button" data-audio="music" aria-pressed="true" aria-label="Музыка">
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.6 14.4V4.9l9-2.4v9.6"/><circle class="solid" cx="5.4" cy="14.6" r="2.2"/><circle class="solid" cx="14.4" cy="12.2" r="2.2"/><path class="slash-bg" d="M3 3l14 14"/><path class="slash" d="M3 3l14 14"/></svg>
   </button>

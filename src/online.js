@@ -66,9 +66,10 @@
   }
   nameInput.value = savedName().slice(0, 20);
   // whether this player hears the commentator: the others' bots play at once when nobody at the table does
-  function voiceOn() {
+  function savedVoiceOn() {
     try { return JSON.parse(localStorage.getItem(AUDIO_KEY))?.commentator !== true; } catch { return true; }
   }
+  let commentatorOn = savedVoiceOn();
 
   // ---- the connection: opened when the club is opened, or at once when this tab was at a table before a reload
   function connect() {
@@ -81,7 +82,7 @@
     ws = socket;
     socket.onopen = () => {
       connected = true; retry = 0;
-      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: voiceOn() }));
+      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn }));
       if (open && !table && !game) send({ t: 'watch', on: true });
       netStatus();
     };
@@ -143,7 +144,8 @@
         const fresh = !game || game.no !== m.no;
         game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {} };
         table = null;
-        if (handler && handler.inGame?.()) handler.state(game);
+        if (pendingStart) { pendingStart = game; deliverStart(); }
+        else if (handler && handler.inGame?.()) handler.state(game);
         else if (fresh || intro.stage !== 'online-game') {
           // back after a reload: the game goes on; it opens with the next click (the browser wants one for sound)
           if (intro.stage === 'menu' && open) beginGame();
@@ -151,7 +153,11 @@
         }
         return;
       }
-      case 'act': if (game) game.log[m.n] = m.a; handler?.act(m); return;
+      case 'act':
+        m.a.by = m.a.bot || m.from;
+        if (game) game.log[m.n] = m.a;
+        handler?.act(m);
+        return;
       case 'presence':
         if (game) game.presence[m.id] = m.state;
         handler?.presence(m);
@@ -407,6 +413,11 @@
     resume,
     attach(h) { handler = h; deliverStart(); },
     send: (msg) => send(msg),
+    setVoice(on) {
+      if (commentatorOn === on) return;
+      commentatorOn = on;
+      send({ t: 'voice', on });
+    },
     act: (n, a) => send({ t: 'act', n, a }),
     sync: () => send({ t: 'sync' }),
     // leaving the game: the seat is given up; the board goes back to the tavern

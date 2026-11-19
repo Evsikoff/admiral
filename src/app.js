@@ -2108,9 +2108,10 @@ for (const [kind, id, what] of AUDIO_SWITCHES) {
     render();
     try { localStorage.setItem(AUDIO_KEY, JSON.stringify(audioOff)); } catch { /* no storage */ }
     // the others at an online table learn it: bots play at once when nobody there hears the commentator
-    if (kind === 'commentator') window.AdmiralOnline?.send({ t: 'voice', on: !audioOff[kind] });
+    if (kind === 'commentator') window.AdmiralOnline?.setVoice(!audioOff[kind]);
   });
 }
+window.AdmiralOnline?.setVoice(!audioOff.commentator);
 
 // ------------------------------------------------------------------ turns: a throw of two dice, then the moves; the commentator reports
 // A turn: the commentator names the player, the camera comes round to that player's harbour, and the player
@@ -2742,10 +2743,9 @@ function awaiting() {
   if (game.phase === 'move' || game.phase === 'comp') return 'act';
   return null;
 }
-// this player's own decision (or a bot's, taken on this screen: a.bot is its id): done here at once and sent;
-// the server's echo of it is then dropped
+// This player's decision is applied immediately. The server's echo of it is then dropped.
 function sendAction(a) {
-  a.by = a.bot || online.me;
+  a.by = online.me;
   net.act(online.applied, a);
   applyAction(a);
 }
@@ -2815,8 +2815,8 @@ function quietly(fn) {
   replaying = true; sound.setQuiet(true);
   try { fn(); } finally { replaying = was; sound.setQuiet(was); }
 }
-// apply what has come in, in order, each at its point of the game. A tab out of sight, or one that has fallen
-// behind by more than an action, catches up at once
+// Apply actions in order. A client that is behind catches up silently. Tables with bots keep animation
+// timing in the background as well, so a background client cannot rush the next bot decision.
 function pump() {
   if (!online || !game) return;
   const q = online.queue;
@@ -2824,7 +2824,7 @@ function pump() {
     const m = q[0];
     if (m.n < online.applied) { q.shift(); continue; }
     if (m.n > online.applied) break;                         // one is missing: the watchdog asks for the game
-    const behind = document.hidden || q.length > 1;
+    const behind = q.length > 1 || (document.hidden && !online.hasBots);
     if (behind) quietly(settle);
     if (!awaiting()) break;
     q.shift();
@@ -2836,7 +2836,7 @@ function startOnline(g) {
   if (setupIsOpen()) closeSetup();
   online = { no: g.no, me: g.me, applied: 0, queue: [], presence: { ...g.presence }, dirty: false,
     stallKey: '', stallAt: 0, skipKey: '', turnKey: '', turnAt: 0, turnMs: g.turnMs || 0, clock: '', clockLow: false,
-    linked: true, voice: { ...(g.voice || {}) } };          // voice: { id: whether that player hears the commentator }
+    linked: true, hasBots: g.players.some((p) => p.bot), voice: { ...(g.voice || {}) } };          // voice: { id: whether that player hears the commentator }
   syncNewButton();
   const log = g.log || [];
   if (!log.length) { newGame(g.players); return; }
@@ -2859,6 +2859,7 @@ function caughtUp() {
 // the whole game again (after the connection came back, or when asked): only what was missed is applied, unless
 // this client did something the server never took — then the game is replayed from the start
 function resyncOnline(g) {
+  botStep = null;
   if (!online || g.no !== online.no || online.dirty || g.log.length < online.applied) { startOnline(g); return; }
   online.presence = { ...g.presence };
   if (g.voice) online.voice = { ...g.voice };
@@ -2937,7 +2938,6 @@ const onlineHandler = {
   inGame: () => !!online,
   act(m) {
     if (!online) return;
-    m.a.by = m.a.bot || m.from;                               // a bot's decision, sent by one of the players' screens
     if (m.n < online.applied || online.queue.some((x) => x.n === m.n)) return;
     online.queue.push({ n: m.n, a: m.a });
     online.queue.sort((x, y) => x.n - y.n);
@@ -2952,13 +2952,11 @@ const onlineHandler = {
     net.sync();
   },
 };
-document.addEventListener('visibilitychange', () => { if (!document.hidden) pump(); });
-
 // ------------------------------------------------------------------ bots
 // A bot's seat plays itself: it throws the dice the way the game throws them for a player (a toss from its own side
 // of the board) and chooses its moves with the brain of src/bot.js, in its style. A local game plays its bots here.
-// Online, one screen plays every bot of the table: the first player in the order of the game who is still at it;
-// the next ones back it up if it goes quiet. Their decisions are sent like a player's own, with the bot's id.
+// Online, the first connected player with the commentator on leads the bots, followed by the other listeners
+// and then the muted players in game order. Each backup waits longer for the server to relay a bot's decision.
 // A bot takes its time like a person: a moment before each throw and choice, and it listens to the commentator —
 // sometimes to the end of his line, sometimes only to the middle of it (its throw or move then cuts him short, as a
 // player's does). With the commentator off for everyone who watches, there is nothing to wait for: bots play at once.
@@ -2967,12 +2965,12 @@ const BOT_PAUSE = { throw: 0.9, act: 0.8, show: 0.6 };   // s: before a throw, b
 const BOT_HEAR_OUT = 0.55;                               // how often a bot lets the commentator finish his line
 const BOT_VOICE_MAX = 6;                                 // s: at most this long a bot waits for him
 const BOT_BACKUP = [0, 9, 15];                           // s: how much later the second and the other screens step in
-let botStep = null;                                      // the decision under way: { key, t, hear, clip, pick, shownAt, done }
-// no pauses: the commentator is off here (a local game), or for every player at the table who is still at it
+let botStep = null;
+const atTable = (p) => !p.bot && online.presence[p.id] === 'online';
+const hearsCommentator = (p) => online.voice[p.id] !== false;
 function botsHurry() {
-  if (!online) return !!sound.muted.commentator;
-  return game.players.every((p) => p.bot || (p.id === online.me ? sound.muted.commentator
-    : online.presence[p.id] !== 'online' || online.voice[p.id] === false));
+  if (!online) return sound.muted.commentator;
+  return !game.players.some((p) => atTable(p) && hearsCommentator(p));
 }
 // which decision it is: every throw, move and the jailer's reply has its own
 const botKey = () => [online?.applied ?? '', game.turnNumber, game.throws.length, game.phase, game.chooser,
@@ -2980,25 +2978,27 @@ const botKey = () => [online?.applied ?? '', game.turnNumber, game.throws.length
 // online: this screen's place among the players still at the table (0 plays the bots); −1: none
 function botRank() {
   if (!online) return 0;
-  const live = game.players.filter((p) => !p.bot && (p.id === online.me || online.presence[p.id] === 'online'));
+  if (!net.connected || online.dirty) return -1;
+  const live = game.players.filter(atTable);
+  live.sort((a, b) => Number(hearsCommentator(b)) - Number(hearsCommentator(a)));
   return live.findIndex((p) => p.id === online.me);
 }
-// every frame (and, online, in a tab out of sight, every half second without pauses: hidden)
-function botTick(dt, hidden = false) {
+// Driven by animation frames in the foreground and a timer in the background.
+function botTick(dt) {
   const step = game && game.phase !== 'over' && botControls() ? awaiting() : null;
   const rank = step ? botRank() : -1;
   if (!step || rank < 0 || (online && online.queue.length)) { botStep = null; return; }
-  const key = botKey();
+  const key = botKey(), now = online ? performance.now() : 0;
   // hear: how much of the commentator's line the bot waits for (1: to the end; otherwise from a third to two thirds)
-  if (botStep?.key !== key) {
+  if (botStep?.game !== game || botStep.key !== key) {
     const hear = Math.random() < BOT_HEAR_OUT ? 1 : 0.35 + Math.random() * 0.3;
-    botStep = { key, t: 0, hear, pick: null, shownAt: 0, done: false };
+    botStep = { game, key, startedAt: now, t: 0, hear, pick: null, shownAt: 0, done: false };
   }
   const b = botStep;
   if (b.done) return;
-  b.t += dt;
+  b.t = online ? (now - b.startedAt) / 1000 : b.t + dt;
   const late = BOT_BACKUP[Math.min(rank, BOT_BACKUP.length - 1)];
-  const quick = hidden || botsHurry();
+  const quick = botsHurry();
   if (quick) { if (b.t < late) return; } else {
     // it listens to one line: the one being spoken (a line queued after it counts as the end of it)
     const clip = sound.currentVoice;
@@ -3007,7 +3007,7 @@ function botTick(dt, hidden = false) {
     const pause = late + (step === 'throw' ? BOT_PAUSE.throw : BOT_PAUSE.act);
     if (b.t < pause || (heard != null && heard < b.hear && b.t < pause + BOT_VOICE_MAX)) return;
   }
-  if (step === 'throw') { b.done = true; botThrow(); return; }
+  if (step === 'throw') { b.done = botThrow(); return; }
   if (!b.pick) {
     b.pick = botChoice();
     if (!b.pick) { b.done = true; return; }
@@ -3020,7 +3020,8 @@ function botTick(dt, hidden = false) {
   const [s, t] = b.pick;
   if (!online) { perform(s, t); return; }
   const k = game.allActs?.get(s)?.indexOf(t) ?? -1;
-  if (k >= 0) sendAction({ kind: 'act', ship: shipId(s), k, bot: controllerId() });
+  // Apply bots' decisions on the server echo, including when two clients briefly disagree on who leads.
+  if (k >= 0) b.done = net.act(online.applied, { kind: 'act', ship: shipId(s), k, bot: controllerId() });
 }
 // the throw of a bot: the dice tossed from its side of the board (throwPlan, with the impulses of launch)
 function botThrowPlan(q) {
@@ -3034,9 +3035,10 @@ function botThrowPlan(q) {
 }
 function botThrow() {
   const plan = botThrowPlan(game.players[game.turn].q);
+  if (online) return net.act(online.applied, { kind: 'throw', ...recordThrow(plan), bot: controllerId() });
   sound.stopVoice();                                       // a throw cuts the commentator short, as a player's does
-  if (online) sendAction({ kind: 'throw', ...recordThrow(plan), bot: controllerId() });
-  else rollDice(plan);
+  rollDice(plan);
+  return true;
 }
 // what the bot does now: the brain's choice, found among the [ship, target] pairs of the game
 function botChoice() {
@@ -3060,11 +3062,19 @@ function botChoice() {
   if (!pick) console.warn('bot: the brain chose what the game does not offer', a);
   return pick || pairs[0];
 }
-// online, in a tab out of sight (no animation frames): the bots of the table still play, at once
+// Keep the timing of the preceding animations and the commentator when the tab is in the background.
+let backgroundTickAt = performance.now();
+document.addEventListener('visibilitychange', () => {
+  backgroundTickAt = performance.now();
+  if (!document.hidden) pump();
+});
 setInterval(() => {
-  if (!online || !game || !document.hidden || !botControls() || botRank() !== 0) return;
-  quietly(() => { settle(); botTick(0.5, true); settle(); });
-}, 500);
+  const now = performance.now(), dt = (now - backgroundTickAt) / 1000;
+  backgroundTickAt = now;
+  if (!document.hidden || !online?.hasBots || !game || game.phase === 'over') return;
+  stepShips(dt); tickAfter(dt); stepDice(dt);
+  onlineTick(); botTick(dt);
+}, 250);
 
 Object.defineProperty(window.__admiral, 'game', { get: () => game });
 Object.defineProperty(window.__admiral, 'online', { get: () => online });
@@ -3133,7 +3143,8 @@ function frame() {
   }
 
   if (grab) holdDice(time);
-  if (!setupIsOpen()) { broadcast.tick(elapsed, boardPointers.size > 0); stepShips(dt); tickAfter(dt); }
+  const ticksHere = !setupIsOpen() && !(document.hidden && online?.hasBots);
+  if (ticksHere) { broadcast.tick(elapsed, boardPointers.size > 0); stepShips(dt); tickAfter(dt); }
   stepCellTints(dt);
 
   const glow = 0.5 + 0.5 * Math.sin(time * 5);
@@ -3167,7 +3178,7 @@ function frame() {
     }
   }
 
-  if (!setupIsOpen()) { stepDice(dt); onlineTick(); botTick(dt); }
+  if (ticksHere) { stepDice(dt); onlineTick(); botTick(dt); }
   stepCamera(dt);
   controls.update();
   updateReflections(time);

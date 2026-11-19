@@ -178,6 +178,9 @@
     api.stage = 'online';
     window.AdmiralOnline.open();
   });
+  $('menu-rules').addEventListener('click', () => {
+    if (api.stage === 'menu') showNote('Правила игры появятся позже.');
+  });
   function backFromClub() {
     if (api.stage !== 'online') return;
     api.stage = 'menu';
