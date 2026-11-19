@@ -1814,7 +1814,7 @@ function stepCellTints(dt) {
   }
 }
 
-// ---- a chase on the chart. When the commentator says an enemy ship is less than twelve cells away, the cells
+// ---- a chase on the chart. When the commentator says an enemy ship is at most six cells away, the cells
 // of both ships and every cell between them flush with a warning colour, and a wave runs along them from the
 // hunter to its prey. It fades by itself after a few seconds, or sooner once a ship sails again.
 const CHASE_TINT = new THREE.Color('#ff5a1f'), CHASE_GLOW = new THREE.Color('#7a2600');
@@ -2447,9 +2447,11 @@ function checkWin(q) {
   return true;
 }
 
-// ---- chases: a ship is after an enemy that is less than twelve cells ahead along its own route.
+// ---- chases: a ship is after an enemy that is at most six cells ahead along its own route (one die can reach it).
 // A ship in a bay or a harbour cannot be caught there; it lies in wait.
-const CHASE = 11;
+// The same distance makes a moment tense for the music.
+const DANGER = 6;
+const CHASE = DANGER;
 const onOpenWater = (c) => typeof c.field === 'number';
 function cellsTo(q, from, to) {               // cells a ship of side q sails from one cell to another, if at most CHASE
   let c = from;
@@ -2465,7 +2467,7 @@ function chasePairs() {                       // [hunter, prey, cells]: prey on 
   }
   return out;
 }
-const TENSE_DIST = 12;
+const TENSE_DIST = DANGER;
 const inActiveSea = (s) => sidesInPlay.has(s.q) && (s.slot === harbors[s.q] || s.slot.field != null);
 function withinCells(a, b, max = TENSE_DIST) {
   if (a.slot === b.slot) return true;
