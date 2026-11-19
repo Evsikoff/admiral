@@ -3093,8 +3093,13 @@ placeShipsNow();
 if (!intro) openSetup();
 else {
   window.addEventListener('admiral:menu', () => sound.setMood('start'));
+  window.addEventListener('admiral:rules-open', () => sound.setMusicPaused(true));
+  window.addEventListener('admiral:rules-close', () => sound.setMusicPaused(false));
   window.addEventListener('admiral:play-local', () => openSetup());
-  if (intro.stage === 'menu') sound.setMood('start');      // the map was built after the menu had opened
+  if (intro.stage === 'rules') {
+    sound.setMusicPaused(true);
+    sound.setMood('start');
+  } else if (intro.stage === 'menu') sound.setMood('start');      // the map was built after the menu had opened
   else if (intro.stage === 'local') openSetup();
 }
 

@@ -668,6 +668,9 @@
     .club-msg { margin: 12px -16px -12px; bottom: -12px; }
   }
 </style>
+<style>
+/*__RULES_CSS__*/
+</style>
 <!--__ENGINE_LICENSES__-->
 <script type="importmap">/*__IMPORTS__*/</script>
 </head>
@@ -698,7 +701,7 @@
       <button id="menu-online" class="plank" type="button" aria-describedby="menu-note">
         <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети, можно с ботами</span>
       </button>
-      <button id="menu-rules" class="plank" type="button" aria-describedby="menu-note">
+      <button id="menu-rules" class="plank" type="button" aria-haspopup="dialog">
         <span class="plank-title">Правила игры</span>
       </button>
       <p id="menu-note" class="menu-note" role="status" aria-live="polite"></p>
@@ -768,6 +771,43 @@
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.6 14.4V4.9l9-2.4v9.6"/><circle class="solid" cx="5.4" cy="14.6" r="2.2"/><circle class="solid" cx="14.4" cy="12.2" r="2.2"/><path class="slash-bg" d="M3 3l14 14"/><path class="slash" d="M3 3l14 14"/></svg>
   </button>
 </section>
+<dialog id="rules-film" aria-labelledby="rules-label">
+  <div class="rules-art" aria-hidden="true"><i></i><i></i></div>
+  <div class="rules-screen">
+    <header class="rules-header">
+      <button id="rules-close" type="button" autofocus>← <span>В меню</span></button>
+      <h2 id="rules-label">Правила игры</h2>
+      <button id="rules-sound" type="button" aria-pressed="true" aria-label="Озвучка">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9h4l5-4v14l-5-4H3z"/><path class="rules-sound-waves" d="M15.5 9a4.3 4.3 0 0 1 0 6m3-9a8.5 8.5 0 0 1 0 12"/><path class="rules-sound-cross" d="m16 10 5 5m0-5-5 5"/>
+        </svg>
+        <span>Звук</span>
+      </button>
+    </header>
+    <div class="rules-stage">
+      <div class="rules-title">
+        <p id="rules-chapter"></p>
+        <h3 id="rules-title"></h3>
+      </div>
+      <figure class="rules-chart">
+        <canvas id="rules-chart" width="960" height="504" aria-hidden="true"></canvas>
+        <figcaption id="rules-example"></figcaption>
+      </figure>
+    </div>
+    <div class="rules-captions">
+      <p id="rules-caption" aria-live="polite" aria-atomic="true"></p>
+    </div>
+    <footer class="rules-controls">
+      <nav id="rules-chapters" aria-label="Главы"></nav>
+      <div class="rules-transport">
+        <button id="rules-prev" type="button" aria-label="Предыдущая глава" title="Предыдущая глава">‹</button>
+        <button id="rules-play" type="button">Пауза</button>
+        <button id="rules-next" type="button" aria-label="Следующая глава" title="Следующая глава">›</button>
+      </div>
+    </footer>
+  </div>
+  <audio id="rules-audio" preload="none"></audio>
+</dialog>
 <script>
 /*__INTRO__*/
 </script>

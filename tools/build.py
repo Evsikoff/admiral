@@ -1,5 +1,5 @@
 """Inlines data + app code into a single self-contained admiral-3d.html."""
-import base64, io, json, pathlib, sys, zipfile
+import base64, hashlib, io, json, pathlib, sys, zipfile
 from urllib.parse import quote
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
@@ -62,9 +62,40 @@ app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
                 for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'bot.js', 'app.js'))
 html = html.replace('/*__DATA__*/', 'window.ADMIRAL = ' + json.dumps(data, ensure_ascii=False) + ';')
 html = html.replace('/*__APP__*/', app)
+html = html.replace('/*__RULES_CSS__*/', (root / 'src' / 'rules.css').read_text(encoding='utf8'))
+rules_text = (root / 'src' / 'rules-script.json').read_text(encoding='utf8')
+rules = json.loads(rules_text)
+rules_dir = a / 'rules'
+timing_path = rules_dir / 'timings.json'
+narration_path = rules_dir / 'narration.mp3'
+timing = json.loads(timing_path.read_text(encoding='utf8')) if timing_path.is_file() else {}
+ends = timing.get('ends', [])
+narration_hash = hashlib.sha256(narration_path.read_bytes()).hexdigest() if narration_path.is_file() else None
+synced = (narration_hash is not None
+          and timing.get('audioHash') == narration_hash
+          and timing.get('scriptHash') == hashlib.sha256(rules_text.encode()).hexdigest()
+          and len(ends) == sum(len(ch['cues']) for ch in rules)
+          and all(curr > prev for prev, curr in zip([0] + ends, ends)))
+previews = root / 'kenney_pirate-kit_2.1' / 'Previews'
+rules_data = {
+    'script': rules,
+    'examples': json.loads((root / 'src' / 'rules-examples.json').read_text(encoding='utf8')),
+    'ends': ends if synced else [],
+    'voiced': [model != 'silent' for model in timing.get('cueModels', [])] if synced else [],
+    'audio': ('assets/rules/narration.mp3?v=' + narration_hash[:12]) if synced else None,
+    'fields': data['fields'],
+    'zones': {side: {key: zone[key] for key in ('shipyard', 'harbor', 'prison')}
+              for side, zone in data['zones']['nations'].items()},
+    'center': data['zones']['center'],
+    'radius': data['zones']['ringRadius'],
+    'ship': uri((previews / 'ship-medium.png').read_bytes(), 'image/png'),
+    'wreck': uri((previews / 'ship-wreck.png').read_bytes(), 'image/png'),
+}
 # the start screen, the intro films, the main menu and its online club work before (and without) the 3D map;
 # so do the names of the bots' styles, which the club shows at its tables
-intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8') for name in ('bot-styles.js', 'intro.js', 'online.js'))
+intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
+                  for name in ('bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
+intro = intro.replace('/*__RULES_DATA__*/ null', json.dumps(rules_data, ensure_ascii=False).replace('<', '\\u003c'))
 html = html.replace('/*__INTRO__*/', intro)
 (root / 'admiral-3d.html').write_text(html, encoding='utf8')
 print('admiral-3d.html', round(len(html.encode()) / 1024), 'KB')

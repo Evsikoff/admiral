@@ -26,7 +26,7 @@ function createSoundDirector(manifest = {}) {
 
   const liveEffects = new Set(), fading = new Set(), blocked = new Set();
   const history = [], voiceHistory = [], voiceQueue = [];
-  let mood = null, music = null, musicGain = 0, currentTrack = null;
+  let mood = null, music = null, musicGain = 0, currentTrack = null, musicPaused = false;
   let swim = null, swimmingWanted = false, voice = null, hadGame = false;
   // switched off by the player: nothing of that kind is played (captions still pick their variants)
   const muted = { music: false, effects: false, commentator: false };
@@ -77,7 +77,7 @@ function createSoundDirector(manifest = {}) {
   }
 
   function playMusicTrack(kind, crossfade) {
-    if (muted.music) return;
+    if (muted.music || musicPaused) return;
     const entry = pick(kind);
     if (!entry) return;
     const a = new Audio(entry.url);
@@ -108,6 +108,17 @@ function createSoundDirector(manifest = {}) {
     }
     mood = nextMood;
     playMusicTrack(nextMood, crossfade || nextMood === 'start');   // the menu theme rises out of silence
+  }
+
+  function setMusicPaused(on) {
+    if (musicPaused === on) return;
+    musicPaused = on;
+    if (on) {
+      for (const old of fading) stopAudio(old);
+      fading.clear();
+      if (music) { music.pause(); blocked.delete(music); }
+    } else if (music) safePlay(music);
+    else if (mood) playMusicTrack(mood, true);
   }
 
   function effect(kind) {
@@ -259,6 +270,7 @@ function createSoundDirector(manifest = {}) {
   return {
     volumes,
     setMood,
+    setMusicPaused,
     effect,
     startSwimming,
     stopSwimming,

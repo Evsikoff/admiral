@@ -178,8 +178,24 @@
     api.stage = 'online';
     window.AdmiralOnline.open();
   });
-  $('menu-rules').addEventListener('click', () => {
-    if (api.stage === 'menu') showNote('Правила игры появятся позже.');
+  const rulesBtn = $('menu-rules');
+  rulesBtn.addEventListener('click', () => {
+    if (api.stage !== 'menu') return;
+    let audioOff;
+    try { audioOff = JSON.parse(localStorage.getItem('admiral.audio.v1')); } catch { /* no storage */ }
+    clearNote();
+    api.stage = 'rules';
+    stopAmbience();
+    emit('admiral:rules-open');
+    window.AdmiralRules.open({
+      silent: audioOff?.music === true || audioOff?.commentator === true,
+      closed() {
+        api.stage = 'menu';
+        startAmbience();
+        emit('admiral:rules-close');
+        rulesBtn.focus({ preventScroll: true });
+      },
+    });
   });
   function backFromClub() {
     if (api.stage !== 'online') return;
