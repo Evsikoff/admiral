@@ -1264,11 +1264,12 @@ function pick(ev) {
   const hits = raycaster.intersectObjects(pickables.filter(shown), false);
   return hits.length ? hits[0].object.userData : null;
 }
+const HOVER_GLOW = 0x3a2a00;
 function setHover(slot) {
   if (hovered === slot) return;
   if (hovered && hovered.mat) hovered.mat.emissive.setHex(0x000000);
   hovered = slot;
-  if (hovered && hovered.mat) hovered.mat.emissive.setHex(0x3a2a00);
+  if (hovered && hovered.mat) hovered.mat.emissive.setHex(HOVER_GLOW);
 }
 const setupIsOpen = () => document.body.classList.contains('setup-open');
 canvas.addEventListener('pointermove', (ev) => {
@@ -1328,6 +1329,7 @@ function newGame(players) {
   overhead = false; overheadReturn = null; syncViewButton();
   broadcast.clear();
   sound.resetGame();
+  chase = null;
   game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null })) };
   applySides(new Set(game.players.map((p) => p.q)));
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
@@ -1766,6 +1768,7 @@ function applySides(active) {
   for (const p of pucks) {
     p.active = active.has(p.q);
     p.mat.color.setHex(p.active ? 0xffffff : 0x969da2);
+    p.tint = null;                                     // the tint of an open cell starts again from white
     p.body.material = p.active ? puckSide : puckSideOff;
     p.obj.position.y = p.active ? 0 : -0.045;          // greyed pucks sit a little lower
   }
@@ -1785,19 +1788,87 @@ for (const q of NATIONS) {
   CELL_TINT[q] = new THREE.Color().setHSL(hsl.h, Math.min(hsl.s, 0.85), 0.72, THREE.SRGBColorSpace);
 }
 const CELL_PLAIN = new THREE.Color(0xffffff);
+const glowTmp = new THREE.Color();
 function stepCellTints(dt) {
   const want = new Map();
   if (overhead && game) {
     for (const s of ships) if (!s.anim && s.obj.visible && s.slot.mat) want.set(s.slot, CELL_TINT[s.q]);
   }
-  const k = Math.min(1, dt * 7);
+  const k = Math.min(1, dt * 7), heat = stepChase(dt);
   for (const p of pucks) {
     if (!p.active) continue;                        // greyed cells of sides out of the game keep their grey
-    const c = p.mat.color, target = want.get(p) || CELL_PLAIN;
-    if (c.equals(target)) continue;
-    c.lerp(target, k);
-    if (Math.abs(c.r - target.r) + Math.abs(c.g - target.g) + Math.abs(c.b - target.b) < 0.004) c.copy(target);
+    const c = (p.tint ??= p.mat.color.clone()), target = want.get(p) || CELL_PLAIN;
+    if (!c.equals(target)) {
+      c.lerp(target, k);
+      if (Math.abs(c.r - target.r) + Math.abs(c.g - target.g) + Math.abs(c.b - target.b) < 0.004) c.copy(target);
+    }
+    // a chase the commentator speaks of flushes its cells over whatever tint they have
+    const h = heat.get(p);
+    p.mat.color.copy(c);
+    if (h) p.mat.color.lerp(CHASE_TINT, h.tint);
+    if (h || p.lit) {
+      p.mat.emissive.setHex(p === hovered ? HOVER_GLOW : 0x000000);
+      if (h) p.mat.emissive.add(glowTmp.copy(CHASE_GLOW).multiplyScalar(h.glow));
+      p.lit = !!h;
+    }
   }
+}
+
+// ---- a chase on the chart. When the commentator says an enemy ship is less than twelve cells away, the cells
+// of both ships and every cell between them flush with a warning colour, and a wave runs along them from the
+// hunter to its prey. It fades by itself after a few seconds, or sooner once a ship sails again.
+const CHASE_TINT = new THREE.Color('#ff5a1f'), CHASE_GLOW = new THREE.Color('#7a2600');
+const CHASE_SHOW = 6, CHASE_IN = 0.35, CHASE_OUT = 1.2, CHASE_QUICK = 0.4, CHASE_WAVE = 1.3;
+let chase = null;                                    // { paths: [[the hunter's cell, …, the prey's cell]], age, end, out }
+function chasePath(h, p) {
+  const path = [h.slot];
+  for (let c = h.slot; c && c !== p.slot;) { c = nextCell(h.q, c); if (c) path.push(c); }
+  return path;
+}
+// pairs: [hunter, prey] as announceChase speaks of them
+function showChase(pairs) {
+  if (replaying || !pairs.length) return;
+  chase = { paths: pairs.map(([h, p]) => chasePath(h, p)), age: 0, end: CHASE_SHOW, out: CHASE_OUT };
+}
+function fadeChase() {                               // a ship sails: what the chart shows is out of date
+  if (chase && chase.age < chase.end - chase.out) Object.assign(chase, { end: chase.age + CHASE_QUICK, out: CHASE_QUICK });
+}
+// a harbour has no cell to tint: a glow on the water instead
+const chaseDiscTex = canvasTex(128, (g, S) => {
+  const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  gr.addColorStop(0, 'rgba(255,106,43,0.8)'); gr.addColorStop(0.62, 'rgba(255,106,43,0.6)'); gr.addColorStop(1, 'rgba(255,106,43,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+});
+const chaseDiscs = new Map();
+function chaseDisc(slot) {
+  if (!chaseDiscs.has(slot)) {
+    const m = new THREE.Mesh(new THREE.CircleGeometry(1.2, 40),
+      new THREE.MeshBasicMaterial({ map: chaseDiscTex, transparent: true, depthWrite: false, toneMapped: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 3;
+    m.position.copy(slot.pos); m.position.y = Math.max(sea.maxHeight, slot.pos.y) + 0.01;
+    scene.add(m); chaseDiscs.set(slot, m);
+  }
+  return chaseDiscs.get(slot);
+}
+// how strongly each cell of the chase glows now: slot → { tint, glow }, both 0…1
+function stepChase(dt) {
+  const heat = new Map();
+  if (chase && (chase.age += dt) >= chase.end) chase = null;
+  if (chase) {
+    const a = chase.age, env = smooth(0, CHASE_IN, a) * (1 - smooth(chase.end - chase.out, chase.end, a));
+    const front = -0.25 + 1.5 * ((a / CHASE_WAVE) % 1);
+    for (const path of chase.paths) path.forEach((c, i) => {
+      const u = i / (path.length - 1), ship = i === 0 || i === path.length - 1;
+      const wave = Math.exp(-(((u - front) / 0.17) ** 2)), base = ship ? 0.9 : 0.62;
+      const h = heat.get(c) || { tint: 0, glow: 0 };
+      h.tint = Math.max(h.tint, env * (base + (1 - base) * wave));
+      h.glow = Math.max(h.glow, env * wave);
+      heat.set(c, h);
+    });
+  }
+  for (const slot of heat.keys()) if (!slot.mat) chaseDisc(slot);
+  for (const [slot, m] of chaseDiscs) { const h = heat.get(slot); m.visible = !!h; if (h) m.material.opacity = h.tint; }
+  return heat;
 }
 
 // ------------------------------------------------------------------ setup screen: 1–4 players at one computer; sides are drawn by lot
@@ -2290,6 +2361,7 @@ function perform(s, t) {
   const list = game.allActs && game.allActs.get(s);
   if (!list || !list.includes(t)) return;
   const comp = game.phase === 'comp', mover = s.q;
+  if (t.kind === 'move') fadeChase();
   const before = broadcast.snapshot();
   const castingOff = t.kind === 'move' && s.slot === harbors[mover] && !t.victims.length;
   if (!comp) {
@@ -2426,6 +2498,7 @@ function announceChase(s) {
   const all = chasePairs(), before = game.chases || new Set(), now = new Set();
   for (const [h, p] of all) now.add(chaseKey(h, p));
   game.chases = now;
+  showChase(all.filter(([h, p]) => h === s || p === s));   // exactly the chases spoken of below
   const bySide = (list, side) => {
     const m = new Map();
     for (const x of list) { const q = side(x); if (!m.has(q)) m.set(q, []); m.get(q).push(x); }
@@ -2821,7 +2894,7 @@ Object.assign(window.__admiral, {
   recordThrow, playThrow, pump, awaiting, settle,
   cells, harbors, shipyards, prisons, nextCell, routes, options, occupancy, perform, startMoves,
   fastForward, setState, placeShipsNow, layoutShips, select, autoSelect, pairsAt, boardClick, compensate, nextAction,
-  fling, flingDice, commentary, chasePairs, cellsTo, menuItems, chooseSail, backToMenu, announceChase,
+  fling, flingDice, commentary, chasePairs, cellsTo, menuItems, chooseSail, backToMenu, announceChase, showChase,
   sound, isTenseMoment, syncMusicMood, announcer,
 });
 
