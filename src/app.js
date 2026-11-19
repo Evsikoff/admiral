@@ -802,10 +802,19 @@ function buildWreck(q) {
 const ships = [];
 const wakeMaterial = new THREE.MeshBasicMaterial({ color: 0xc5ede3, vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide });
 const ringGeo = new THREE.RingGeometry(0.41, 0.54, 40);
-const pinMap = canvasTex(64, (g,S) => {
-  g.fillStyle = '#172733'; g.beginPath(); g.arc(S/2,S/2,29,0,Math.PI*2); g.fill();
-  g.fillStyle = '#ffffff'; g.beginPath(); g.arc(S/2,S/2,22,0,Math.PI*2); g.fill();
+// a ship that can sail has an arrow over its mast pointing down at it, in the colour of its route; the sprite
+// is white with a dark outline and takes that colour from its material. Its tip is the sprite's anchor, so it
+// points at the ship from any camera, the overhead view too.
+const pinMap = canvasTex(128, (g) => {
+  g.beginPath();
+  g.moveTo(46, 8); g.lineTo(82, 8); g.lineTo(82, 60); g.lineTo(112, 60);
+  g.lineTo(64, 120); g.lineTo(16, 60); g.lineTo(46, 60); g.closePath();
+  g.lineJoin = 'round'; g.lineWidth = 12; g.strokeStyle = '#172733'; g.stroke();
+  g.fillStyle = '#ffffff'; g.fill();
 });
+// about as tall on screen as a cell from afar (in pixels); in board units, never smaller than close up nor larger
+// (the chosen ship's arrow is a quarter larger)
+const PIN_PX = 30, PIN_MIN = 0.42, PIN_MAX = 1.2, PIN_SELECTED = 1.25;
 for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   const ship = new THREE.Group();
   const model = new THREE.Group(); ship.add(model);
@@ -815,7 +824,7 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; ring.visible = false; ring.renderOrder = 3; ship.add(ring);   // drawn over the water
   ship.scale.setScalar(SHIP_SCALE);
   const pin = new THREE.Sprite(new THREE.SpriteMaterial({map:pinMap, transparent:true, depthTest:false, depthWrite:false, toneMapped:false}));
-  pin.position.copy(masthead); pin.position.y += 0.18; pin.visible=false; pin.renderOrder=8; ship.add(pin);
+  pin.center.set(0.5, 0); pin.position.copy(masthead); pin.position.y += 0.1; pin.visible=false; pin.renderOrder=8; ship.add(pin);
   scene.add(ship);
   const s = {
     q, n, obj: ship, model, intact, wreck: wreck.g, smoke: wreck.smoke, ring, pin, state: 'wreck', slot: shipyards[q],
@@ -1500,7 +1509,6 @@ function paintRoutes() {
     if (!s.ring.visible) continue;
     s.ring.material.color.setHex(color); s.pin.material.color.setHex(color);
     s.ring.scale.setScalar(s === selected ? 1.17 : 1);
-    s.pin.scale.setScalar(s === selected ? 0.31 : 0.24);
     s.pin.material.opacity = !selected || s === selected ? 1 : 0.56;
   }
 }
@@ -2961,9 +2969,16 @@ function frame() {
   stepCellTints(dt);
 
   const glow = 0.5 + 0.5 * Math.sin(time * 5);
+  const bob = 0.5 + 0.5 * Math.sin(time * 4.2);      // the arrows over ships that can sail, while none is chosen
+  const perPx = (2 * Math.tan((camera.fov * Math.PI) / 360)) / Math.max(1, renderer.domElement.clientHeight);
   for (const m of markers) if (m.g.visible) m.ring.material.opacity = 0.86 + 0.14 * glow;
   for (const s of ships) {
     if (s.ring.visible) s.ring.material.opacity = s === selected ? 1 : selected ? 0.52 : 0.76 + 0.2 * glow;
+    if (s.pin.visible) {
+      s.pin.center.y = selected ? 0 : -0.22 * bob;
+      const k = s === selected ? PIN_SELECTED : 1, size = PIN_PX * perPx * camera.position.distanceTo(s.obj.position);
+      s.pin.scale.setScalar((k * clamp(size, PIN_MIN, PIN_MAX)) / SHIP_SCALE);
+    }
     if (!(s.anim && s.anim.turn && s.anim.started) && s.rest !== null) {
       let d = s.rest - s.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
       s.heading += d * Math.min(1, dt * 4);
