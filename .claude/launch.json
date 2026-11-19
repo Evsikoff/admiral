@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admiral",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1"],
+      "port": 8765
+    },
+    {
+      "name": "admiral-online",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/server.js"],
+      "env": { "PORT": "8780", "HOST": "127.0.0.1" },
+      "port": 8780
+    }
+  ]
+}

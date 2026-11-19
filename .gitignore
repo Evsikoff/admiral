@@ -1,0 +1,7 @@
+# the Gemini key stays on this computer
+gemini
+node_modules/
+__pycache__/
+debug.log
+# built by tools/build.py (the Docker image builds it too)
+admiral-3d.html

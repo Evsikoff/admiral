@@ -1,0 +1,16 @@
+# the Gemini key never goes into an image
+gemini
+**/gemini
+.git
+.claude
+node_modules
+**/__pycache__
+debug.log
+# built inside the image
+admiral-3d.html
+# sources of the art and old voice takes: not loaded by the game
+assets/menu/raw
+assets/sound/commentator_v1
+dice-box-threejs-main
+commentator_rework.md
+tools/tts_*.json

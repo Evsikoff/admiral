@@ -1,0 +1,2158 @@
+{
+ "boarding_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.96,
+  "text": "Абордаж. Противник взят в плен, наш корабль остаётся на месте до конца хода.",
+  "voice": "Gacrux"
+ },
+ "boarding_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.72,
+  "text": "Безупречный абордаж. Пленник наш, корабль стоит до конца хода.",
+  "voice": "Gacrux"
+ },
+ "boarding_en/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.28,
+  "text": "Противник пленён. Боюсь, наш корабль до конца хода не двинется.",
+  "voice": "Gacrux"
+ },
+ "boarding_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.16,
+  "text": "Абордаж! Враг в плену — ценный трофей. Наш корабль стоит до конца хода.",
+  "voice": "Laomedeia"
+ },
+ "boarding_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.6,
+  "text": "Чистая прибыль: враг в плену! Наш корабль стоит до конца хода.",
+  "voice": "Laomedeia"
+ },
+ "boarding_nl/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.24,
+  "text": "Враг взят в плен! Наш корабль до конца хода отдыхает.",
+  "voice": "Laomedeia"
+ },
+ "boarding_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.48,
+  "text": "На абордаж! Враг в плену, а наш корабль стоит до конца хода.",
+  "voice": "Algenib"
+ },
+ "boarding_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.92,
+  "text": "Ай да молодцы — враг в плену! Наш корабль до конца хода стоит.",
+  "voice": "Algenib"
+ },
+ "boarding_ru/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 9.56,
+  "text": "Взяли на абордаж! Супостата в плен, а наш до конца хода на якоре.",
+  "voice": "Algenib"
+ },
+ "boarding_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.08,
+  "text": "Абордаж! Враг в плену. Победитель стоит до конца хода.",
+  "voice": "Charon"
+ },
+ "boarding_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.36,
+  "text": "Сталь встретила сталь. Враг пленён. Наш корабль ждёт конца хода.",
+  "voice": "Charon"
+ },
+ "boarding_se/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.4,
+  "text": "Абордаж. Пленник уходит в крепость. Наш корабль стоит до конца хода.",
+  "voice": "Charon"
+ },
+ "chase_ahead_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.6,
+  "text": "Противник впереди. Начинаем преследование.",
+  "voice": "Gacrux"
+ },
+ "chase_ahead_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.36,
+  "text": "Мы у противника на хвосте.",
+  "voice": "Gacrux"
+ },
+ "chase_ahead_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.0,
+  "text": "Впереди враг — догоним, будет трофей!",
+  "voice": "Laomedeia"
+ },
+ "chase_ahead_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.44,
+  "text": "Сели на хвост — трофей уже близко!",
+  "voice": "Laomedeia"
+ },
+ "chase_ahead_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.72,
+  "text": "Враг впереди — догоняем!",
+  "voice": "Algenib"
+ },
+ "chase_ahead_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.12,
+  "text": "Садимся на хвост супостату!",
+  "voice": "Algenib"
+ },
+ "chase_ahead_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.44,
+  "text": "Добыча впереди. Охота началась.",
+  "voice": "Charon"
+ },
+ "chase_ahead_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.28,
+  "text": "Враг близко. Корабль идёт по следу.",
+  "voice": "Charon"
+ },
+ "chase_ambush_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.56,
+  "text": "Осторожно: поблизости вражеская засада.",
+  "voice": "Gacrux"
+ },
+ "chase_ambush_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.84,
+  "text": "Противник поджидает в укрытии. Будьте начеку.",
+  "voice": "Gacrux"
+ },
+ "chase_ambush_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.68,
+  "text": "Осторожно — рядом засада, можно потерять корабль!",
+  "voice": "Laomedeia"
+ },
+ "chase_ambush_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.28,
+  "text": "В укрытии ждёт конкурент — риск!",
+  "voice": "Laomedeia"
+ },
+ "chase_ambush_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.48,
+  "text": "Осторожно, капитан, рядом вражья засада!",
+  "voice": "Algenib"
+ },
+ "chase_ambush_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.2,
+  "text": "Враг в засаде караулит — гляди в оба!",
+  "voice": "Algenib"
+ },
+ "chase_ambush_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.48,
+  "text": "Рядом затаился враг. Засада.",
+  "voice": "Charon"
+ },
+ "chase_ambush_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.4,
+  "text": "Из укрытия следит враг.",
+  "voice": "Charon"
+ },
+ "chase_behind_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.16,
+  "text": "За кормой противник. Будьте осторожны.",
+  "voice": "Gacrux"
+ },
+ "chase_behind_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.56,
+  "text": "Нас преследуют, адмирал.",
+  "voice": "Gacrux"
+ },
+ "chase_behind_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.68,
+  "text": "За нами погоня — рискуем грузом!",
+  "voice": "Laomedeia"
+ },
+ "chase_behind_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.12,
+  "text": "Конкурент на хвосте — не зеваем!",
+  "voice": "Laomedeia"
+ },
+ "chase_behind_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.88,
+  "text": "Эй, за кормой враг! Уходить надо.",
+  "voice": "Algenib"
+ },
+ "chase_behind_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.0,
+  "text": "Враг на хвосте, капитан!",
+  "voice": "Algenib"
+ },
+ "chase_behind_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.88,
+  "text": "Позади враг. Он идёт по следу.",
+  "voice": "Charon"
+ },
+ "chase_behind_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.88,
+  "text": "Сзади тень вражеского паруса.",
+  "voice": "Charon"
+ },
+ "comp_auto_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.76,
+  "text": "Маршрут на шесть клеток один. Корабль идёт сам.",
+  "voice": "Gacrux"
+ },
+ "comp_auto_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.6,
+  "text": "Выбора нет: шесть клеток вперёд.",
+  "voice": "Gacrux"
+ },
+ "comp_auto_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.28,
+  "text": "Вариант один — корабль сам идёт на шесть клеток!",
+  "voice": "Laomedeia"
+ },
+ "comp_auto_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.8,
+  "text": "Без вариантов — шесть клеток вперёд, бесплатно!",
+  "voice": "Laomedeia"
+ },
+ "comp_auto_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.04,
+  "text": "Путь на шесть клеток один — идём сами!",
+  "voice": "Algenib"
+ },
+ "comp_auto_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.56,
+  "text": "Выбирать нечего — шесть шагов вперёд!",
+  "voice": "Algenib"
+ },
+ "comp_auto_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.12,
+  "text": "Один путь на шесть клеток. Корабль идёт.",
+  "voice": "Charon"
+ },
+ "comp_auto_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.2,
+  "text": "Путь один. Шесть шагов вперёд.",
+  "voice": "Charon"
+ },
+ "comp_choose_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.44,
+  "text": "За выкуп нам положено шесть шагов. Выберите корабль, адмирал.",
+  "voice": "Gacrux"
+ },
+ "comp_choose_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.32,
+  "text": "Англия получает шесть шагов. Выберите курс.",
+  "voice": "Gacrux"
+ },
+ "comp_choose_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.8,
+  "text": "Шесть шагов за выкуп — наш доход! Выбирайте корабль.",
+  "voice": "Laomedeia"
+ },
+ "comp_choose_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.6,
+  "text": "Голландия получает шесть шагов. Куда вложим?",
+  "voice": "Laomedeia"
+ },
+ "comp_choose_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.32,
+  "text": "Шесть шагов нам за выкуп! Выбирайте корабль, капитан.",
+  "voice": "Algenib"
+ },
+ "comp_choose_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.36,
+  "text": "Россия, ваши шесть шагов! Кем пойдём?",
+  "voice": "Algenib"
+ },
+ "comp_choose_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.8,
+  "text": "Шесть шагов — плата за пленника. Выбери корабль.",
+  "voice": "Charon"
+ },
+ "comp_choose_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.32,
+  "text": "Швеция получает шесть шагов. Выбирай путь.",
+  "voice": "Charon"
+ },
+ "comp_none_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.84,
+  "text": "Увы, пройти шесть клеток некуда. Ход пропадает.",
+  "voice": "Gacrux"
+ },
+ "comp_none_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.76,
+  "text": "Ни один наш корабль не пройдёт шесть клеток. Жаль.",
+  "voice": "Gacrux"
+ },
+ "comp_none_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.12,
+  "text": "Шесть шагов получили, а вложить некуда. Сгорают.",
+  "voice": "Laomedeia"
+ },
+ "comp_none_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.8,
+  "text": "На шесть клеток никто не идёт — бонус пропал.",
+  "voice": "Laomedeia"
+ },
+ "comp_none_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.0,
+  "text": "Шесть шагов нам дали, да пройти некуда. Пропадают.",
+  "voice": "Algenib"
+ },
+ "comp_none_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.8,
+  "text": "Ни один наш на шесть клеток не пройдёт. Эх!",
+  "voice": "Algenib"
+ },
+ "comp_none_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.36,
+  "text": "Шесть шагов — но путь закрыт. Дар пропал.",
+  "voice": "Charon"
+ },
+ "comp_none_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.24,
+  "text": "Ни одному кораблю не пройти шесть клеток.",
+  "voice": "Charon"
+ },
+ "double_bonus_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.2,
+  "text": "Дубль даёт ещё один бросок. Прошу.",
+  "voice": "Gacrux"
+ },
+ "double_bonus_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.16,
+  "text": "После дубля бросок повторяется. Извольте.",
+  "voice": "Gacrux"
+ },
+ "double_bonus_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.2,
+  "text": "Бонус за дубль — ещё один бросок!",
+  "voice": "Laomedeia"
+ },
+ "double_bonus_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.24,
+  "text": "Дубль окупился — бросайте ещё раз!",
+  "voice": "Laomedeia"
+ },
+ "double_bonus_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.8,
+  "text": "За дубль — ещё бросок. Бросайте, капитан!",
+  "voice": "Algenib"
+ },
+ "double_bonus_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.52,
+  "text": "Дубль был — значит, снова бросаем!",
+  "voice": "Algenib"
+ },
+ "double_bonus_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.6,
+  "text": "Дубль дарует ещё бросок. Бросай.",
+  "voice": "Charon"
+ },
+ "double_bonus_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.2,
+  "text": "Ветер ещё с тобой. Бросай снова.",
+  "voice": "Charon"
+ },
+ "foul_cocked_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.24,
+  "text": "Кость легла криво, грань не читается. Повторите, пожалуйста.",
+  "voice": "Gacrux"
+ },
+ "foul_cocked_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.52,
+  "text": "Результат неоднозначен. Будьте добры, перебросьте.",
+  "voice": "Gacrux"
+ },
+ "foul_cocked_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.16,
+  "text": "Кость легла криво — цифру не разобрать. Переброс!",
+  "voice": "Laomedeia"
+ },
+ "foul_cocked_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.68,
+  "text": "Неразборчиво, как плохая накладная. Бросайте ещё раз!",
+  "voice": "Laomedeia"
+ },
+ "foul_cocked_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.2,
+  "text": "Кость на ребро встала — не разберёшь. Бросайте заново.",
+  "voice": "Algenib"
+ },
+ "foul_cocked_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.8,
+  "text": "Криво легла кость, капитан. Ещё раз!",
+  "voice": "Algenib"
+ },
+ "foul_cocked_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.8,
+  "text": "Кость застыла меж гранями. Знак неясен. Бросай снова.",
+  "voice": "Charon"
+ },
+ "foul_cocked_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.68,
+  "text": "Кость не дала ответа. Бросай ещё.",
+  "voice": "Charon"
+ },
+ "foul_moving_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.32,
+  "text": "Кости так и не остановились. Повторите бросок.",
+  "voice": "Gacrux"
+ },
+ "foul_moving_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.0,
+  "text": "Кости катились слишком долго. Не засчитано, прошу снова.",
+  "voice": "Gacrux"
+ },
+ "foul_moving_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.36,
+  "text": "Кости катились слишком долго — время вышло. Ещё раз!",
+  "voice": "Laomedeia"
+ },
+ "foul_moving_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.6,
+  "text": "Время — деньги, а кости всё катятся. Перебросьте!",
+  "voice": "Laomedeia"
+ },
+ "foul_moving_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.08,
+  "text": "Кости всё катятся — не дождались. Бросайте снова.",
+  "voice": "Algenib"
+ },
+ "foul_moving_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.12,
+  "text": "Ишь, раскатились! Не в счёт — ещё раз.",
+  "voice": "Algenib"
+ },
+ "foul_moving_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.0,
+  "text": "Кости не нашли покоя. Бросай снова.",
+  "voice": "Charon"
+ },
+ "foul_moving_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.6,
+  "text": "Кости не остановились. Бросай ещё.",
+  "voice": "Charon"
+ },
+ "foul_out_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.4,
+  "text": "Досадно: кость покинула стол. Повторите, пожалуйста.",
+  "voice": "Gacrux"
+ },
+ "foul_out_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.2,
+  "text": "Слишком сильно, адмирал. Кость за краем — бросайте снова.",
+  "voice": "Gacrux"
+ },
+ "foul_out_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.08,
+  "text": "Кость улетела с поля — сделка недействительна. Ещё раз!",
+  "voice": "Laomedeia"
+ },
+ "foul_out_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.24,
+  "text": "Перебор с усилием — кость за краем. Переигрываем!",
+  "voice": "Laomedeia"
+ },
+ "foul_out_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.88,
+  "text": "Эх, кость за бортом! Не считается — бросайте заново.",
+  "voice": "Algenib"
+ },
+ "foul_out_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.48,
+  "text": "Перестарались, капитан — кость улетела с поля. Ещё раз!",
+  "voice": "Algenib"
+ },
+ "foul_out_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.8,
+  "text": "Кость ушла за край мира. Бросай снова.",
+  "voice": "Charon"
+ },
+ "foul_out_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.16,
+  "text": "Слишком сильный замах. Кость пропала. Бросай ещё.",
+  "voice": "Charon"
+ },
+ "foul_ship_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.92,
+  "text": "Кость задела корабль. Не засчитано — повторите бросок.",
+  "voice": "Gacrux"
+ },
+ "foul_ship_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.52,
+  "text": "Попадание в корабль. Бросок аннулирован, прошу снова.",
+  "voice": "Gacrux"
+ },
+ "foul_ship_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.32,
+  "text": "Кость попала в корабль — бросок не в счёт. Перебросьте!",
+  "voice": "Laomedeia"
+ },
+ "foul_ship_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.2,
+  "text": "Кость задела корабль — бракованный бросок. Ещё раз, пожалуйста!",
+  "voice": "Laomedeia"
+ },
+ "foul_ship_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.32,
+  "text": "Полундра, кость в корабль угодила! Не в счёт, бросайте снова.",
+  "voice": "Algenib"
+ },
+ "foul_ship_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.0,
+  "text": "Кость об корабль стукнулась — не годится. Ещё разок!",
+  "voice": "Algenib"
+ },
+ "foul_ship_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.48,
+  "text": "Кость ударила в борт. Не в счёт. Бросай снова.",
+  "voice": "Charon"
+ },
+ "foul_ship_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.28,
+  "text": "Кость встретила корабль. Бросок не принят. Ещё раз.",
+  "voice": "Charon"
+ },
+ "game_start_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.6,
+  "text": "Партия начинается. Прошу занять места.",
+  "voice": "Gacrux"
+ },
+ "game_start_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.52,
+  "text": "Флоты в сборе. Можно начинать.",
+  "voice": "Gacrux"
+ },
+ "game_start_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.56,
+  "text": "Итак, торги открыты! Начинаем.",
+  "voice": "Laomedeia"
+ },
+ "game_start_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.36,
+  "text": "Все в сборе — пора делать дела!",
+  "voice": "Laomedeia"
+ },
+ "game_start_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.36,
+  "text": "Ну, свистать всех наверх — начинаем!",
+  "voice": "Algenib"
+ },
+ "game_start_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.56,
+  "text": "Эх, море зовёт! Начинаем игру.",
+  "voice": "Algenib"
+ },
+ "game_start_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.2,
+  "text": "Слушайте. Начинается новая сага.",
+  "voice": "Charon"
+ },
+ "game_start_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.08,
+  "text": "Ветер поднялся. Время саги.",
+  "voice": "Charon"
+ },
+ "harbor_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.56,
+  "text": "Корабль покидает гавань. Счастливого плавания.",
+  "voice": "Gacrux"
+ },
+ "harbor_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.44,
+  "text": "Выход из гавани. Всё по плану.",
+  "voice": "Gacrux"
+ },
+ "harbor_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.2,
+  "text": "Корабль выходит из гавани — в рейс!",
+  "voice": "Laomedeia"
+ },
+ "harbor_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.24,
+  "text": "Из гавани в море — время зарабатывать!",
+  "voice": "Laomedeia"
+ },
+ "harbor_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.88,
+  "text": "Отдать швартовы! Наш корабль выходит в море.",
+  "voice": "Algenib"
+ },
+ "harbor_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.08,
+  "text": "Пошёл, родимый, из гавани в море!",
+  "voice": "Algenib"
+ },
+ "harbor_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.24,
+  "text": "Корабль покидает гавань. Море ждёт.",
+  "voice": "Charon"
+ },
+ "harbor_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.88,
+  "text": "Паруса подняты. Корабль уходит в море.",
+  "voice": "Charon"
+ },
+ "move_bay_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.0,
+  "text": "Корабль в бухте. Здесь его не захватить, а врага удобно поджидать.",
+  "voice": "Gacrux"
+ },
+ "move_bay_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.8,
+  "text": "Бухта — надёжное укрытие. Захватить нас тут нельзя, а засада готова.",
+  "voice": "Gacrux"
+ },
+ "move_bay_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.72,
+  "text": "Корабль в бухте — тут он под защитой и ждёт выгодной погони.",
+  "voice": "Laomedeia"
+ },
+ "move_bay_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.48,
+  "text": "Бухта — надёжный склад: тут не захватят, а отсюда удобно догонять врага.",
+  "voice": "Laomedeia"
+ },
+ "move_bay_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.04,
+  "text": "Наш в бухте! Тут его не тронут — а мы подождём врага.",
+  "voice": "Algenib"
+ },
+ "move_bay_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.08,
+  "text": "В бухту зашли — здесь в плен не возьмут. Засада готова!",
+  "voice": "Algenib"
+ },
+ "move_bay_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.68,
+  "text": "Корабль в бухте. Здесь он неуязвим. Ждёт добычу.",
+  "voice": "Charon"
+ },
+ "move_bay_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.56,
+  "text": "Бухта укрыла корабль. Его не пленить. Засада ждёт.",
+  "voice": "Charon"
+ },
+ "move_bypass_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.28,
+  "text": "Корабль идёт по кольцу в обход пустых вод.",
+  "voice": "Gacrux"
+ },
+ "move_bypass_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.32,
+  "text": "Обход по кольцу. Мимо закрытых вод.",
+  "voice": "Gacrux"
+ },
+ "move_bypass_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.28,
+  "text": "Короткий путь по кольцу — экономим время!",
+  "voice": "Laomedeia"
+ },
+ "move_bypass_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.28,
+  "text": "Через кольцо в обход — путь короче!",
+  "voice": "Laomedeia"
+ },
+ "move_bypass_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.96,
+  "text": "Срезаем по кольцу — мимо пустых вод.",
+  "voice": "Algenib"
+ },
+ "move_bypass_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.56,
+  "text": "По кольцу в обход — дорога короче.",
+  "voice": "Algenib"
+ },
+ "move_bypass_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.0,
+  "text": "Корабль идёт по кругу, мимо пустых вод.",
+  "voice": "Charon"
+ },
+ "move_bypass_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.24,
+  "text": "Пустые воды позади. Кольцо ведёт дальше.",
+  "voice": "Charon"
+ },
+ "no_move_blocked_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.72,
+  "text": "Все пути закрыты. Хода нет.",
+  "voice": "Gacrux"
+ },
+ "no_move_blocked_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.6,
+  "text": "Тупик. Шестёрка здесь была бы кстати.",
+  "voice": "Gacrux"
+ },
+ "no_move_blocked_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.16,
+  "text": "Все маршруты заняты — сделки не будет.",
+  "voice": "Laomedeia"
+ },
+ "no_move_blocked_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.52,
+  "text": "Тупик. Шестёрка бы сейчас окупилась!",
+  "voice": "Laomedeia"
+ },
+ "no_move_blocked_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.8,
+  "text": "Все пути перекрыты — ходить некуда. Пропускаем.",
+  "voice": "Algenib"
+ },
+ "no_move_blocked_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.84,
+  "text": "Тупик, капитан. Тут бы шестёрка выручила.",
+  "voice": "Algenib"
+ },
+ "no_move_blocked_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.96,
+  "text": "Все пути закрыты. Корабли ждут.",
+  "voice": "Charon"
+ },
+ "no_move_blocked_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.56,
+  "text": "Путь закрыт. Лишь шестёрка открыла бы новый.",
+  "voice": "Charon"
+ },
+ "no_move_empty_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.04,
+  "text": "Шестёрки нет. Ход переходит дальше.",
+  "voice": "Gacrux"
+ },
+ "no_move_empty_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.92,
+  "text": "Увы, снова без шестёрки.",
+  "voice": "Gacrux"
+ },
+ "no_move_empty_en/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.68,
+  "text": "Ходить некем. Нужна шестёрка, адмирал.",
+  "voice": "Gacrux"
+ },
+ "no_move_empty_first_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.96,
+  "text": "Позвольте пояснить: корабли пока на верфи. Шестёрка на любой из костей спустит один из них на воду.",
+  "voice": "Gacrux"
+ },
+ "no_move_empty_first_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.44,
+  "text": "Хода нет: флот на верфи. Чтобы спустить корабль на воду, нужна шестёрка хотя бы на одной кости.",
+  "voice": "Gacrux"
+ },
+ "no_move_empty_first_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.92,
+  "text": "Пока все корабли на верфи. Шестёрка на любой кости — и корабль на воде!",
+  "voice": "Laomedeia"
+ },
+ "no_move_empty_first_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.88,
+  "text": "Корабли на верфи. Чтобы отправить один в рейс, нужна шестёрка хотя бы на одной кости.",
+  "voice": "Laomedeia"
+ },
+ "no_move_empty_first_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 9.64,
+  "text": "Корабли наши пока на верфи. Чтобы спустить корабль на воду, нужна шестёрка хотя бы на одной кости.",
+  "voice": "Algenib"
+ },
+ "no_move_empty_first_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 10.28,
+  "text": "Корабли на верфи, капитан. Спустить корабль на воду можно только шестёркой — хоть на одной кости.",
+  "voice": "Algenib"
+ },
+ "no_move_empty_first_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.36,
+  "text": "Корабли ещё на верфи. Лишь шестёрка на кости спустит корабль на воду.",
+  "voice": "Charon"
+ },
+ "no_move_empty_first_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.76,
+  "text": "Флот спит на верфи. Разбудит его только шестёрка — хотя бы на одной кости.",
+  "voice": "Charon"
+ },
+ "no_move_empty_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.76,
+  "text": "Без шестёрки — без сделки. Следующий!",
+  "voice": "Laomedeia"
+ },
+ "no_move_empty_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.84,
+  "text": "Шестёрки нет — торговля стоит.",
+  "voice": "Laomedeia"
+ },
+ "no_move_empty_nl/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.48,
+  "text": "Ходить некем, нужна шестёрка. Ждём поставку!",
+  "voice": "Laomedeia"
+ },
+ "no_move_empty_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.04,
+  "text": "Шестёрки нет — ждём следующего хода.",
+  "voice": "Algenib"
+ },
+ "no_move_empty_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.32,
+  "text": "Эх, опять без шестёрки. Не беда, дождёмся.",
+  "voice": "Algenib"
+ },
+ "no_move_empty_ru/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.52,
+  "text": "Ходить некем — нужна шестёрка.",
+  "voice": "Algenib"
+ },
+ "no_move_empty_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.48,
+  "text": "Шестёрка не пришла. Ждём.",
+  "voice": "Charon"
+ },
+ "no_move_empty_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.6,
+  "text": "Кости молчат о шестёрке. Терпение.",
+  "voice": "Charon"
+ },
+ "no_move_empty_se/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.84,
+  "text": "Флот на берегу. Нужна шестёрка.",
+  "voice": "Charon"
+ },
+ "no_move_with_six_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.04,
+  "text": "Шестёрка есть, но применить её некуда. Пас.",
+  "voice": "Gacrux"
+ },
+ "no_move_with_six_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.8,
+  "text": "Ни ремонта, ни выкупа, ни хода. Редкий случай.",
+  "voice": "Gacrux"
+ },
+ "no_move_with_six_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.32,
+  "text": "Шестёрка есть, а вложить некуда. Пас!",
+  "voice": "Laomedeia"
+ },
+ "no_move_with_six_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.76,
+  "text": "Ни ремонта, ни выкупа, ни рейса. Ход дальше.",
+  "voice": "Laomedeia"
+ },
+ "no_move_with_six_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.08,
+  "text": "Даже шестёрка не помогла: чинить некого, а пути закрыты.",
+  "voice": "Algenib"
+ },
+ "no_move_with_six_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.36,
+  "text": "Вот так штука — ни ремонта, ни выкупа, ни хода.",
+  "voice": "Algenib"
+ },
+ "no_move_with_six_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.88,
+  "text": "Шестёрка выпала, но пути закрыты и чинить некого.",
+  "voice": "Charon"
+ },
+ "no_move_with_six_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.16,
+  "text": "Ни починки, ни выкупа, ни пути. Ход окончен.",
+  "voice": "Charon"
+ },
+ "opt_captured_other_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.4,
+  "text": "Захватчик остаётся на месте, но ходить могут другие корабли.",
+  "voice": "Gacrux"
+ },
+ "opt_captured_other_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.96,
+  "text": "Корабль с пленником стоит. Вторую кость отдайте другому.",
+  "voice": "Gacrux"
+ },
+ "opt_captured_other_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.24,
+  "text": "Захватчик отдыхает — работают другие корабли!",
+  "voice": "Laomedeia"
+ },
+ "opt_captured_other_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.24,
+  "text": "Корабль с трофеем стоит, а кость пусть отработает другой.",
+  "voice": "Laomedeia"
+ },
+ "opt_captured_other_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.24,
+  "text": "Захватчик стоит, но другие корабли ещё могут ходить.",
+  "voice": "Algenib"
+ },
+ "opt_captured_other_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.68,
+  "text": "Этот пускай отдохнёт — кость отдадим другому кораблю.",
+  "voice": "Algenib"
+ },
+ "opt_captured_other_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.68,
+  "text": "Победитель стоит. Но другие корабли ещё в пути.",
+  "voice": "Charon"
+ },
+ "opt_captured_other_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.96,
+  "text": "Кто взял пленного — стоит. Кость отдай другому.",
+  "voice": "Charon"
+ },
+ "opt_move_and_six_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.68,
+  "text": "Выбор за вами: ход в море или шестёрка на ремонт либо выкуп.",
+  "voice": "Gacrux"
+ },
+ "opt_move_and_six_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.2,
+  "text": "Можно двигаться, а можно пустить шестёрку на ремонт или выкуп.",
+  "voice": "Gacrux"
+ },
+ "opt_move_and_six_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.04,
+  "text": "Два варианта вложений: ход в море или шестёрка на ремонт и выкуп.",
+  "voice": "Laomedeia"
+ },
+ "opt_move_and_six_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.36,
+  "text": "Шестёрка на руках и море открыто — выбирайте, что выгоднее!",
+  "voice": "Laomedeia"
+ },
+ "opt_move_and_six_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.6,
+  "text": "Выбирайте, капитан: плыть дальше или шестёрку — на ремонт либо выкуп.",
+  "voice": "Algenib"
+ },
+ "opt_move_and_six_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.0,
+  "text": "Можно плыть, а можно шестёркой корабль выручить. Решайте.",
+  "voice": "Algenib"
+ },
+ "opt_move_and_six_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.56,
+  "text": "Два пути. Плыть вперёд — или шестёркой вернуть корабль в строй.",
+  "voice": "Charon"
+ },
+ "opt_move_and_six_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.12,
+  "text": "Шестёрка в руке, море открыто. Выбирай.",
+  "voice": "Charon"
+ },
+ "opt_ransom_only_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.2,
+  "text": "Шестёрка. Можно выкупить корабль из плена.",
+  "voice": "Gacrux"
+ },
+ "opt_ransom_only_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.28,
+  "text": "Шестёрка открывает выкуп. Выберите действие.",
+  "voice": "Gacrux"
+ },
+ "opt_ransom_only_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.12,
+  "text": "Шестёрка! Пора выкупать корабль из плена.",
+  "voice": "Laomedeia"
+ },
+ "opt_ransom_only_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.72,
+  "text": "Шестёрки хватит на выкуп пленника. Выбирайте!",
+  "voice": "Laomedeia"
+ },
+ "opt_ransom_only_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.72,
+  "text": "Шестёрка! Можно выкупить нашего из плена.",
+  "voice": "Algenib"
+ },
+ "opt_ransom_only_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.04,
+  "text": "Шестёрка есть — выручаем пленника. Выбирайте.",
+  "voice": "Algenib"
+ },
+ "opt_ransom_only_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.12,
+  "text": "Шестёрка. Пленник может вернуться домой.",
+  "voice": "Charon"
+ },
+ "opt_ransom_only_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.56,
+  "text": "Шестёрка — ключ от темницы. Выбирай.",
+  "voice": "Charon"
+ },
+ "opt_repair_only_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.68,
+  "text": "Шестёрка. Можно спустить корабль с верфи в гавань.",
+  "voice": "Gacrux"
+ },
+ "opt_repair_only_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.0,
+  "text": "Наконец-то шестёрка. Почините корабль, адмирал.",
+  "voice": "Gacrux"
+ },
+ "opt_repair_only_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.96,
+  "text": "Шестёрка! Корабль с верфи — в гавань, в работу!",
+  "voice": "Laomedeia"
+ },
+ "opt_repair_only_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.32,
+  "text": "Шестёрка! Ремонт окупится — чиним корабль.",
+  "voice": "Laomedeia"
+ },
+ "opt_repair_only_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.04,
+  "text": "Шестёрка! Спускаем корабль с верфи в гавань.",
+  "voice": "Algenib"
+ },
+ "opt_repair_only_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.88,
+  "text": "Вот она, шестёрка! Чиним корабль — и на воду.",
+  "voice": "Algenib"
+ },
+ "opt_repair_only_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.2,
+  "text": "Шестёрка. Корабль сойдёт с верфи в гавань.",
+  "voice": "Charon"
+ },
+ "opt_repair_only_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.36,
+  "text": "Шестёрка пришла. Время чинить корабль.",
+  "voice": "Charon"
+ },
+ "opt_sail_first_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.44,
+  "text": "Прошу, выберите ход.",
+  "voice": "Gacrux"
+ },
+ "opt_sail_first_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.92,
+  "text": "Корабли ждут ваших распоряжений.",
+  "voice": "Gacrux"
+ },
+ "opt_sail_first_en/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.6,
+  "text": "Недурной бросок. Ваш ход, адмирал.",
+  "voice": "Gacrux"
+ },
+ "opt_sail_first_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.12,
+  "text": "Куда отправим корабль?",
+  "voice": "Laomedeia"
+ },
+ "opt_sail_first_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.64,
+  "text": "Корабли ждут заказа — выбирайте ход!",
+  "voice": "Laomedeia"
+ },
+ "opt_sail_first_nl/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.28,
+  "text": "Хороший бросок — пускаем в дело!",
+  "voice": "Laomedeia"
+ },
+ "opt_sail_first_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.24,
+  "text": "Ну, куда пойдём, капитан?",
+  "voice": "Algenib"
+ },
+ "opt_sail_first_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.32,
+  "text": "Ветер попутный — выбирайте ход.",
+  "voice": "Algenib"
+ },
+ "opt_sail_first_ru/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.64,
+  "text": "Добрый бросок! Выбирайте, кем ходить.",
+  "voice": "Algenib"
+ },
+ "opt_sail_first_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.28,
+  "text": "Путь открыт. Выбирай.",
+  "voice": "Charon"
+ },
+ "opt_sail_first_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.56,
+  "text": "Ветер в парусах. Куда плывём?",
+  "voice": "Charon"
+ },
+ "opt_sail_first_se/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.36,
+  "text": "Кости сказали. Теперь твой ход.",
+  "voice": "Charon"
+ },
+ "opt_second_die_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.32,
+  "text": "Осталась вторая кость.",
+  "voice": "Gacrux"
+ },
+ "opt_second_die_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.8,
+  "text": "Распорядитесь второй костью.",
+  "voice": "Gacrux"
+ },
+ "opt_second_die_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.16,
+  "text": "Остаётся вторая кость. В дело!",
+  "voice": "Laomedeia"
+ },
+ "opt_second_die_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.28,
+  "text": "Вторая кость тоже чего-то стоит!",
+  "voice": "Laomedeia"
+ },
+ "opt_second_die_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.76,
+  "text": "Ещё одна кость, капитан.",
+  "voice": "Algenib"
+ },
+ "opt_second_die_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.92,
+  "text": "Вторую кость не забудьте!",
+  "voice": "Algenib"
+ },
+ "opt_second_die_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.16,
+  "text": "Вторая кость ждёт.",
+  "voice": "Charon"
+ },
+ "opt_second_die_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.04,
+  "text": "Ещё одна кость. Ещё один путь.",
+  "voice": "Charon"
+ },
+ "parade_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.12,
+  "text": "Корабль занял место на параде. Безупречно.",
+  "voice": "Gacrux"
+ },
+ "parade_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.36,
+  "text": "Ещё один корабль Англии на параде. Превосходно.",
+  "voice": "Gacrux"
+ },
+ "parade_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.72,
+  "text": "Корабль на параде — товар доставлен!",
+  "voice": "Laomedeia"
+ },
+ "parade_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.96,
+  "text": "Ещё один на параде — прибыль растёт!",
+  "voice": "Laomedeia"
+ },
+ "parade_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.08,
+  "text": "Ура! Наш корабль встал на парад.",
+  "voice": "Algenib"
+ },
+ "parade_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.0,
+  "text": "Добро! Ещё один наш на параде.",
+  "voice": "Algenib"
+ },
+ "parade_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.88,
+  "text": "Путь пройден. Корабль встаёт на парад.",
+  "voice": "Charon"
+ },
+ "parade_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.12,
+  "text": "Ещё один корабль в строю славы.",
+  "voice": "Charon"
+ },
+ "ransom_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.4,
+  "text": "Корабль выкуплен и возвращён на верфь. Противник получает шесть шагов.",
+  "voice": "Gacrux"
+ },
+ "ransom_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.96,
+  "text": "Выкуп состоялся, корабль на верфи. За это соперник сделает шесть шагов.",
+  "voice": "Gacrux"
+ },
+ "ransom_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.52,
+  "text": "Выкуп оплачен: корабль на верфи. Продавцу — шесть шагов.",
+  "voice": "Laomedeia"
+ },
+ "ransom_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.24,
+  "text": "Сделка закрыта! Корабль на верфи, сопернику — шесть шагов.",
+  "voice": "Laomedeia"
+ },
+ "ransom_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 7.56,
+  "text": "Выкупили нашего — он на верфи. А тюремщику за то шесть шагов.",
+  "voice": "Algenib"
+ },
+ "ransom_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 9.88,
+  "text": "Вызволили из плена! Корабль на верфи, только сопернику теперь шесть шагов.",
+  "voice": "Algenib"
+ },
+ "ransom_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 8.44,
+  "text": "Пленник свободен и идёт на верфь. Тюремщик получает шесть шагов.",
+  "voice": "Charon"
+ },
+ "ransom_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.08,
+  "text": "Цена свободы — шесть шагов врагу. Корабль вернулся на верфь.",
+  "voice": "Charon"
+ },
+ "repair_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.2,
+  "text": "Ремонт завершён. Корабль в гавани.",
+  "voice": "Gacrux"
+ },
+ "repair_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.52,
+  "text": "Корабль отремонтирован и ждёт в гавани.",
+  "voice": "Gacrux"
+ },
+ "repair_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.84,
+  "text": "Ремонт оплачен — корабль в гавани!",
+  "voice": "Laomedeia"
+ },
+ "repair_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.68,
+  "text": "Шестёрка вложена в ремонт — корабль в гавани, готов к рейсу!",
+  "voice": "Laomedeia"
+ },
+ "repair_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.44,
+  "text": "Подлатали! Корабль спущен в гавань.",
+  "voice": "Algenib"
+ },
+ "repair_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.68,
+  "text": "Плотники не подвели — корабль как новый, стоит в гавани.",
+  "voice": "Algenib"
+ },
+ "repair_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.32,
+  "text": "Корабль починен. Он ждёт в гавани.",
+  "voice": "Charon"
+ },
+ "repair_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.2,
+  "text": "Верфь отпустила корабль. Он в гавани.",
+  "voice": "Charon"
+ },
+ "roll_double_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.12,
+  "text": "Дубль. Весьма недурно.",
+  "voice": "Gacrux"
+ },
+ "roll_double_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.88,
+  "text": "Дубль, адмирал. Превосходно.",
+  "voice": "Gacrux"
+ },
+ "roll_double_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.32,
+  "text": "Дубль — двойная выгода!",
+  "voice": "Laomedeia"
+ },
+ "roll_double_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.0,
+  "text": "Дубль! Прибыль удваивается.",
+  "voice": "Laomedeia"
+ },
+ "roll_double_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.4,
+  "text": "Ого, дубль! Будет и второй бросок.",
+  "voice": "Algenib"
+ },
+ "roll_double_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.8,
+  "text": "Дубль, капитан! Везёт же.",
+  "voice": "Algenib"
+ },
+ "roll_double_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.44,
+  "text": "Две равные грани. Дубль.",
+  "voice": "Charon"
+ },
+ "roll_double_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.12,
+  "text": "Дубль. Удача на стороне Швеции.",
+  "voice": "Charon"
+ },
+ "sail_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.28,
+  "text": "Корабль идёт по курсу.",
+  "voice": "Gacrux"
+ },
+ "sail_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 1.96,
+  "text": "Весьма уверенно.",
+  "voice": "Gacrux"
+ },
+ "sail_en/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.04,
+  "text": "Ход сделан. Аккуратно.",
+  "voice": "Gacrux"
+ },
+ "sail_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 1.96,
+  "text": "Корабль в пути!",
+  "voice": "Laomedeia"
+ },
+ "sail_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.36,
+  "text": "Идём по маршруту!",
+  "voice": "Laomedeia"
+ },
+ "sail_nl/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.84,
+  "text": "Груз в пути — отлично!",
+  "voice": "Laomedeia"
+ },
+ "sail_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.8,
+  "text": "Полный вперёд!",
+  "voice": "Algenib"
+ },
+ "sail_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.0,
+  "text": "Так держать!",
+  "voice": "Algenib"
+ },
+ "sail_ru/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.72,
+  "text": "Пошёл, голубчик!",
+  "voice": "Algenib"
+ },
+ "sail_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.12,
+  "text": "Корабль режет волну.",
+  "voice": "Charon"
+ },
+ "sail_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.28,
+  "text": "Ветер несёт корабль вперёд.",
+  "voice": "Charon"
+ },
+ "sail_se/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.16,
+  "text": "Вперёд, по волнам.",
+  "voice": "Charon"
+ },
+ "turn_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 2.56,
+  "text": "Англия, ваш ход.",
+  "voice": "Gacrux"
+ },
+ "turn_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.72,
+  "text": "Очередь Англии. Прошу, адмирал.",
+  "voice": "Gacrux"
+ },
+ "turn_en/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.44,
+  "text": "Англия. Извольте бросить кости.",
+  "voice": "Gacrux"
+ },
+ "turn_first_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.96,
+  "text": "Ход Англии, адмирал. Зажмите левую кнопку мыши, взмахните и отпустите — или смахните кости пальцем.",
+  "voice": "Gacrux"
+ },
+ "turn_first_en/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.76,
+  "text": "Англия, прошу. Кости бросают так: зажать кнопку мыши, взмахнуть, отпустить. На сенсорном экране — смахнуть пальцем.",
+  "voice": "Gacrux"
+ },
+ "turn_first_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.08,
+  "text": "Ход Голландии! Кости в руку: зажмите кнопку мыши, взмахните, отпустите. Или смахните пальцем.",
+  "voice": "Laomedeia"
+ },
+ "turn_first_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.92,
+  "text": "Голландия, ваш ход! Схема простая: зажать кнопку, взмахнуть, отпустить. На телефоне — смахнуть пальцем.",
+  "voice": "Laomedeia"
+ },
+ "turn_first_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 11.52,
+  "text": "Ход России, капитан! Зажмите кнопку мыши, взмахните и отпустите. Или смахните кости пальцем.",
+  "voice": "Algenib"
+ },
+ "turn_first_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 11.72,
+  "text": "Ваш черёд, капитан, ходит Россия. Зажмите кнопку мыши, махните — и отпускайте. Можно и пальцем по экрану.",
+  "voice": "Algenib"
+ },
+ "turn_first_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 11.36,
+  "text": "Ход Швеции. Возьми кости: зажми кнопку мыши, взмахни и отпусти. Или смахни их пальцем.",
+  "voice": "Charon"
+ },
+ "turn_first_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 13.0,
+  "text": "Черёд Швеции. Сожми кнопку мыши, взмахни, отпусти — и кости покатятся. Или проведи пальцем.",
+  "voice": "Charon"
+ },
+ "turn_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.32,
+  "text": "Голландия, ваш ход — бросайте!",
+  "voice": "Laomedeia"
+ },
+ "turn_nl/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 2.92,
+  "text": "Очередь Голландии. Время — деньги!",
+  "voice": "Laomedeia"
+ },
+ "turn_nl/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.32,
+  "text": "Голландия! Посмотрим, что принесут кости.",
+  "voice": "Laomedeia"
+ },
+ "turn_ru/01": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.12,
+  "text": "Ход России. Бросайте, капитан!",
+  "voice": "Algenib"
+ },
+ "turn_ru/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.96,
+  "text": "Россия, ваш черёд. Ну-ка, бросайте!",
+  "voice": "Algenib"
+ },
+ "turn_ru/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.56,
+  "text": "Ход за Россией. Семь футов под килем!",
+  "voice": "Algenib"
+ },
+ "turn_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.52,
+  "text": "Швеция. Бросай кости.",
+  "voice": "Charon"
+ },
+ "turn_se/02": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.04,
+  "text": "Ветер повернул к Швеции. Бросай.",
+  "voice": "Charon"
+ },
+ "turn_se/03": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.04,
+  "text": "Швеция, твой черёд. Кости ждут.",
+  "voice": "Charon"
+ },
+ "unspent_blocked_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 4.6,
+  "text": "Для второй кости хода нет. Пути закрыты.",
+  "voice": "Gacrux"
+ },
+ "unspent_blocked_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 3.56,
+  "text": "Вторая кость пропадает. Ход окончен.",
+  "voice": "Gacrux"
+ },
+ "unspent_blocked_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.52,
+  "text": "Вторую кость пристроить некуда — пути заняты.",
+  "voice": "Laomedeia"
+ },
+ "unspent_blocked_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 3.4,
+  "text": "Вторая кость сгорает — ход закрыт.",
+  "voice": "Laomedeia"
+ },
+ "unspent_blocked_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 5.12,
+  "text": "На вторую кость ходу нет — пути перекрыты.",
+  "voice": "Algenib"
+ },
+ "unspent_blocked_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 4.76,
+  "text": "Вторая кость пропадает — ходить некуда.",
+  "voice": "Algenib"
+ },
+ "unspent_blocked_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.68,
+  "text": "Вторая кость без пути. Ход окончен.",
+  "voice": "Charon"
+ },
+ "unspent_blocked_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.12,
+  "text": "Пути закрыты. Вторая кость сгорает.",
+  "voice": "Charon"
+ },
+ "unspent_captured_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.76,
+  "text": "Корабль с пленником стоит до конца хода, другим хода нет. Вторая кость сгорает.",
+  "voice": "Gacrux"
+ },
+ "unspent_captured_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 5.44,
+  "text": "Захватчик стоит, остальным идти некуда. Ход завершён.",
+  "voice": "Gacrux"
+ },
+ "unspent_captured_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.44,
+  "text": "Корабль с трофеем стоит до конца хода, других ходов нет — остаток списываем.",
+  "voice": "Laomedeia"
+ },
+ "unspent_captured_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.2,
+  "text": "Захватчик отдыхает, остальным некуда. Остаток в убыток.",
+  "voice": "Laomedeia"
+ },
+ "unspent_captured_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.44,
+  "text": "Кто взял пленного — стоит до конца хода. Другим ходить некуда, кость пропадает.",
+  "voice": "Algenib"
+ },
+ "unspent_captured_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 8.52,
+  "text": "Захватчик на якоре, а больше ходить некем. Остаток сгорает.",
+  "voice": "Algenib"
+ },
+ "unspent_captured_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 9.88,
+  "text": "Победитель стоит до конца хода. Других путей нет. Кость сгорает.",
+  "voice": "Charon"
+ },
+ "unspent_captured_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.92,
+  "text": "Захватчик бросил якорь. Больше некому идти.",
+  "voice": "Charon"
+ },
+ "victory_en/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 6.24,
+  "text": "Все пять кораблей на параде. Англия побеждает. Безупречно.",
+  "voice": "Gacrux"
+ },
+ "victory_en/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 7.4,
+  "text": "Победа Англии: все пять кораблей на параде. Для реванша — «Новая игра».",
+  "voice": "Gacrux"
+ },
+ "victory_nl/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.6,
+  "text": "Все пять на параде — Голландия побеждает! Лучшая сделка века!",
+  "voice": "Laomedeia"
+ },
+ "victory_nl/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 6.36,
+  "text": "Победа Голландии! Все пять на параде. Ещё раунд — «Новая игра»!",
+  "voice": "Laomedeia"
+ },
+ "victory_ru/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 9.16,
+  "text": "Победа! Все пять наших кораблей на параде. Ура, Россия!",
+  "voice": "Algenib"
+ },
+ "victory_ru/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.1-flash-tts-preview",
+  "seconds": 10.76,
+  "text": "Вся пятёрка на параде — Россия победила! Ещё партию? Жмите «Новая игра».",
+  "voice": "Algenib"
+ },
+ "victory_se/01": {
+  "made": "2026-11-18",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 10.04,
+  "text": "Пять кораблей на параде. Швеция побеждает. Сага окончена.",
+  "voice": "Charon"
+ },
+ "victory_se/02": {
+  "made": "2026-11-19",
+  "model": "gemini-3.8-flash-tts",
+  "seconds": 11.96,
+  "text": "Швеция победила. Пять кораблей на параде. Новая сага — кнопка «Новая игра».",
+  "voice": "Charon"
+ }
+}
