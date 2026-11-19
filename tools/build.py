@@ -59,11 +59,12 @@ with zipfile.ZipFile(a / 'three-r160-cannon-0.20.0.zip') as runtime:
 html = html.replace('/*__IMPORTS__*/', json.dumps({'imports': imports}, separators=(',', ':')))
 html = html.replace('<!--__ENGINE_LICENSES__-->', '<!--\n' + licenses + '\n-->')
 app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
-                for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'app.js'))
+                for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'bot.js', 'app.js'))
 html = html.replace('/*__DATA__*/', 'window.ADMIRAL = ' + json.dumps(data, ensure_ascii=False) + ';')
 html = html.replace('/*__APP__*/', app)
-# the start screen, the intro films, the main menu and its online club work before (and without) the 3D map
-intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8') for name in ('intro.js', 'online.js'))
+# the start screen, the intro films, the main menu and its online club work before (and without) the 3D map;
+# so do the names of the bots' styles, which the club shows at its tables
+intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8') for name in ('bot-styles.js', 'intro.js', 'online.js'))
 html = html.replace('/*__INTRO__*/', intro)
 (root / 'admiral-3d.html').write_text(html, encoding='utf8')
 print('admiral-3d.html', round(len(html.encode()) / 1024), 'KB')

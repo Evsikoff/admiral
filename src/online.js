@@ -2,10 +2,14 @@
 // The connection to the server (server/server.js), the list of tables waiting for players, a table with its
 // players and their «Готов», the draw of sides, and then the game itself, which app.js plays: every client runs
 // the same game, the server numbers the actions and passes them on (see server/lobby.js).
+// Any player at a table may seat bots in its free seats and choose their styles (src/bot-styles.js); in the game
+// one of the players' screens plays them (app.js).
 // Like intro.js it works before (and without) the 3D map. app.js joins with AdmiralOnline.attach(handler):
-//   handler.start(game)      a game begins (or is rejoined): { no, players: [{ id, name, q }], me, log, presence, turnMs }
+//   handler.start(game)      a game begins (or is rejoined): { no, players: [{ id, name, q, bot? }], me, log, presence, turnMs }
+//                            (bot: the style of a bot; presence lists the people only)
 //   handler.act(msg)         an action of the game: { n, a, from }
 //   handler.presence(msg)    { id, state: 'online' | 'offline' | 'left' }
+//   handler.voice(msg)       { id, on }: a player switched the commentator on or off (game.voice: { id: on })
 //   handler.state(game)      the whole game again, after a lost connection or when asked for (AdmiralOnline.sync())
 //   handler.reject(msg)      the server refused an action of this client: { n, have, kind }
 (function () {
@@ -13,6 +17,7 @@
   const $ = (id) => document.getElementById(id);
   const TOKEN_KEY = 'admiral.online.token';      // per browser tab: two tabs are two players
   const NAME_KEY = 'admiral.online.name';
+  const AUDIO_KEY = 'admiral.audio.v1';          // the sound switches of app.js: is the commentator on here
   const DRAW_MS = 3600;                          // the draw is shown this long before the board opens
   const served = location.protocol === 'http:' || location.protocol === 'https:';
   const NATION = {
@@ -29,6 +34,9 @@
       + '<path d="M15 0V20M0 10H30" stroke="#fbfbf8" stroke-width="6.8"/><path d="M15 0V20M0 10H30" stroke="#c8202f" stroke-width="4"/>',
   };
   const flagSVG = (q) => `<svg class="ol-flag" viewBox="0 0 30 20" aria-hidden="true">${FLAG[q]}</svg>`;
+  // the styles of play of the bots: [{ id, title, tagline, about }]
+  const STYLES = window.AdmiralBotStyles || [];
+  const styleOf = (id) => STYLES.find((st) => st.id === id) || { id, title: 'Бот', tagline: '', about: '' };
   const LOCK = '<svg class="ol-lock" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.2 7V5.1a2.8 2.8 0 0 1 5.6 0V7"/></svg>';
 
   const panel = $('online'), menuEl = $('intro-menu');
@@ -57,6 +65,10 @@
     return '';
   }
   nameInput.value = savedName().slice(0, 20);
+  // whether this player hears the commentator: the others' bots play at once when nobody at the table does
+  function voiceOn() {
+    try { return JSON.parse(localStorage.getItem(AUDIO_KEY))?.commentator !== true; } catch { return true; }
+  }
 
   // ---- the connection: opened when the club is opened, or at once when this tab was at a table before a reload
   function connect() {
@@ -69,7 +81,7 @@
     ws = socket;
     socket.onopen = () => {
       connected = true; retry = 0;
-      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim() }));
+      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: voiceOn() }));
       if (open && !table && !game) send({ t: 'watch', on: true });
       netStatus();
     };
@@ -123,13 +135,13 @@
       case 'error': note(m.text); return;
       case 'start':
         table = null;
-        game = { no: m.no, players: m.players, me: m.me, log: [], turnMs: m.turnMs,
-          presence: Object.fromEntries(m.players.map((p) => [p.id, 'online'])) };
+        game = { no: m.no, players: m.players, me: m.me, log: [], turnMs: m.turnMs, voice: m.voice || {},
+          presence: Object.fromEntries(m.players.filter((p) => !p.bot).map((p) => [p.id, 'online'])) };
         showDraw();
         return;
       case 'game': {
         const fresh = !game || game.no !== m.no;
-        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs };
+        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {} };
         table = null;
         if (handler && handler.inGame?.()) handler.state(game);
         else if (fresh || intro.stage !== 'online-game') {
@@ -143,6 +155,10 @@
       case 'presence':
         if (game) game.presence[m.id] = m.state;
         handler?.presence(m);
+        return;
+      case 'voice':
+        if (game) game.voice[m.id] = m.on;
+        handler?.voice?.(m);
         return;
       case 'reject': handler?.reject(m); return;
       case 'replaced':
@@ -194,9 +210,11 @@
   function renderList() {
     rowsEl.replaceChildren(...tables.map((t) => {
       const tr = document.createElement('tr');
-      const seats = Array.from({ length: 4 }, (_, i) => `<i class="${i < t.count ? 'on' : ''}"></i>`).join('');
+      const people = t.count - (t.bots || 0);              // the bots' seats are marked apart
+      const seats = Array.from({ length: 4 }, (_, i) => `<i class="${i < people ? 'on' : i < t.count ? 'on bot' : ''}"></i>`).join('');
       tr.innerHTML = `<td class="ol-no">№&nbsp;${t.no}</td>`
-        + `<td><span class="ol-count"><span class="ol-pips" aria-hidden="true">${seats}</span>${t.count}&nbsp;из&nbsp;4</span></td>`
+        + `<td><span class="ol-count"><span class="ol-pips" aria-hidden="true">${seats}</span>${t.count}&nbsp;из&nbsp;4`
+        + `${t.bots ? `<small class="ol-botcount">${t.bots === 1 ? 'один бот' : `ботов: ${t.bots}`}</small>` : ''}</span></td>`
         + `<td>${t.private ? `<span class="ol-access priv">${LOCK}по коду</span>` : '<span class="ol-access">открытый</span>'}`
         + `${t.status === 'countdown' ? '<span class="ol-soon">начинает</span>' : ''}</td>`
         + '<td class="ol-act"><button type="button" class="ol-sit">Сесть</button></td>';
@@ -248,16 +266,51 @@
     tableTitle.textContent = `Стол № ${table.no}`;
     tableCode.hidden = !table.private;
     if (table.private) tableCode.querySelector('b').textContent = table.code || '····';
-    const n = table.players.length;
+    // the people first, then the bots; the first free seat offers a bot
+    const bots = table.bots || [], n = table.players.length + bots.length;
+    const seated = [...table.players, ...bots.map((b) => ({ ...b, bot: true }))];
+    const focused = document.activeElement?.dataset?.key;          // the control in use keeps the focus
     seatsEl.replaceChildren(...Array.from({ length: 4 }, (_, i) => {
-      const p = table.players[i], li = document.createElement('li');
-      if (!p) { li.className = 'free'; li.innerHTML = `<span class="ol-seat">${i + 1}</span><span class="ol-pname">свободное место</span>`; return li; }
+      const p = seated[i], li = document.createElement('li');
+      if (!p) {
+        li.className = 'free';
+        li.innerHTML = `<span class="ol-seat">${i + 1}</span><span class="ol-pname">свободное место</span>`;
+        if (i === n && STYLES.length) {
+          const add = document.createElement('button');
+          add.type = 'button'; add.className = 'ol-addbot'; add.dataset.key = 'addbot'; add.textContent = '+ Бот';
+          add.title = 'Посадить за стол бота. Его стиль игры можно будет выбрать.';
+          add.setAttribute('aria-label', `Посадить бота на место ${i + 1}`);
+          add.addEventListener('click', () => send({ t: 'bot-add', style: STYLES[0].id }));
+          li.appendChild(add);
+        }
+        return li;
+      }
+      if (p.bot) {
+        const st = styleOf(p.style);
+        li.className = 'bot';
+        li.title = st.about;
+        li.innerHTML = `<span class="ol-seat">${i + 1}</span>`
+          + '<span class="ol-pname"><span class="ol-botname"></span><small class="ol-bottag"></small></span>'
+          + '<span class="ol-botctl"><select class="ol-botstyle"></select><button type="button" class="ol-botdel">Убрать</button></span>';
+        li.querySelector('.ol-botname').textContent = p.name;
+        li.querySelector('.ol-bottag').textContent = `бот · ${st.tagline}`;
+        const sel = li.querySelector('select'), del = li.querySelector('button');
+        for (const o of STYLES) sel.add(new Option(o.title, o.id, false, o.id === p.style));
+        sel.dataset.key = `style:${p.id}`;
+        sel.setAttribute('aria-label', `Стиль игры бота «${p.name}»`);
+        sel.addEventListener('change', () => send({ t: 'bot-style', id: p.id, style: sel.value }));
+        del.dataset.key = `del:${p.id}`;
+        del.setAttribute('aria-label', `Убрать бота «${p.name}»`);
+        del.addEventListener('click', () => send({ t: 'bot-remove', id: p.id }));
+        return li;
+      }
       li.className = [p.ready ? 'ready' : '', p.online ? '' : 'away', p.id === me ? 'me' : ''].filter(Boolean).join(' ');
       li.innerHTML = `<span class="ol-seat">${i + 1}</span><span class="ol-pname"></span><span class="ol-pstate"></span>`;
       li.querySelector('.ol-pname').textContent = p.name + (p.id === me ? ' (вы)' : '');
       li.querySelector('.ol-pstate').textContent = !p.online ? 'нет связи' : p.ready ? 'готов' : n > 1 ? 'не готов' : '';
       return li;
     }));
+    if (focused) seatsEl.querySelector(`[data-key="${focused}"]`)?.focus({ preventScroll: true });
     const mine = table.players.find((p) => p.id === me);
     readyBtn.disabled = n < 2;
     readyBtn.setAttribute('aria-pressed', String(!!mine?.ready));
@@ -273,9 +326,10 @@
       };
       tick(); countdownTimer = setInterval(tick, 200);
     } else if (n < 2) {
-      tableStatus.innerHTML = table.private
-        ? `Ждём соперников. Пусть друзья введут код <b>${table.code}</b> в поиске столов.`
-        : `Ждём соперников. Друзья найдут вас по номеру стола: <b>${table.no}</b>.`;
+      tableStatus.innerHTML = (table.private
+        ? `Ждём соперников. Пусть друзья введут код <b>${table.code}</b> в поиске столов`
+        : `Ждём соперников. Друзья найдут вас по номеру стола: <b>${table.no}</b>`)
+        + (STYLES.length ? ' — или посадите за стол бота.' : '.');
     } else {
       const waiting = table.players.filter((p) => !p.ready).length;
       tableStatus.textContent = waiting
@@ -303,7 +357,15 @@
       + `<span class="pl-num" aria-hidden="true">${i + 1}</span>`
       + `<span class="lot-name"></span>`
       + `<span class="lot-side">${flagSVG(p.q)}<span><b>${NATION[p.q].name}</b><small>${NATION[p.q].sails}</small></span></span></li>`).join('');
-    drawList.querySelectorAll('.lot-name').forEach((el, i) => { el.textContent = players[i].name + (players[i].id === game.me ? ' (вы)' : ''); });
+    drawList.querySelectorAll('.lot-name').forEach((el, i) => {
+      const p = players[i];
+      el.textContent = p.name + (p.id === game.me ? ' (вы)' : '');
+      if (p.bot) {
+        const tag = document.createElement('small');
+        tag.className = 'lot-bot'; tag.textContent = `бот · ${styleOf(p.bot).tagline}`;
+        el.appendChild(tag);
+      }
+    });
     const mine = players.find((p) => p.id === game.me);
     drawNote.textContent = mine ? `Вы играете за ${{ ru: 'Россию', se: 'Швецию', en: 'Англию', nl: 'Голландию' }[mine.q]}. Ходят в этом порядке.` : '';
     clearTimeout(drawTimer);

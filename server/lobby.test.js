@@ -1,7 +1,7 @@
 // node --test server/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Lobby, COUNTDOWN_MS, GAME_GRACE_MS, WAIT_GRACE_MS, TURN_MS, checkAction, drawSides, cleanName } from './lobby.js';
+import { Lobby, COUNTDOWN_MS, GAME_GRACE_MS, WAIT_GRACE_MS, TURN_MS, BOT_STYLES, checkAction, drawSides, cleanName } from './lobby.js';
 
 // a lobby with a clock and timers under the test's control
 function setup() {
@@ -37,7 +37,7 @@ test('a table: create, join, ready, countdown, start with sides by lot', () => {
   w.say({ t: 'watch', on: true });
   a.say({ t: 'create', private: false });
   advance(100);
-  assert.deepEqual(w.last('tables').list, [{ no: 1, count: 1, private: false, status: 'waiting' }]);
+  assert.deepEqual(w.last('tables').list, [{ no: 1, count: 1, bots: 0, private: false, status: 'waiting' }]);
   a.say({ t: 'ready', on: true });
   assert.equal(a.last('table').table.players[0].ready, false, 'alone at a table, nobody can be ready');
   b.say({ t: 'join', no: 1 });
@@ -95,7 +95,7 @@ test('a full table leaves the list at once', () => {
   advance(100);
   assert.deepEqual(w.last('tables').list, []);
   const e = client('E'); e.say({ t: 'join', no: 1 });
-  assert.match(e.last('error').text, /четыре игрока/);
+  assert.match(e.last('error').text, /все четыре места заняты/);
 });
 
 test('private tables: a code to sit down, found by the code or by the number', () => {
@@ -106,7 +106,7 @@ test('private tables: a code to sit down, found by the code or by the number', (
   const code = a.last('table').table.code;
   assert.match(code, /^\d{4}$/);
   advance(100);
-  assert.deepEqual(w.last('tables').list, [{ no: 1, count: 1, private: true, status: 'waiting' }], 'the list shows no code');
+  assert.deepEqual(w.last('tables').list, [{ no: 1, count: 1, bots: 0, private: true, status: 'waiting' }], 'the list shows no code');
   b.say({ t: 'join', no: 1 });
   assert.deepEqual(b.last('need-code'), { t: 'need-code', no: 1, wrong: false });
   b.say({ t: 'join', no: 1, code: '0000' === code ? '1111' : '0000' });
@@ -236,4 +236,119 @@ test('helpers: sides, names, actions', () => {
   assert.equal(checkAction({ kind: 'act', ship: 'xx1', k: 0 }), null);
   assert.equal(checkAction({ kind: 'throw', frames: [1, 2], res: [] }), null);
   assert.equal(checkAction({ kind: 'nope' }), null);
+});
+
+// ---- bots at the tables
+test('bots: seated in free seats, named by style, counted as players; their table needs a person', () => {
+  const { lobby, advance, client } = setup();
+  const w = client('W'); w.say({ t: 'watch', on: true });
+  const a = client('A');
+  a.say({ t: 'create', private: false });
+  a.say({ t: 'bot-add', style: 'corsair' });
+  a.say({ t: 'bot-add', style: 'corsair' });
+  a.say({ t: 'bot-add', style: 'nonsense' });
+  let view = a.last('table').table;
+  assert.deepEqual(view.bots.map((b) => b.name), ['Корсар', 'Корсар 2'], 'a second bot of a style gets a number');
+  assert.ok(view.bots.every((b) => /^bot[0-9a-f]{5}$/.test(b.id)));
+  advance(100);
+  assert.deepEqual(w.last('tables').list, [{ no: 1, count: 3, bots: 2, private: false, status: 'waiting' }]);
+  // a style changed: the bot is named after it
+  a.say({ t: 'bot-style', id: view.bots[0].id, style: 'racer' });
+  view = a.last('table').table;
+  assert.deepEqual(view.bots.map((b) => [b.style, b.name]), [['racer', 'Скороход'], ['corsair', 'Корсар 2']]);
+  // the fourth seat: a bot or a person, not both
+  a.say({ t: 'bot-add', style: 'novice' });
+  const e = client('E'); e.say({ t: 'join', no: 1 });
+  assert.match(e.last('error').text, /все четыре места заняты/);
+  a.say({ t: 'bot-add', style: 'novice' });
+  assert.match(a.last('error').text, /Свободных мест/);
+  a.say({ t: 'bot-remove', id: a.last('table').table.bots[2].id });
+  assert.equal(a.last('table').table.bots.length, 2);
+  e.say({ t: 'join', no: 1 });
+  assert.equal(e.last('table').table.players.length, 2);
+  // the people leave: the bots do not keep the table
+  a.say({ t: 'leave' }); e.say({ t: 'leave' });
+  assert.equal(lobby.tables.size, 0);
+});
+
+test('bots: one person and a bot play; a change of bots restarts the countdown', () => {
+  const { advance, client } = setup();
+  const a = client('A');
+  a.say({ t: 'create', private: false });
+  a.say({ t: 'ready', on: true });
+  assert.equal(a.last('table').table.players[0].ready, false, 'alone: not ready');
+  a.say({ t: 'bot-add', style: 'careful' });
+  a.say({ t: 'ready', on: true });
+  assert.equal(a.last('table').table.status, 'countdown');
+  advance(COUNTDOWN_MS - 500);
+  a.say({ t: 'bot-add', style: 'convoy' });
+  assert.equal(a.last('table').table.status, 'countdown', 'still ready: the countdown starts again');
+  assert.equal(a.last('table').table.startsIn, COUNTDOWN_MS);
+  advance(COUNTDOWN_MS - 500);
+  assert.equal(a.last('start'), undefined);
+  const removing = a.last('table').table.bots[1].id;
+  a.say({ t: 'bot-remove', id: removing });
+  advance(COUNTDOWN_MS);
+  const start = a.last('start');
+  assert.ok(start, 'the game has begun');
+  assert.equal(start.players.length, 2);
+  const bot = start.players.find((p) => p.bot);
+  assert.equal(bot.bot, 'careful');
+  assert.equal(bot.name, 'Осмотрительный');
+  assert.deepEqual(start.players.find((p) => !p.bot), { id: a.p.id, name: 'A', q: start.players.find((p) => !p.bot).q });
+});
+
+test('bots: a player\'s screen sends the bot\'s decisions; the log says they were the bot\'s', () => {
+  const { lobby, advance, client } = setup();
+  const a = client('A'), b = client('B');
+  a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'bot-add', style: 'novice' });
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  advance(COUNTDOWN_MS);
+  const botId = a.last('start').players.find((p) => p.bot).id;
+  a.say({ t: 'act', n: 0, a: { ...act(0), bot: botId } });
+  assert.deepEqual(b.last('act'), { t: 'act', n: 0, a: { ...act(0), bot: botId }, from: a.p.id });
+  b.say({ t: 'act', n: 1, a: { ...act(1), bot: 'bot00000' } });
+  assert.equal(b.last('reject').kind, 'bad', 'a bot that does not play here');
+  b.say({ t: 'act', n: 1, a: { ...act(1), bot: 'Корсар' } });
+  assert.deepEqual(b.last('act').a, act(1), 'a malformed bot id is dropped: the action is the player\'s own');
+  const inbox = [];
+  lobby.disconnect(b.p, b.conn);
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token });
+  const state = inbox.find((m) => m.t === 'game');
+  assert.equal(state.log[0].by, botId);
+  assert.equal(state.log[1].by, b.p.id);
+  assert.deepEqual(Object.keys(state.presence).sort(), [a.p.id, b.p.id].sort(), 'presence: the people only');
+  // everyone gone: the game ends though its bot is still "there"
+  a.say({ t: 'leave' }); b.say({ t: 'leave' });
+  assert.equal(lobby.tables.size, 0);
+});
+
+test('bots: the styles of the server are those of the game', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/bot-styles.js', import.meta.url), 'utf8');
+  const window = {};
+  new Function('window', src)(window);
+  assert.deepEqual(Object.fromEntries(window.AdmiralBotStyles.map((s) => [s.id, s.title])), BOT_STYLES);
+});
+
+test('bots: the table learns who hears the commentator (bots wait for him only if somebody does)', () => {
+  const { lobby, advance, client } = setup();
+  const a = client('A'), b = client('B');
+  lobby.message(b.p, { t: 'voice', on: false });             // switched off before the game: it is remembered
+  a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'bot-add', style: 'racer' });
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  advance(COUNTDOWN_MS);
+  assert.deepEqual(a.last('start').voice, { [a.p.id]: true, [b.p.id]: false }, 'the people only');
+  a.say({ t: 'voice', on: false });
+  assert.deepEqual(b.last('voice'), { t: 'voice', id: a.p.id, on: false });
+  b.say({ t: 'voice', on: true });
+  assert.deepEqual(a.last('voice'), { t: 'voice', id: b.p.id, on: true });
+  // a player back after a reload says it again in the greeting; the game state has it
+  lobby.disconnect(a.p, a.conn);
+  const inbox = [];
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: a.p.token, voice: true });
+  assert.deepEqual(inbox.find((m) => m.t === 'game').voice, { [a.p.id]: true, [b.p.id]: true });
+  assert.deepEqual(b.last('voice'), { t: 'voice', id: a.p.id, on: true });
 });

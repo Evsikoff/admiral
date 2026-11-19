@@ -73,6 +73,11 @@
   }
   #who b { color: var(--accent); font-weight: 600; }
   #who .who-away { color: #ffc9be; font-size: .82em; white-space: nowrap; }
+  #who .who-bot {
+    display: inline-block; margin-left: 5px; padding: 0 6px; border-radius: 4px; vertical-align: 2px;
+    font: 600 11px/1.5 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
+    color: #f3e6c8; background: rgba(0, 0, 0, .32); box-shadow: inset 0 0 0 1px rgba(243, 230, 200, .3); text-shadow: none;
+  }
   #who .who-clock {
     display: inline-block; margin-left: 4px; padding: 1px 8px; border-radius: 10px; vertical-align: 1px;
     font: 600 13px "Segoe UI", system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -238,6 +243,19 @@
   }
   .pl-name::placeholder { color: var(--ink-dim); opacity: 0.8; }
   .pl-name:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  /* who plays a seat: a person, or a bot of one of the styles */
+  #setup-players, .pl-seat { grid-template-columns: minmax(0, 1fr); }
+  .pl-seat { display: grid; gap: 4px; }
+  .pl-kind {
+    flex: none; width: 44%; max-width: 190px; text-overflow: ellipsis; font: inherit; font-size: 13px; color: var(--ink); padding: 5px 6px; cursor: pointer;
+    background: rgba(255, 255, 255, 0.06); border: 1px solid var(--panel-edge); border-radius: 8px; color-scheme: dark;
+  }
+  .pl-kind option, .pl-kind optgroup { background: #16263a; color: var(--ink); }
+  .pl-kind:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pl-seat.bot .pl-kind { border-color: var(--accent); }
+  .pl-seat.bot .pl-num { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .pl-about { margin: 0 0 2px 30px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
+  .lot-bot { display: block; font-size: 12px; font-weight: 400; color: var(--ink-dim); }
   /* the draw: one card per player, revealed one after another */
   .lots { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; perspective: 600px; }
   .lot {
@@ -537,6 +555,8 @@
   .ol-pips { display: inline-flex; gap: 3px; }
   .ol-pips i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #6a4f30; }
   .ol-pips i.on { background: #6a3f12; border-color: #4a2a0a; }
+  .ol-pips i.bot { background: #b08a58; border-color: #6a4f30; }
+  .ol-botcount { margin-left: 2px; font-size: 12px; color: #6a4f30; }
   .ol-access { display: inline-flex; align-items: center; gap: 5px; color: #5d4429; white-space: nowrap; }
   .ol-access.priv { color: #7a3410; font-weight: 600; }
   .ol-lock { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; }
@@ -576,6 +596,20 @@
   .club-seats li.ready .ol-pstate { color: #1f6a2c; }
   .club-seats li.ready .ol-pstate::before { content: '✓ '; }
   .club-seats li.away .ol-pstate { color: #9a2a10; }
+  /* a bot at the table: its name and style, a choice of style, and a button that takes it away */
+  .club-seats li.bot { background: rgba(255, 248, 230, .32); }
+  .club-seats li.bot .ol-seat { background: transparent; color: #5a3b22; border: 1.5px solid #5a3b22; }
+  .ol-botname { display: block; }
+  .ol-bottag { display: block; font: 12px/1.3 "Segoe UI", system-ui, sans-serif; color: #6a4f30; }
+  .ol-botctl { display: flex; align-items: center; gap: 6px; }
+  .club select.ol-botstyle {
+    max-width: 150px; font: 600 13px "Segoe UI", system-ui, sans-serif; color: #3b2814; cursor: pointer;
+    background: rgba(255, 250, 238, .72); border: 1px solid rgba(80, 52, 22, .55); border-radius: 6px; padding: 5px 6px;
+  }
+  .club select.ol-botstyle:focus-visible { outline: 2px solid #8a4f12; outline-offset: 2px; }
+  .club button.ol-botdel, .club button.ol-addbot { padding: 4px 10px; font-size: 13px; font-style: normal; }
+  .club-seats li.free:has(.ol-addbot) { color: #6a4f30; }
+  .club .lot-bot { color: #6a4f30; }
   .club-status { margin: 14px 0 0; min-height: 1.4em; text-align: center; color: #4d361d; }
   .club-status b { color: #7a3410; letter-spacing: .06em; }
   .club-status small { display: block; margin-top: 2px; font-size: 13px; color: #6a4f30; }
@@ -610,6 +644,9 @@
     .club-list-wrap { max-height: 38vh; }
     .club-msg { margin: 12px -16px -18px; bottom: -18px; }
     .club-actions .club-primary { min-width: 0; flex: 1; }
+    .club-seats li.bot { grid-template-columns: auto minmax(0, 1fr); }
+    .club-seats li.bot .ol-botctl { grid-column: 2; }
+    .club select.ol-botstyle { max-width: none; flex: 1; }
   }
   @media (orientation: landscape) and (max-height: 480px) {
     .club-card { padding: 10px 16px 12px; }
@@ -644,10 +681,10 @@
     <img class="menu-logo" src="assets/game_logo.png" alt="Адмирал" draggable="false">
     <nav class="menu-actions" aria-label="Главное меню">
       <button id="menu-local" class="plank" type="button">
-        <span class="plank-title">Играть локально</span><span class="plank-sub">1–4 игрока за одним компьютером</span>
+        <span class="plank-title">Играть локально</span><span class="plank-sub">1–4 игрока и боты за одним компьютером</span>
       </button>
       <button id="menu-online" class="plank" type="button" aria-describedby="menu-note">
-        <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети</span>
+        <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети, можно с ботами</span>
       </button>
     </nav>
   </div>
@@ -757,7 +794,7 @@
     <h1>АДМИРАЛ</h1>
     <h2 id="setup-title">Новая игра</h2>
     <div id="setup-names">
-      <p class="lead">Игроки ходят по очереди за одним компьютером. Стороны достаются по жребию.</p>
+      <p class="lead">Игроки ходят по очереди за одним компьютером; любое место можно отдать боту и выбрать его стиль игры. Стороны достаются по жребию.</p>
       <div class="lbl" id="setup-count-lbl">Сколько игроков</div>
       <div class="seg" id="setup-count" role="radiogroup" aria-labelledby="setup-count-lbl">
         <button data-n="1" role="radio">1</button>
@@ -765,7 +802,7 @@
         <button data-n="3" role="radio">3</button>
         <button data-n="4" role="radio">4</button>
       </div>
-      <div class="lbl">Имена игроков</div>
+      <div class="lbl">Игроки</div>
       <div id="setup-players"></div>
       <p class="setup-note" id="setup-hint" aria-live="polite"></p>
       <div class="setup-actions">

@@ -3,6 +3,8 @@
 // it numbers the actions of a game, keeps them (a player who comes back replays them) and passes them on.
 // It draws the sides, and it knows who is still at the table: a player who has gone may have their turns skipped,
 // and so may a player who takes longer than the time for a turn.
+// A table may have bots in its free seats. A bot has no connection: one of the players' screens plays it (app.js)
+// and sends its decisions with the bot's id; the server only checks that the bot plays in that game.
 import { randomBytes, randomInt } from 'node:crypto';
 
 export const NATIONS = ['ru', 'se', 'en', 'nl'];
@@ -18,6 +20,12 @@ const FORGET_MS = 10 * 60000;              // a player with no connection and no
 const NAME_MAX = 20;
 const SHIP_ID = /^(ru|se|en|nl)[1-5]$/;
 const MAX_FRAMES = 400;                    // a recorded throw: up to this many frames of two dice, 7 numbers each
+// the styles of play of the bots: the same ids as src/bot-styles.js (a test checks), with the names bots get
+export const BOT_STYLES = { careful: 'Осмотрительный', corsair: 'Корсар', racer: 'Скороход', convoy: 'Конвой', novice: 'Юнга' };
+const BOT_ID = /^bot[0-9a-f]{5}$/;
+const isStyle = (x) => typeof x === 'string' && Object.hasOwn(BOT_STYLES, x);
+// every seat taken at a table: its players and its bots
+const seats = (table) => table.players.length + table.bots.length;
 
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 export function drawSides(n) {
@@ -33,7 +41,8 @@ export function cleanName(name) {
 const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
 const isInt = (x, lo, hi) => Number.isInteger(x) && x >= lo && x <= hi;
 
-// a game action as it may be passed on; anything else is refused
+// a game action as it may be passed on; anything else is refused. A bot's throw or move names the bot
+const bot = (a) => (typeof a.bot === 'string' && BOT_ID.test(a.bot) ? { bot: a.bot } : {});
 export function checkAction(a) {
   if (!a || typeof a !== 'object') return null;
   if (a.kind === 'throw') {
@@ -45,11 +54,11 @@ export function checkAction(a) {
       ship: typeof r.ship === 'string' && SHIP_ID.test(r.ship) ? r.ship : null,
     } : null));
     if (dice.includes(null)) return null;
-    return { kind: 'throw', frames, res: dice, land: isNum(land) ? land : -1 };
+    return { kind: 'throw', frames, res: dice, land: isNum(land) ? land : -1, ...bot(a) };
   }
   if (a.kind === 'act') {
     if (typeof a.ship !== 'string' || !SHIP_ID.test(a.ship) || !isInt(a.k, 0, 63)) return null;
-    return { kind: 'act', ship: a.ship, k: a.k };
+    return { kind: 'act', ship: a.ship, k: a.k, ...bot(a) };
   }
   if (a.kind === 'skip') return typeof a.id === 'string' && a.id.length <= 16 ? { kind: 'skip', id: a.id } : null;
   return null;
@@ -73,10 +82,12 @@ export class Lobby {
       this.timers.clear(p.forget); p.forget = null;
     } else {
       let id; do id = randomBytes(4).toString('hex'); while (this.byId.has(id));
-      p = { id, token: randomBytes(16).toString('hex'), name: '', conn: null, table: null, ready: false, watching: false, forget: null };
+      p = { id, token: randomBytes(16).toString('hex'), name: '', conn: null, table: null, ready: false, watching: false, forget: null,
+        voice: true };
       this.players.set(p.token, p); this.byId.set(id, p);
     }
     p.conn = conn;
+    if (typeof msg.voice === 'boolean') this.setVoice(p, msg.voice);
     const name = cleanName(msg.name);
     if (name && !(p.table && p.table.status === 'playing')) p.name = name;
     if (!p.name) p.name = `Капитан ${p.id.slice(0, 3).toUpperCase()}`;
@@ -136,9 +147,13 @@ export class Lobby {
       case 'join': return this.join(p, msg.no, msg.code);
       case 'find': return this.find(p, msg.q);
       case 'ready': return this.ready(p, !!msg.on);
+      case 'bot-add': return this.addBot(p, msg.style);
+      case 'bot-style': return this.setBotStyle(p, msg.id, msg.style);
+      case 'bot-remove': return this.removeBot(p, msg.id);
       case 'leave': return this.leaveTable(p, true);
       case 'act': return this.act(p, msg);
       case 'sync': if (p.table?.status === 'playing') p.conn?.send(this.gameState(p.table, p)); return;
+      case 'voice': return this.setVoice(p, !!msg.on);
       default:
     }
   }
@@ -146,9 +161,9 @@ export class Lobby {
   // ---- the list of tables waiting for players: a table is in it until it is full or its game has begun
   listMessage() {
     const list = [...this.tables.values()]
-      .filter((t) => t.status !== 'playing' && t.players.length < SEATS)
+      .filter((t) => t.status !== 'playing' && seats(t) < SEATS)
       .sort((a, b) => a.no - b.no)
-      .map((t) => ({ no: t.no, count: t.players.length, private: t.private, status: t.status }));
+      .map((t) => ({ no: t.no, count: seats(t), bots: t.bots.length, private: t.private, status: t.status }));
     return { t: 'tables', list };
   }
   listChanged() {
@@ -170,7 +185,7 @@ export class Lobby {
   create(p, isPrivate) {
     if (!this.canMove(p)) return;
     const table = { no: this.freeNumber(), private: isPrivate, code: isPrivate ? this.freeCode() : null,
-      status: 'waiting', players: [], timer: null, startsAt: 0, game: null, created: this.now() };
+      status: 'waiting', players: [], bots: [], timer: null, startsAt: 0, game: null, created: this.now() };
     this.tables.set(table.no, table);
     this.seat(p, table);
   }
@@ -185,7 +200,7 @@ export class Lobby {
     if (p.table === table) { this.sendTable(table); return; }
     if (!this.canMove(p)) return;
     if (table.status === 'playing') { p.conn?.send({ t: 'error', text: `За столом № ${table.no} уже идёт игра.` }); return; }
-    if (table.players.length >= SEATS) { p.conn?.send({ t: 'error', text: `За столом № ${table.no} уже четыре игрока.` }); return; }
+    if (seats(table) >= SEATS) { p.conn?.send({ t: 'error', text: `За столом № ${table.no} все четыре места заняты.` }); return; }
     if (table.private && String(code ?? '') !== table.code) {
       p.conn?.send({ t: 'need-code', no: table.no, wrong: code != null && code !== '' });
       return;
@@ -217,13 +232,13 @@ export class Lobby {
   ready(p, on) {
     const table = p.table;
     if (!table || table.status === 'playing') return;
-    p.ready = on && table.players.length > 1;
+    p.ready = on && seats(table) > 1;
     if (!p.ready) this.cancelCountdown(table);
     this.checkStart(table);
     this.sendTable(table); this.listChanged();
   }
   checkStart(table) {
-    if (table.status !== 'waiting' || table.players.length < 2) return;
+    if (table.status !== 'waiting' || seats(table) < 2) return;
     if (!table.players.every((p) => p.ready && p.conn)) return;
     table.status = 'countdown';
     table.startsAt = this.now() + COUNTDOWN_MS;
@@ -243,9 +258,9 @@ export class Lobby {
       this.setPresence(table, p, 'left');
     } else {
       table.players = table.players.filter((o) => o !== p);
-      if (table.players.length < 2) for (const o of table.players) o.ready = false;
+      if (seats(table) < 2) for (const o of table.players) o.ready = false;
       this.cancelCountdown(table);
-      if (!table.players.length) this.tables.delete(table.no);
+      if (!table.players.length) this.tables.delete(table.no);          // bots alone do not keep a table
       else this.sendTable(table);
       this.listChanged();
     }
@@ -257,7 +272,49 @@ export class Lobby {
       no: table.no, private: table.private, code: table.players.includes(viewer) ? table.code : null,
       status: table.status, startsIn: table.status === 'countdown' ? Math.max(0, table.startsAt - this.now()) : 0,
       players: table.players.map((o) => ({ id: o.id, name: o.name, ready: o.ready, online: !!o.conn })),
+      bots: table.bots.map((b) => ({ id: b.id, name: b.name, style: b.style })),
     };
+  }
+  // ---- bots: any player at a waiting table may seat one in a free seat, change its style or take it away.
+  // A change of the table starts the countdown again (if everyone is still ready), so nobody is surprised by it
+  botTable(p) {
+    const table = p.table;
+    return table && table.status !== 'playing' ? table : null;
+  }
+  addBot(p, style) {
+    const table = this.botTable(p);
+    if (!table || !isStyle(style)) return;
+    if (seats(table) >= SEATS) { p.conn?.send({ t: 'error', text: 'Свободных мест за столом нет.' }); return; }
+    let id; do id = `bot${randomBytes(3).toString('hex').slice(0, 5)}`; while (table.bots.some((b) => b.id === id));
+    const b = { id, style, name: '' };
+    table.bots.push(b);
+    b.name = this.botName(table, b);
+    this.botsChanged(table);
+  }
+  setBotStyle(p, id, style) {
+    const table = this.botTable(p), b = table?.bots.find((o) => o.id === id);
+    if (!b || !isStyle(style) || b.style === style) return;
+    b.style = style; b.name = this.botName(table, b);
+    this.botsChanged(table);
+  }
+  removeBot(p, id) {
+    const table = this.botTable(p);
+    if (!table || !table.bots.some((o) => o.id === id)) return;
+    table.bots = table.bots.filter((o) => o.id !== id);
+    if (seats(table) < 2) for (const o of table.players) o.ready = false;
+    this.botsChanged(table);
+  }
+  // a bot is called by its style; a second bot of the same style at the table gets a number: «Корсар 2»
+  botName(table, b) {
+    const base = BOT_STYLES[b.style], taken = new Set(table.bots.filter((o) => o !== b).map((o) => o.name));
+    let name = base;
+    for (let k = 2; taken.has(name); k++) name = `${base} ${k}`;
+    return name;
+  }
+  botsChanged(table) {
+    this.cancelCountdown(table);
+    this.checkStart(table);
+    this.sendTable(table); this.listChanged();
   }
   sendTable(table) {
     for (const p of table.players) p.conn?.send({ t: 'table', table: this.tableView(table, p) });
@@ -266,22 +323,34 @@ export class Lobby {
   // ---- the game: sides by lot, turn order by lot, then the actions in the order they came
   begin(table) {
     if (table.status !== 'countdown') return;
-    const seated = shuffle([...table.players]);
+    // the players and the bots take their places by lot; a bot is known in the game by its style
+    const seated = shuffle([...table.players, ...table.bots]);
     const sides = drawSides(seated.length);
     table.status = 'playing';
     table.game = {
-      players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i] })),
-      log: [], presence: new Map(seated.map((p) => [p.id, p.conn ? 'online' : 'offline'])), started: this.now(),
-      lastAt: this.now(),
+      players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i], ...(p.style ? { bot: p.style } : {}) })),
+      log: [], presence: new Map(table.players.map((p) => [p.id, p.conn ? 'online' : 'offline'])), started: this.now(),
+      lastAt: this.now(), bots: new Set(table.bots.map((b) => b.id)),
     };
-    for (const p of seated) p.ready = false;
-    for (const p of seated) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs });
+    for (const p of table.players) p.ready = false;
+    const voice = this.voiceOf(table);
+    for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice });
     this.listChanged();
   }
   gameState(table, p) {
     const g = table.game;
     return { t: 'game', no: table.no, players: g.players, log: g.log, presence: Object.fromEntries(g.presence), me: p.id,
-      turnMs: this.turnMs };
+      turnMs: this.turnMs, voice: this.voiceOf(table) };
+  }
+  // whether a player hears the commentator: the screen that plays the bots makes them wait for him only if somebody does
+  setVoice(p, on) {
+    if (p.voice === on) return;
+    p.voice = on;
+    const table = p.table;
+    if (table?.status === 'playing' && table.game.presence.has(p.id)) this.toGame(table, { t: 'voice', id: p.id, on });
+  }
+  voiceOf(table) {
+    return Object.fromEntries([...table.game.presence.keys()].map((id) => [id, this.byId.get(id)?.voice !== false]));
   }
   setPresence(table, p, state) {
     const g = table.game;
@@ -304,12 +373,14 @@ export class Lobby {
     // a malformed action is refused like one out of order: the client takes the game from the server again
     if (!a) { p.conn?.send({ t: 'reject', n: msg.n, have: g.log.length, kind: msg.a?.kind === 'skip' ? 'skip' : 'bad' }); return; }
     if (msg.n !== g.log.length) { p.conn?.send({ t: 'reject', n: msg.n, have: g.log.length, kind: a.kind }); return; }
+    // a bot's decision comes from a player's screen; the bot must play in this game
+    if (a.bot && !g.bots.has(a.bot)) { p.conn?.send({ t: 'reject', n: msg.n, have: g.log.length, kind: 'bad' }); return; }
     // only the turns of a player who has gone, or who has let the time for a turn run out, may be skipped
     if (a.kind === 'skip' && g.presence.get(a.id) !== 'left' && this.now() - g.lastAt < this.turnMs - TURN_SLACK_MS) {
       p.conn?.send({ t: 'reject', n: msg.n, have: g.log.length, kind: a.kind }); return;
     }
     // the log is the game for whoever comes back to it: who decided, and the dice — not their flight
-    g.log.push({ ...a, ...(a.kind === 'throw' ? { frames: null } : {}), by: p.id });
+    g.log.push({ ...a, ...(a.kind === 'throw' ? { frames: null } : {}), by: a.bot ?? p.id });
     g.lastAt = this.now();
     this.toGame(table, { t: 'act', n: msg.n, a, from: p.id });
   }

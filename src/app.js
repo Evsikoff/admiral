@@ -1333,13 +1333,14 @@ function boardClick(u) {
 const escHTML = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const playerName = (p, i) => p.name || `Игрок ${i + 1}`;
 // a game: who plays which side; sides nobody plays are out of the game (grey, closed, no ships)
-let game = null;                       // { players: [{ name, q }], turn, phase, dice, allActs, acts, mode, … }
+let game = null;                       // { players: [{ name, q, id, bot }], turn, phase, dice, allActs, acts, mode, … }
+const isBot = (i) => !!game?.players?.[i]?.bot;            // bot: the id of its style of play (src/bot-styles.js)
 function newGame(players) {
   overhead = false; overheadReturn = null; syncViewButton();
   broadcast.clear();
   sound.resetGame();
   chase = null;
-  game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null })) };
+  game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null, bot: p.bot || null })) };
   applySides(new Set(game.players.map((p) => p.q)));
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
   placeShipsNow(); select(null);
@@ -1880,7 +1881,8 @@ function stepChase(dt) {
 }
 
 // ------------------------------------------------------------------ setup screen: 1–4 players at one computer; sides are drawn by lot
-// Step one: how many players and their names. Step two: the draw — who got which side, in turn order.
+// Step one: how many players, their names, and which seats go to bots (and their styles). Step two: the draw — who
+// got which side, in turn order.
 const SETUP_KEY = 'admiral.setup.v2';
 // Two players always get opposite sides, so they sit facing each other across the board.
 const OPPOSITE_PAIRS = [['en', 'ru'], ['se', 'nl']];
@@ -1888,10 +1890,20 @@ const SAILS = { ru: 'синие паруса', se: 'жёлтые паруса', 
 const DRAW_HINT = [
   '',
   'Сторона достанется по жребию — одна из четырёх.',
-  'Вдвоём вы сядете друг напротив друга: Англия против России или Швеция против Голландии.',
+  'Двое сядут друг напротив друга: Англия против России или Швеция против Голландии.',
   'Три стороны из четырёх разыграет жребий, одна не участвует.',
   'В игре все четыре стороны, кто за кого — решит жребий.',
 ];
+// the styles of play of the bots (src/bot-styles.js): { id, title, tagline, about }
+const BOT_STYLES = window.AdmiralBotStyles || [];
+const botStyleInfo = (id) => BOT_STYLES.find((s) => s.id === id) || { id, title: 'Бот', tagline: '', about: '' };
+// a bot without a name of its own is called by its style; a second one of the same style gets a number
+function botName(style, taken) {
+  const base = botStyleInfo(style).title;
+  let name = base;
+  for (let k = 2; taken.includes(name); k++) name = `${base} ${k}`;
+  return name;
+}
 const setupEl = document.getElementById('setup');
 const setupTitle = document.getElementById('setup-title');
 const setupNamesEl = document.getElementById('setup-names'), setupLotsEl = document.getElementById('setup-lots');
@@ -1907,16 +1919,21 @@ const setupBackBtn = document.getElementById('setup-back');
 const FLAG_URL = Object.fromEntries(NATIONS.map((q) => [q, flagTex[q].image.toDataURL()]));
 // the start screen, the intro films and the main menu (src/intro.js); absent, the setup screen opens at once
 const intro = window.AdmiralIntro || null;
-let draft = null, setupBack = null;      // draft: { names: [...], players: [{ name, q }] once drawn }
+// draft: { names: [...], bots: [null | style, ...], players: [{ name, q, bot }] once drawn }
+let draft = null, setupBack = null;
 
-function savedNames() {
+// the seats of the last game: names, and the style of each bot (null: a person plays)
+function savedSeats() {
   try {
-    // the names of the last game (the previous version of the screen kept them with the chosen sides)
+    // (the previous version of the screen kept the names with the chosen sides)
     const s = JSON.parse(localStorage.getItem(SETUP_KEY) || localStorage.getItem('admiral.setup.v1'));
     const names = Array.isArray(s?.names) ? s.names : Array.isArray(s?.players) ? s.players.map((p) => p?.name) : null;
-    if (names && names.length >= 1 && names.length <= 4 && names.every((n) => typeof n === 'string' && n.length <= 20)) return names;
+    if (names && names.length >= 1 && names.length <= 4 && names.every((n) => typeof n === 'string' && n.length <= 20)) {
+      const bots = names.map((_, i) => (BOT_STYLES.some((st) => st.id === s.bots?.[i]) ? s.bots[i] : null));
+      return { names, bots };
+    }
   } catch { /* no storage */ }
-  return ['', ''];
+  return { names: ['', ''], bots: [null, null] };
 }
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
@@ -1936,30 +1953,50 @@ function renderNames(focus) {
     const on = +b.dataset.n === n; b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
   });
   setupPlayersEl.innerHTML = '';
+  const kinds = '<option value="">Человек</option><optgroup label="Бот">'
+    + BOT_STYLES.map((st) => `<option value="${st.id}">Бот · ${escHTML(st.title)}</option>`).join('') + '</optgroup>';
   draft.names.forEach((name, i) => {
-    const row = document.createElement('div'); row.className = 'pl-row';
-    row.innerHTML = `<span class="pl-num" aria-hidden="true">${i + 1}</span>`
-      + `<input class="pl-name" maxlength="20" placeholder="Игрок ${i + 1}" aria-label="Имя игрока ${i + 1}">`;
-    const input = row.querySelector('input');
+    const seat = document.createElement('div'); seat.className = 'pl-seat';
+    seat.innerHTML = `<div class="pl-row"><span class="pl-num" aria-hidden="true">${i + 1}</span>`
+      + `<input class="pl-name" maxlength="20" aria-label="Имя игрока ${i + 1}">`
+      + `<select class="pl-kind" aria-label="Кто играет на месте ${i + 1}">${kinds}</select></div>`
+      + '<p class="pl-about"></p>';
+    const input = seat.querySelector('input'), kind = seat.querySelector('select'), about = seat.querySelector('.pl-about');
+    const show = () => {
+      const bot = draft.bots[i], st = bot && botStyleInfo(bot);
+      seat.classList.toggle('bot', !!bot);
+      input.placeholder = st ? st.title : `Игрок ${i + 1}`;
+      about.hidden = !st;
+      about.textContent = st ? st.about : '';
+    };
     input.value = name;
+    kind.value = draft.bots[i] || '';
     input.addEventListener('input', () => { draft.names[i] = input.value; });
-    setupPlayersEl.appendChild(row);
+    kind.addEventListener('change', () => { draft.bots[i] = kind.value || null; show(); });
+    show();
+    setupPlayersEl.appendChild(seat);
   });
   setupHintEl.textContent = DRAW_HINT[n];
   if (focus) { const el = setupEl.querySelector(focus); if (el) el.focus(); }
 }
 function setPlayerCount(n) {
-  while (draft.names.length < n) draft.names.push('');
-  draft.names.length = n;
+  while (draft.names.length < n) { draft.names.push(''); draft.bots.push(null); }
+  draft.names.length = draft.bots.length = n;
   renderNames(`#setup-count [data-n="${n}"]`);
 }
 // the draw: every player gets a side; the board behind shows the sides in play at once
 function drawLots() {
-  const qs = drawSides(draft.names.length);
-  draft.players = draft.names.map((name, i) => ({ name: name.trim(), q: qs[i] }));
+  const qs = drawSides(draft.names.length), taken = draft.names.map((name) => name.trim());
+  draft.players = draft.names.map((name, i) => {
+    const bot = draft.bots[i] || null;
+    const own = name.trim(), named = own || !bot ? own : botName(bot, taken);
+    if (!own && bot) taken[i] = named;
+    return { name: named, q: qs[i], bot };
+  });
   setupLotList.innerHTML = draft.players.map((p, i) => `<li class="lot" style="--team:${TEAM_COLOR[p.q]};--i:${i}">`
     + `<span class="pl-num" aria-hidden="true">${i + 1}</span>`
-    + `<span class="lot-name">${escHTML(playerName(p, i))}<span class="sr-only"> — </span></span>`
+    + `<span class="lot-name">${escHTML(playerName(p, i))}`
+    + `${p.bot ? `<small class="lot-bot">бот · ${escHTML(botStyleInfo(p.bot).tagline)}</small>` : ''}<span class="sr-only"> — </span></span>`
     + `<span class="lot-side"><span class="flagdot" style="background-image:url(${FLAG_URL[p.q]})" aria-hidden="true"></span>`
     + `<span><b>${NAMES[p.q]}</b><small>${SAILS[p.q]}</small></span></span></li>`).join('');
   const active = new Set(qs), out = NATIONS.filter((q) => !active.has(q));
@@ -1980,7 +2017,12 @@ function openSetup() {
   sound.stopSwimming();
   sound.stopVoice();
   if (!game) sound.setMood(intro ? 'start' : 'calm');      // the menu's theme plays on until the game begins
-  draft = { names: game ? game.players.map((p) => p.name) : savedNames(), players: null };
+  // a bot named after its style («Корсар», «Корсар 2») has no name of its own: in the next game it is named afresh
+  const styleNamed = (p) => { const t = botStyleInfo(p.bot).title; return p.name === t || new RegExp(`^${t} \\d+$`).test(p.name); };
+  draft = game && !online
+    ? { names: game.players.map((p) => (p.bot && styleNamed(p) ? '' : p.name)), bots: game.players.map((p) => p.bot || null) }
+    : savedSeats();
+  draft.players = null;
   setupBack = game ? { pos: camera.position.clone(), target: controls.target.clone(), shot:cameraShot, selected,
     turn:game.turn, phase:game.phase, acts:game.acts } : null;
   setupCancel.hidden = !game && !intro;
@@ -2013,7 +2055,8 @@ function cancelSetup() {
 function startGame() {
   if (!draft.players) return;
   const players = draft.players;
-  try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: players.map((p) => p.name) })); } catch { /* no storage */ }
+  // what was typed is kept, not the names the bots were given by the draw
+  try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: draft.names.map((n) => n.trim()), bots: draft.bots })); } catch { /* no storage */ }
   closeSetup();
   newGame(players);
 }
@@ -2064,6 +2107,8 @@ for (const [kind, id, what] of AUDIO_SWITCHES) {
     if (kind === 'music' && !audioOff[kind]) syncMusicMood();
     render();
     try { localStorage.setItem(AUDIO_KEY, JSON.stringify(audioOff)); } catch { /* no storage */ }
+    // the others at an online table learn it: bots play at once when nobody there hears the commentator
+    if (kind === 'commentator') window.AdmiralOnline?.send({ t: 'voice', on: !audioOff[kind] });
   });
 }
 
@@ -2161,9 +2206,10 @@ const announcer = createCommentator({
   sound, say, lines: D.commentatorLines || {}, swatch, NAMES, DIE_NOM, DIE_TWO,
 });
 const nameHTML = (i) => `<b>${escHTML(playerName(game.players[i], i))}</b>`;
-const whoHTML = (i) => `${swatch(game.players[i].q)}${nameHTML(i)}, ${NAMES[game.players[i].q]}`;
+const whoHTML = (i) => `${swatch(game.players[i].q)}${nameHTML(i)}${isBot(i) ? ' (бот)' : ''}, ${NAMES[game.players[i].q]}`;
+const botBadge = (i) => (isBot(i) ? ` <span class="who-bot" title="${escHTML(botStyleInfo(game.players[i].bot).about)}">бот</span>` : '');
 function renderWho() {
-  const ph = game.phase, head = (i) => `${swatch(game.players[i].q)}${nameHTML(i)} · ${NAMES[game.players[i].q]}`;
+  const ph = game.phase, head = (i) => `${swatch(game.players[i].q)}${nameHTML(i)}${botBadge(i)} · ${NAMES[game.players[i].q]}`;
   const reply = game.chooser != null && game.chooser !== game.turn;
   let html = ph === 'over' ? `Победа: ${head(game.winner)}` : reply ? `Трофейные 6 шагов · ${head(game.chooser)}` : `Ходит ${head(game.turn)}`;
   if (online && ph !== 'over') {
@@ -2201,7 +2247,7 @@ function startTurn(i) {
   select(null); renderTurn(); syncMusicMood();
   const introduced = (game.introduced ??= new Set()), first = !introduced.has(i);
   introduced.add(i);
-  announcer.turnStart(game.players[i].q, nameHTML(i), false, first);
+  announcer.turnStart(game.players[i].q, nameHTML(i), false, first && !isBot(i));   // a bot needs no lesson in throwing
   if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
 }
 
@@ -2275,6 +2321,10 @@ function fling(at, v) {
   });
   sound.stopVoice();
   if (online) { sendAction({ kind: 'throw', ...recordThrow(plan) }); return; }
+  rollDice(plan);
+}
+// a throw of a local game, by hand or by a bot: the dice fly, then the throw is judged
+function rollDice(plan) {
   Object.assign(game, { phase: 'rolling', dice: null, acts: null, allActs: null });
   renderTurn();
   const g = game;
@@ -2335,8 +2385,9 @@ function nextAction(first, dicePair = null) {
     if (sailing.length) moves.set(ship, sailing);
   }
   Object.assign(game, { phase: 'move', allActs: o.acts, acts:moves.size ? moves : null, mode: 'menu', chooser: i });
-  const prompt = !moves.size || o.repair || o.ransom ? 'Выберите действие.'
-    : moves.size === 1 ? 'Нажмите на клетку назначения.' : 'Выберите корабль, затем клетку его цвета.';
+  const prompt = isBot(i) ? ''
+    : !moves.size || o.repair || o.ransom ? 'Выберите действие.'
+      : moves.size === 1 ? 'Нажмите на клетку назначения.' : 'Выберите корабль, затем клетку его цвета.';
   announcer.afterRollOrStep({ q, first, dice: dicePair, leftV: left[0]?.v, o, detail: optionsDetail(o), prompt });
   renderTurn(); autoSelect();
   if (!moves.size && !setupIsOpen()) {
@@ -2679,7 +2730,9 @@ let online = null;       // { no, me, applied, queue: [{ n, a }], presence: { id
 let replaying = false;   // catching up at once: no waiting between turns, no flights, no sound
 const controllerIndex = () => (game && game.players ? game.chooser ?? game.turn : -1);
 const controllerId = () => game?.players?.[controllerIndex()]?.id ?? null;
+const botControls = () => !!game && isBot(controllerIndex());
 function myControl() {
+  if (botControls()) return false;                          // a bot's decision is the bot's (botTick below)
   return !online || (!!game && controllerId() === online.me && online.skipKey !== `${online.applied}:${online.me}`);
 }
 // what the game waits for now: a throw, or a move (of the turn's player, or of the jailer); null while it plays on
@@ -2689,9 +2742,10 @@ function awaiting() {
   if (game.phase === 'move' || game.phase === 'comp') return 'act';
   return null;
 }
-// this player's own decision: done here at once and sent; the server's echo of it is then dropped
+// this player's own decision (or a bot's, taken on this screen: a.bot is its id): done here at once and sent;
+// the server's echo of it is then dropped
 function sendAction(a) {
-  a.by = online.me;
+  a.by = a.bot || online.me;
   net.act(online.applied, a);
   applyAction(a);
 }
@@ -2782,7 +2836,7 @@ function startOnline(g) {
   if (setupIsOpen()) closeSetup();
   online = { no: g.no, me: g.me, applied: 0, queue: [], presence: { ...g.presence }, dirty: false,
     stallKey: '', stallAt: 0, skipKey: '', turnKey: '', turnAt: 0, turnMs: g.turnMs || 0, clock: '', clockLow: false,
-    linked: true };
+    linked: true, voice: { ...(g.voice || {}) } };          // voice: { id: whether that player hears the commentator }
   syncNewButton();
   const log = g.log || [];
   if (!log.length) { newGame(g.players); return; }
@@ -2807,6 +2861,7 @@ function caughtUp() {
 function resyncOnline(g) {
   if (!online || g.no !== online.no || online.dirty || g.log.length < online.applied) { startOnline(g); return; }
   online.presence = { ...g.presence };
+  if (g.voice) online.voice = { ...g.voice };
   if (g.turnMs) online.turnMs = g.turnMs;
   for (let n = online.applied; n < g.log.length; n++) if (!online.queue.some((m) => m.n === n)) online.queue.push({ n, a: g.log[n] });
   online.queue.sort((x, y) => x.n - y.n);
@@ -2836,9 +2891,9 @@ function onlineTick() {
   const stall = head ? `${online.applied}:${head.n}:${game.phase}` : '';
   if (stall !== online.stallKey) { online.stallKey = stall; online.stallAt = now; }
   else if (stall && now - online.stallAt > 15000) { online.stallKey = ''; net.sync(); }
-  // the clock of the decision the game waits for: from when it comes up here
+  // the clock of the decision the game waits for: from when it comes up here (a bot has none: botTick takes it)
   const id = controllerId();
-  if (!awaiting() || replaying) { setClock(null); return; }
+  if (!awaiting() || replaying || botControls()) { setClock(null); return; }
   const key = `${online.applied}:${id}`;
   if (online.turnKey !== key) { online.turnKey = key; online.turnAt = now; }
   const left = online.presence[id] === 'left', mine = id === online.me, gone = now - online.turnAt;
@@ -2882,13 +2937,14 @@ const onlineHandler = {
   inGame: () => !!online,
   act(m) {
     if (!online) return;
-    m.a.by = m.from;
+    m.a.by = m.a.bot || m.from;                               // a bot's decision, sent by one of the players' screens
     if (m.n < online.applied || online.queue.some((x) => x.n === m.n)) return;
     online.queue.push({ n: m.n, a: m.a });
     online.queue.sort((x, y) => x.n - y.n);
     pump();
   },
   presence: presenceOnline,
+  voice(m) { if (online) online.voice[m.id] = m.on; },   // a player switched the commentator on or off
   state: resyncOnline,
   reject(m) {
     if (!online || m.kind === 'skip') return;                 // somebody else skipped that decision first
@@ -2898,6 +2954,118 @@ const onlineHandler = {
 };
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pump(); });
 
+// ------------------------------------------------------------------ bots
+// A bot's seat plays itself: it throws the dice the way the game throws them for a player (a toss from its own side
+// of the board) and chooses its moves with the brain of src/bot.js, in its style. A local game plays its bots here.
+// Online, one screen plays every bot of the table: the first player in the order of the game who is still at it;
+// the next ones back it up if it goes quiet. Their decisions are sent like a player's own, with the bot's id.
+// A bot takes its time like a person: a moment before each throw and choice, and it listens to the commentator —
+// sometimes to the end of his line, sometimes only to the middle of it (its throw or move then cuts him short, as a
+// player's does). With the commentator off for everyone who watches, there is nothing to wait for: bots play at once.
+const brain = createBotBrain({ cells, harbors, shipyards, prisons });
+const BOT_PAUSE = { throw: 0.9, act: 0.8, show: 0.6 };   // s: before a throw, before a choice, the chosen ship shown
+const BOT_HEAR_OUT = 0.55;                               // how often a bot lets the commentator finish his line
+const BOT_VOICE_MAX = 6;                                 // s: at most this long a bot waits for him
+const BOT_BACKUP = [0, 9, 15];                           // s: how much later the second and the other screens step in
+let botStep = null;                                      // the decision under way: { key, t, hear, clip, pick, shownAt, done }
+// no pauses: the commentator is off here (a local game), or for every player at the table who is still at it
+function botsHurry() {
+  if (!online) return !!sound.muted.commentator;
+  return game.players.every((p) => p.bot || (p.id === online.me ? sound.muted.commentator
+    : online.presence[p.id] !== 'online' || online.voice[p.id] === false));
+}
+// which decision it is: every throw, move and the jailer's reply has its own
+const botKey = () => [online?.applied ?? '', game.turnNumber, game.throws.length, game.phase, game.chooser,
+  (game.dice || []).map((d) => (d.used ? 1 : 0)).join('')].join('|');
+// online: this screen's place among the players still at the table (0 plays the bots); −1: none
+function botRank() {
+  if (!online) return 0;
+  const live = game.players.filter((p) => !p.bot && (p.id === online.me || online.presence[p.id] === 'online'));
+  return live.findIndex((p) => p.id === online.me);
+}
+// every frame (and, online, in a tab out of sight, every half second without pauses: hidden)
+function botTick(dt, hidden = false) {
+  const step = game && game.phase !== 'over' && botControls() ? awaiting() : null;
+  const rank = step ? botRank() : -1;
+  if (!step || rank < 0 || (online && online.queue.length)) { botStep = null; return; }
+  const key = botKey();
+  // hear: how much of the commentator's line the bot waits for (1: to the end; otherwise from a third to two thirds)
+  if (botStep?.key !== key) {
+    const hear = Math.random() < BOT_HEAR_OUT ? 1 : 0.35 + Math.random() * 0.3;
+    botStep = { key, t: 0, hear, pick: null, shownAt: 0, done: false };
+  }
+  const b = botStep;
+  if (b.done) return;
+  b.t += dt;
+  const late = BOT_BACKUP[Math.min(rank, BOT_BACKUP.length - 1)];
+  const quick = hidden || botsHurry();
+  if (quick) { if (b.t < late) return; } else {
+    // it listens to one line: the one being spoken (a line queued after it counts as the end of it)
+    const clip = sound.currentVoice;
+    if (clip && !b.clip) b.clip = clip;
+    const heard = clip == null ? null : clip !== b.clip ? 1 : sound.voiceProgress;
+    const pause = late + (step === 'throw' ? BOT_PAUSE.throw : BOT_PAUSE.act);
+    if (b.t < pause || (heard != null && heard < b.hear && b.t < pause + BOT_VOICE_MAX)) return;
+  }
+  if (step === 'throw') { b.done = true; botThrow(); return; }
+  if (!b.pick) {
+    b.pick = botChoice();
+    if (!b.pick) { b.done = true; return; }
+    b.shownAt = b.t;
+    if (b.pick[1].kind === 'move' && !quick) select(b.pick[0], false);     // the ship it has chosen, for a moment
+    if (!quick) return;
+  }
+  if (!quick && b.t - b.shownAt < BOT_PAUSE.show) return;
+  b.done = true;
+  const [s, t] = b.pick;
+  if (!online) { perform(s, t); return; }
+  const k = game.allActs?.get(s)?.indexOf(t) ?? -1;
+  if (k >= 0) sendAction({ kind: 'act', ship: shipId(s), k, bot: controllerId() });
+}
+// the throw of a bot: the dice tossed from its side of the board (throwPlan, with the impulses of launch)
+function botThrowPlan(q) {
+  return throwPlan(q).map(({ origin, dir, power }) => {
+    const speed = (Math.random() + 3) * (1.45 + Math.random() * 0.75) * power;
+    const vel = new THREE.Vector3(dir.x * speed, -1 - Math.random(), dir.z * speed);
+    const spin = new THREE.Vector3().crossVectors(Y_UP, dir).multiplyScalar(13 + Math.random() * 5);
+    const axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+    return { origin, vel, spin, quat: new THREE.Quaternion().setFromAxisAngle(axis, Math.random() * Math.PI * 2) };
+  });
+}
+function botThrow() {
+  const plan = botThrowPlan(game.players[game.turn].q);
+  sound.stopVoice();                                       // a throw cuts the commentator short, as a player's does
+  if (online) sendAction({ kind: 'throw', ...recordThrow(plan), bot: controllerId() });
+  else rollDice(plan);
+}
+// what the bot does now: the brain's choice, found among the [ship, target] pairs of the game
+function botChoice() {
+  const pairs = [...(game.allActs || [])].flatMap(([s, list]) => list.map((t) => [s, t]));
+  if (!pairs.length) return null;
+  const p = game.players[controllerIndex()];
+  const view = {
+    sides: sidesInPlay, me: p.q, comp: game.phase === 'comp',
+    ships: ships.filter((s) => sidesInPlay.has(s.q)).map((s) => ({ id: shipId(s), q: s.q, n: s.n, slot: s.slot })),
+    dice: game.dice || [], captured: [...(game.captured || [])].map(shipId),
+  };
+  let a = null;
+  try { a = brain.decide(view, p.bot); } catch (err) { console.error('bot:', err); }
+  const fits = ([s, t]) => {
+    if (!a || t.kind !== a.kind) return false;
+    if (a.kind === 'move') return shipId(s) === a.ship && t.slot === a.slot && t.use.join() === a.use.join();
+    if (a.kind === 'ransom') return s.slot.q === a.from;
+    return true;                                                   // a repair: any wreck at the shipyard
+  };
+  const pick = pairs.find(fits);
+  if (!pick) console.warn('bot: the brain chose what the game does not offer', a);
+  return pick || pairs[0];
+}
+// online, in a tab out of sight (no animation frames): the bots of the table still play, at once
+setInterval(() => {
+  if (!online || !game || !document.hidden || !botControls() || botRank() !== 0) return;
+  quietly(() => { settle(); botTick(0.5, true); settle(); });
+}, 500);
+
 Object.defineProperty(window.__admiral, 'game', { get: () => game });
 Object.defineProperty(window.__admiral, 'online', { get: () => online });
 Object.assign(window.__admiral, {
@@ -2905,7 +3073,7 @@ Object.assign(window.__admiral, {
   cells, harbors, shipyards, prisons, nextCell, routes, options, occupancy, perform, startMoves,
   fastForward, setState, placeShipsNow, layoutShips, select, autoSelect, pairsAt, boardClick, compensate, nextAction,
   fling, flingDice, commentary, chasePairs, cellsTo, menuItems, chooseSail, backToMenu, announceChase, showChase,
-  sound, isTenseMoment, syncMusicMood, announcer,
+  sound, isTenseMoment, syncMusicMood, announcer, brain, botTick, botChoice, botRank, botsHurry,
 });
 
 // before the first game every ship waits at its shipyard. The way in (src/intro.js) is a start screen, two films
@@ -2999,7 +3167,7 @@ function frame() {
     }
   }
 
-  if (!setupIsOpen()) { stepDice(dt); onlineTick(); }
+  if (!setupIsOpen()) { stepDice(dt); onlineTick(); botTick(dt); }
   stepCamera(dt);
   controls.update();
   updateReflections(time);

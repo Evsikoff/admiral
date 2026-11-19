@@ -276,6 +276,11 @@ function createSoundDirector(manifest = {}) {
     get muted() { return { ...muted }; },
     get swimming() { return swimmingWanted && Boolean(swim); },
     get speaking() { return Boolean(voice); },
+    // how much of the line being spoken has been said, 0…1; null while he is silent (or the browser holds the clip back)
+    get voiceProgress() {
+      if (!voice || blocked.has(voice)) return null;
+      return voice.duration > 0 ? Math.min(1, voice.currentTime / voice.duration) : 0;
+    },
     get currentVoice() { return voice ? voice.src : null; },
     get currentMusic() { return currentTrack ? currentTrack.url : null; },
     get musicVolume() { return music ? music.volume : 0; },

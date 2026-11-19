@@ -10,7 +10,7 @@
   "scripts": {
     "build": "python tools/build.py",
     "start": "node server/server.js",
-    "test": "node --test server/*.test.js"
+    "test": "node --test server/*.test.js src/*.test.js"
   },
   "dependencies": {
     "ws": "^8.18.0"
