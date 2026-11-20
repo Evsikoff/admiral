@@ -3,16 +3,16 @@
 // names, dice, routes. A line is spoken by the fleet whose turn it is, except where noted.
 // lines: { '<event>_<nation>': [variant text, ...] }, the clip <bucket>/<NN>.mp3 is variant NN.
 function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO }) {
-  // Pick the caption variant and play its clip if the commentator is free.
-  function pick(q, event) {
+  // Pick the caption variant. Some clips can wait for the commentator to finish.
+  function pick(q, event, queueIfBusy = false) {
     const bucket = `${event}_${q}`, list = lines[bucket] || [];
-    const idx = sound.speak(bucket, list.length);
+    const idx = sound.speak(bucket, list.length, { queueIfBusy });
     return list.length ? list[idx % list.length] : '';
   }
   const detail = (t) => (t ? ` <span class="cap-detail">${t}</span>` : '');
   // the caption starts with the colour of the fleet whose narrator speaks
-  function line(q, event, { lead = '', more = '', cls = '' } = {}) {
-    say(`${swatch(q)}${lead}${pick(q, event)}${detail(more)}`, cls);
+  function line(q, event, { lead = '', more = '', cls = '', queueIfBusy = false } = {}) {
+    say(`${swatch(q)}${lead}${pick(q, event, queueIfBusy)}${detail(more)}`, cls);
   }
 
   return {
@@ -21,8 +21,8 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
       line(q, 'game_start', { more: `На воде: ${rosterHTML}.` });
     },
     // the player's first turn explains the throw; later turns only say whose turn it is
-    turnStart(q, nameHTML, first) {
-      line(q, first ? 'turn_first' : 'turn', { more: `(${nameHTML})`, cls: 'turn' });
+    turnStart(q, nameHTML, first, { opening = false } = {}) {
+      line(q, first ? 'turn_first' : 'turn', { more: `(${nameHTML})`, cls: 'turn', queueIfBusy: opening });
     },
     // the reason and the request to throw again are one line
     foulRetry(kind, whyText, q) {
@@ -72,10 +72,10 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
         line(q, 'boarding', { lead, more: `(${route}; в плену: ${victimsText})`, cls: 'cap' });
       } else if (enteringParade) {
         line(q, 'parade', { lead, more: `(${route})` });
+      } else if (toBay) {
+        line(q, 'move_bay', { lead, more: `(${route})`, queueIfBusy: true });
       } else if (fromHarbor) {
         line(q, 'harbor', { lead, more: `(${route})` });
-      } else if (toBay) {
-        line(q, 'move_bay', { lead, more: `(${route})` });
       } else if (skippedNames) {
         line(q, 'move_bypass', { lead, more: `(в обход ${skippedNames}; ${route})` });
       } else {

@@ -2349,7 +2349,8 @@ function startTurn(i) {
   select(null); renderTurn(); syncMusicMood();
   const introduced = (game.introduced ??= new Set()), first = !introduced.has(i);
   introduced.add(i);
-  announcer.turnStart(game.players[i].q, nameHTML(i), first && !isBot(i));          // a bot needs no lesson in throwing
+  // A bot needs no lesson in throwing. The opening turn can follow the game-start clip.
+  announcer.turnStart(game.players[i].q, nameHTML(i), first && !isBot(i), { opening: game.turnNumber === 1 });
   if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
 }
 

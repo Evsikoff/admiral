@@ -64,18 +64,53 @@ test('commentator finishes the current clip and speaks again only on a fresh eve
   assert.equal(sound.currentVoice, url('repair_ru'));
 });
 
-test('muting stops the current clip and silent replay leaves live playback alone', () => {
+test('the opening turn waits for the welcome, while later turns follow the usual rule', () => {
+  const { sound, announcer, clips, url } = setup(['game_start_ru', 'turn_first_ru', 'turn_first_en']);
+  announcer.gameStart('ru', 'Captain');
+  announcer.turnStart('ru', 'Captain', true, { opening: true });
+  assert.equal(clips.length, 1);
+  assert.equal(clips[0].paused, false);
+  assert.equal(sound.currentVoice, url('game_start_ru'));
+
+  clips[0].end();
+  assert.equal(sound.currentVoice, url('turn_first_ru'));
+  announcer.turnStart('en', 'Admiral', true);
+  clips[1].end();
+  assert.equal(sound.currentVoice, null);
+  assert.equal(clips.length, 2);
+});
+
+test('bay entries wait for playback in order, including a route from the harbor', () => {
+  const { sound, announcer, clips, captions, url } = setup(['repair_ru', 'harbor_ru', 'move_bay_ru', 'move_bay_en', 'turn_ru']);
+  announcer.repair('ru');
+  announcer.shipMove({ q: 'ru', fromHarbor: true, toBay: true, route: 'harbor to bay' });
+  announcer.shipMove({ q: 'en', toBay: true, route: 'open water to bay' });
+  announcer.turnStart('ru', 'Captain', false);
+  assert.equal(clips.length, 1);
+  assert.equal(clips[0].paused, false);
+  assert.match(captions[1], /move_bay_ru/);
+
+  clips[0].end();
+  assert.equal(sound.currentVoice, url('move_bay_ru'));
+  clips[1].end();
+  assert.equal(sound.currentVoice, url('move_bay_en'));
+  clips[2].end();
+  assert.equal(sound.currentVoice, null);
+  assert.equal(clips.length, 3);
+});
+
+test('muting clears waiting clips and silent replay leaves live playback alone', () => {
   const { sound, announcer, clips, url } = setup(['game_start_ru', 'turn_first_ru', 'repair_ru']);
   announcer.gameStart('ru', 'Captain');
   sound.setQuiet(true);
-  announcer.turnStart('ru', 'Captain', true);
+  announcer.turnStart('ru', 'Captain', true, { opening: true });
   sound.setQuiet(false);
   assert.equal(clips[0].paused, false);
   clips[0].end();
   assert.equal(sound.currentVoice, null);
 
   announcer.gameStart('ru', 'Captain');
-  announcer.turnStart('ru', 'Captain', true);
+  announcer.turnStart('ru', 'Captain', true, { opening: true });
   sound.setMuted('commentator', true);
   assert.equal(clips[1].paused, true);
   announcer.repair('ru');

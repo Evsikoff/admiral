@@ -26,6 +26,7 @@ function createSoundDirector(manifest = {}) {
 
   const liveEffects = new Set(), fading = new Set(), blocked = new Set();
   const history = [], voiceHistory = [];
+  const pendingVoice = [];                         // only clips explicitly allowed to wait
   let mood = null, music = null, musicGain = 0, currentTrack = null, musicPaused = false;
   let swim = null, swimmingWanted = false, voice = null, hadGame = false;
   // switched off by the player: nothing of that kind is played (captions still pick their variants)
@@ -154,6 +155,7 @@ function createSoundDirector(manifest = {}) {
   }
 
   function stopVoice() {
+    pendingVoice.length = 0;
     if (!voice) return;
     stopAudio(voice);
     voice = null;
@@ -164,7 +166,9 @@ function createSoundDirector(manifest = {}) {
     a.volume = volumes.commentator;
     voice = a;
     const done = () => {
-      if (voice === a) voice = null;
+      if (voice !== a) return;
+      voice = null;
+      if (pendingVoice.length) playVoice(pendingVoice.shift());
     };
     a.addEventListener('ended', done);
     a.addEventListener('error', done);
@@ -172,7 +176,7 @@ function createSoundDirector(manifest = {}) {
     safePlay(a, done);
   }
 
-  function speak(bucket, variantCount = 0) {
+  function speak(bucket, variantCount = 0, { queueIfBusy = false } = {}) {
     let list = voicePools.get(bucket);
     if ((!list || !list.length) && variantCount > 0) {
       list = Array.from({ length: variantCount }, (_, idx) => ({ url: null, idx, plays: 0 }));
@@ -187,7 +191,10 @@ function createSoundDirector(manifest = {}) {
     voiceHistory.push({ bucket, idx: chosen.idx, url: chosen.url, plays: chosen.plays });
     if (voiceHistory.length > 300) voiceHistory.shift();
 
-    if ((!voice || voice.ended) && chosen.url && !muted.commentator && !quiet) playVoice(chosen.url);
+    if (chosen.url && !muted.commentator && !quiet) {
+      if ((!voice || voice.ended) && !pendingVoice.length) playVoice(chosen.url);
+      else if (queueIfBusy) pendingVoice.push(chosen.url);
+    }
     return chosen.idx;
   }
 
