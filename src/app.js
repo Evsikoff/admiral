@@ -1003,12 +1003,12 @@ function syncShipBodies(full) {
   }
 }
 
-// a die is heavier on the side with fewer pips: every pip is a little hole. The centre of mass moves
-// away from the many-pip faces (6, 5, 4) towards 1, 2, 3, so 6 lands on top more often than 1.
+// The pips remove a little material. The centre of mass is closer to the faces
+// with fewer pips, making 6 more likely to land on top than 1.
 const FACES = [[new THREE.Vector3(1, 0, 0), 2], [new THREE.Vector3(-1, 0, 0), 5], [new THREE.Vector3(0, 1, 0), 4],
   [new THREE.Vector3(0, -1, 0), 3], [new THREE.Vector3(0, 0, 1), 6], [new THREE.Vector3(0, 0, -1), 1]];   // dice-box d6 layout, opposite faces sum to 7
 const PIP_AXIS = FACES.reduce((v, [n, k]) => v.addScaledVector(n, k), new THREE.Vector3()).normalize();   // (−3, 1, 5)/√35
-let dieLoad = 0.09;                                             // how far the centre of mass sits from the middle, board units
+let dieLoad = 0.09;                                             // centre-of-mass offset in board units
 function dieBody(load = dieLoad) {
   const b = new CANNON.Body({ mass: 300, material: mDie, allowSleep: true, sleepSpeedLimit: 75 * DK, sleepTimeLimit: 0.9 });
   b.addShape(new CANNON.Box(new CANNON.Vec3(DH, DH, DH)), new CANNON.Vec3(PIP_AXIS.x, PIP_AXIS.y, PIP_AXIS.z).scale(load));
@@ -2303,23 +2303,27 @@ function releaseGrab(ev) {
   const forward = new THREE.Vector3().crossVectors(Y_UP, right);
   fling(at, right.multiplyScalar(dx).addScaledVector(forward, -dy).multiplyScalar(0.11));
 }
-// Launch from the release point. A longer swipe throws harder, within the board's scale.
-function fling(at, v) {
-  if (!canThrow() || ![at.x, at.y, at.z, v.x, v.z].every(Number.isFinite)) return;
+// Translate the swipe into each die's launch, for a player or a bot.
+function swipeThrowPlan(at, v, right, turns) {
   const hand = v.length(), dir = hand > 1e-3 ? v.clone().normalize() : new THREE.Vector3(0, 0, -1);
   const speed = clamp(0.9 * Math.sqrt(hand) + 0.5, 2.2, 8.5);
-  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize();
-  if (!Number.isFinite(right.x + right.z) || right.lengthSq() < 0.5) {             // no camera to go by: the thrower's side
-    const R = ROT[game.players[game.turn].q]; right.set(Math.cos(R), 0, -Math.sin(R));
-  }
-  const plan = dice.map((d, k) => {
+  return turns.map((turn, k) => {
     const sp = speed * (0.92 + Math.random() * 0.16);
     const vel = dir.clone().applyAxisAngle(Y_UP, (Math.random() - 0.5) * 0.12).multiplyScalar(sp).setY(-1 - Math.random());
     const spin = new THREE.Vector3().crossVectors(Y_UP, dir).multiplyScalar(9 + sp * 1.3 + Math.random() * 4)
       .add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(6));
-    const quat = d.obj.quaternion.clone().multiply(randomTurn());
+    const quat = turn.clone().multiply(randomTurn());
     return { origin: at.clone().addScaledVector(right, k ? 0.42 : -0.42), vel, spin, quat };
   });
+}
+// Launch from the release point. A longer swipe throws harder, within the board's scale.
+function fling(at, v) {
+  if (!canThrow() || ![at.x, at.y, at.z, v.x, v.z].every(Number.isFinite)) return;
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).setY(0).normalize();
+  if (!Number.isFinite(right.x + right.z) || right.lengthSq() < 0.5) {             // no camera to go by: the thrower's side
+    const R = ROT[game.players[game.turn].q]; right.set(Math.cos(R), 0, -Math.sin(R));
+  }
+  const plan = swipeThrowPlan(at, v, right, dice.map((d) => d.obj.quaternion));
   sound.stopVoice();
   if (online) { sendAction({ kind: 'throw', ...recordThrow(plan) }); return; }
   rollDice(plan);
@@ -3023,15 +3027,14 @@ function botTick(dt) {
   // Apply bots' decisions on the server echo, including when two clients briefly disagree on who leads.
   if (k >= 0) b.done = net.act(online.applied, { kind: 'act', ship: shipId(s), k, bot: controllerId() });
 }
-// the throw of a bot: the dice tossed from its side of the board (throwPlan, with the impulses of launch)
+// Simulate a swipe from the bot's side towards the open water, varying its release point, aim and length.
+const rand = (a, b) => a + Math.random() * (b - a);
 function botThrowPlan(q) {
-  return throwPlan(q).map(({ origin, dir, power }) => {
-    const speed = (Math.random() + 3) * (1.45 + Math.random() * 0.75) * power;
-    const vel = new THREE.Vector3(dir.x * speed, -1 - Math.random(), dir.z * speed);
-    const spin = new THREE.Vector3().crossVectors(Y_UP, dir).multiplyScalar(13 + Math.random() * 5);
-    const axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
-    return { origin, vel, spin, quat: new THREE.Quaternion().setFromAxisAngle(axis, Math.random() * Math.PI * 2) };
-  });
+  const R = ROT[q];
+  const toward = new THREE.Vector3(-Math.sin(R), 0, -Math.cos(R)), right = new THREE.Vector3(Math.cos(R), 0, -Math.sin(R));
+  const at = toward.multiplyScalar(-rand(2.8, 4.4)).addScaledVector(right, rand(-1.2, 1.2)).setY(HOLD_Y);
+  const swipe = right.clone().multiplyScalar(rand(-1.5, 1.5)).sub(at).setY(0).setLength(rand(4, 26));
+  return swipeThrowPlan(at, swipe, right, dice.map(randomTurn));
 }
 function botThrow() {
   const plan = botThrowPlan(game.players[game.turn].q);
@@ -3083,7 +3086,7 @@ Object.assign(window.__admiral, {
   cells, harbors, shipyards, prisons, nextCell, routes, options, occupancy, perform, startMoves,
   fastForward, setState, placeShipsNow, layoutShips, select, autoSelect, pairsAt, boardClick, compensate, nextAction,
   fling, flingDice, commentary, chasePairs, cellsTo, menuItems, chooseSail, backToMenu, announceChase, showChase,
-  sound, isTenseMoment, syncMusicMood, announcer, brain, botTick, botChoice, botRank, botsHurry,
+  sound, isTenseMoment, syncMusicMood, announcer, brain, botTick, botChoice, botRank, botsHurry, botThrowPlan,
 });
 
 // before the first game every ship waits at its shipyard. The way in (src/intro.js) is a start screen, two films
