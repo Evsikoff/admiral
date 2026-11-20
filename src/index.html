@@ -118,6 +118,7 @@
     border: 1px solid rgba(241, 222, 182, .43); box-shadow: 0 2px 9px rgba(10, 24, 33, .25);
   }
   .roll-owner { display: block; margin-bottom: 4px; overflow-wrap: anywhere; color: #f4e8cd; font-size: 11px; }
+  .roll-prompt { display: block; padding: 4px 0; color: var(--accent); font-size: 14px; font-weight: 600; text-align: center; }
   .roll-pair { display: flex; gap: 5px; }
   .roll-die {
     position: relative; flex: 1; display: flex; gap: 4px; align-items: center; justify-content: center;
@@ -817,6 +818,7 @@
 <div id="hud" hidden>
   <div id="hud-bar">
     <div id="roll-hud" role="group" aria-label="Результат броска" aria-live="polite" aria-atomic="true" hidden>
+      <span class="roll-prompt" hidden>Бросайте кости!</span>
       <span class="roll-owner"><span class="roll-prefix">Бросок · </span><span class="roll-name"></span></span>
       <div class="roll-pair"><span class="roll-die" role="img"></span><span class="roll-die" role="img"></span></div>
     </div>

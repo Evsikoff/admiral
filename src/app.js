@@ -1426,9 +1426,12 @@ function boardClick(u) {
     select(selected === ship && game.acts.size > 1 ? null : ship);
     return;
   }
-  // a marked cell, or an enemy ship standing on one; with no ship chosen it works when only one ship can get there
+  // A marked cell, or an enemy ship on one. Ships leaving the harbour are interchangeable;
+  // with no ship chosen, use the first if every candidate is still in its own harbour.
   const pairs = pairsAt(ship ? (ship.q !== moverQ() ? ship.slot : null) : slot);
-  if (pairs.length === 1) { userPerform(...pairs[0]); return; }
+  if (pairs.length && (pairs.length === 1 || pairs.every(([s]) => s.slot === harbors[s.q]))) {
+    userPerform(...pairs[0]); return;
+  }
   if (pairs.length > 1) { say('Сюда могут дойти несколько кораблей. Сначала выберите корабль.'); return; }
   if (selected && game.acts.size > 1) select(null);
 }
@@ -1549,8 +1552,10 @@ function labelTexture(text) {
   if (!labelTex.has(text)) {
     const c = document.createElement('canvas'); c.width = 128; c.height = 64;
     const g = c.getContext('2d');
-    g.fillStyle = 'rgba(16, 28, 40, 0.88)'; g.beginPath(); g.roundRect(4, 4, 120, 56, 26); g.fill();
-    g.fillStyle = '#ffffff'; g.font = `600 40px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 64, 35);
+    g.font = `600 40px ${FONT}`;
+    c.width = Math.max(c.width, Math.ceil(g.measureText(text).width + 24));
+    g.fillStyle = 'rgba(16, 28, 40, 0.88)'; g.beginPath(); g.roundRect(4, 4, c.width - 8, 56, 26); g.fill();
+    g.fillStyle = '#ffffff'; g.font = `600 40px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, c.width / 2, 35);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; labelTex.set(text, t);
   }
   return labelTex.get(text);
@@ -1581,9 +1586,9 @@ function showMarkers(list) {
     m.fill.material.opacity = selected || mark === game?.destinationMark ? 0.21 : 0.1;
     const zone = t.slot.kind === 'zone';
     m.g.position.copy(t.slot.pos); m.g.position.y = Math.max(sea.maxHeight, m.g.position.y) + 0.012; m.g.scale.setScalar(zone ? 1.5 : 1);
-    m.label.visible = !!selected || capture;
     m.label.position.y = zone ? 0.55 : 0.8;
-    if (m.label.visible) m.label.material.map = labelTexture([capture ? '⚔' : '', selected ? t.len : ''].filter(Boolean).join(' '));
+    m.label.material.map = labelTexture([capture ? '⚔' : '', (mark.lengths || [t.len]).join('/')].filter(Boolean).join(' '));
+    m.label.scale.x = 0.3 * m.label.material.map.image.width / m.label.material.map.image.height;
     m.ring.userData.slot = m.fill.userData.slot = t.slot;
   });
 }
@@ -1596,9 +1601,10 @@ function paintRoutes() {
     colorsByShip.set(ship, group.color);
     if (selected && ship !== selected) continue;
     for (const move of moves) {
-      if (!marks.has(move.slot)) marks.set(move.slot, {target:move, colors:[]});
-      const colors = marks.get(move.slot).colors;
+      if (!marks.has(move.slot)) marks.set(move.slot, {target:move, colors:[], lengths:[]});
+      const {colors, lengths} = marks.get(move.slot);
       if (!colors.includes(group.color)) colors.push(group.color);
+      if (!lengths.includes(move.len)) { lengths.push(move.len); lengths.sort((a, b) => a - b); }
     }
   }
   if (!setupIsOpen() && game?.phase === 'anim' && game.destinationMark) {
@@ -2137,6 +2143,7 @@ function openSetup() {
 }
 function closeSetup() {
   document.body.classList.remove('setup-open'); setupEl.hidden = true;
+  if (game) renderRoll();
   broadcast.layout(); applyFrame(); syncControls();
 }
 function cancelSetup() {
@@ -2223,9 +2230,15 @@ window.AdmiralOnline?.setVoice(!audioOff.commentator);
 const hudEl = document.getElementById('hud'), whoEl = document.getElementById('who'), capEl = document.getElementById('captions');
 const rollHud = document.getElementById('roll-hud');
 const rollOwner = rollHud.querySelector('.roll-name'), rollFaces = [...rollHud.querySelectorAll('.roll-die')];
+const rollPrompt = rollHud.querySelector('.roll-prompt'), rollOwnerRow = rollHud.querySelector('.roll-owner'), rollPair = rollHud.querySelector('.roll-pair');
 function renderRoll() {
-  rollHud.hidden = !game.dice || game.phase === 'over';
+  const waiting = canThrow();
+  rollHud.hidden = (!game.dice && !waiting) || game.phase === 'over';
   if (rollHud.hidden) return;
+  rollPrompt.hidden = !waiting;
+  rollOwnerRow.hidden = rollPair.hidden = waiting;
+  rollHud.setAttribute('aria-label', waiting ? 'Ожидание броска' : 'Результат броска');
+  if (waiting) return;
   const owner = playerName(game.players[game.turn], game.turn);
   if (rollOwner.textContent !== owner) rollOwner.textContent = owner;
   game.dice.forEach(({ v, used }, index) => {
