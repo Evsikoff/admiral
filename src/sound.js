@@ -2,7 +2,104 @@
 // Within a game, picks uniformly at random among the least-played files in each folder.
 // Music has three moods: 'start' — the theme of the main menu, played until a game begins — then 'calm' and 'anxious'.
 const MUSIC_MOODS = ['start', 'calm', 'anxious'];
+
+// One gesture-unlocked context plays short clips, including events received over WebSocket.
+// Decode on demand with a small cache, rather than retaining all voice clips as PCM audio.
+function createGameAudio() {
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return null;
+  let context = null, nextMusic = 0;
+  const decoded = new Map(), musicChannels = [], primed = new Set();
+  const silence = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==';
+  function unlock() {
+    context ||= new Context();
+    if (context.state !== 'running') context.resume().catch(() => {});
+    if (!musicChannels.length) {
+      for (let i = 0; i < 2; i++) musicChannels.push(new Audio(silence));
+    }
+    for (const audio of musicChannels) {
+      // A touch's pointerdown may be rejected; its subsequent click must retry the same elements.
+      if (primed.has(audio) || audio.getAttribute('src') !== silence) continue;
+      audio.play()?.then(() => {
+        primed.add(audio);
+        if (audio.getAttribute('src') === silence) audio.pause();
+      }).catch(() => {});
+    }
+  }
+  async function buffer(url) {
+    if (decoded.has(url)) {
+      const result = decoded.get(url);
+      decoded.delete(url); decoded.set(url, result);
+      return result;
+    }
+    const task = (async () => {
+      const blob = window.AdmiralAssets?.blob(url);
+      const bytes = blob ? await blob.arrayBuffer() : await (await fetch(url)).arrayBuffer();
+      return context.decodeAudioData(bytes);
+    })();
+    decoded.set(url, task);
+    while (decoded.size > 12) decoded.delete(decoded.keys().next().value);
+    try { return await task; } catch (error) { decoded.delete(url); throw error; }
+  }
+  class Clip extends EventTarget {
+    constructor(url) {
+      super();
+      this.src = url; this.dataset = {}; this.volume = 1; this.loop = false;
+      this.paused = true; this.ended = false; this.duration = 0; this.offset = 0; this.generation = 0;
+    }
+    get currentTime() {
+      if (!this.source) return this.offset;
+      const elapsed = this.offset + context.currentTime - this.started;
+      return this.loop && this.duration ? elapsed % this.duration : Math.min(elapsed, this.duration);
+    }
+    async play() {
+      if (!this.paused) return;
+      context ||= new Context();
+      const generation = ++this.generation;
+      this.paused = false; this.ended = false;
+      try {
+        const audio = await buffer(this.src);
+        if (this.paused || generation !== this.generation) return;
+        if (context.state !== 'running') throw new DOMException('Tap to enable audio', 'NotAllowedError');
+        const gain = context.createGain(), source = context.createBufferSource();
+        this.duration = audio.duration;
+        source.buffer = audio; source.loop = this.loop; gain.gain.value = this.volume;
+        source.connect(gain); gain.connect(context.destination);
+        this.source = source; this.started = context.currentTime;
+        source.onended = () => {
+          source.disconnect(); gain.disconnect();
+          if (generation !== this.generation) return;
+          this.source = null; this.offset = this.duration; this.paused = true; this.ended = true;
+          this.dispatchEvent(new Event('ended'));
+        };
+        source.start(0, this.offset);
+      } catch (error) {
+        if (generation !== this.generation) return;
+        this.paused = true;
+        throw error;
+      }
+    }
+    pause() {
+      this.offset = this.currentTime; this.paused = true; this.generation++;
+      if (this.source) { this.source.stop(); this.source = null; }
+    }
+  }
+  return {
+    unlock,
+    clip: (url) => new Clip(url),
+    music(url) {
+      const audio = musicChannels.length ? musicChannels[nextMusic++ % musicChannels.length] : new Audio();
+      audio.pause(); delete audio.dataset.stopped;
+      audio.src = window.AdmiralAssets?.url(url) || url;
+      return audio;
+    },
+  };
+}
+
 function createSoundDirector(manifest = {}) {
+  const backend = createGameAudio();
+  const clip = (url) => backend && window.AdmiralAssets?.blob(url)
+    ? backend.clip(url) : new Audio(window.AdmiralAssets?.url(url) || url);
   const volumes = { music: 0.3, effects: 1.0, commentator: 1.0 };
   // in the main menu the music is all there is to hear; in a game it stays under the commentator
   const moodVolume = { start: 0.55 };
@@ -46,6 +143,7 @@ function createSoundDirector(manifest = {}) {
   }
 
   function unlock() {
+    backend?.unlock();
     if (!blocked.size) return;
     for (const a of [...blocked]) {
       blocked.delete(a);
@@ -55,6 +153,7 @@ function createSoundDirector(manifest = {}) {
   for (const ev of ['pointerdown', 'keydown', 'click']) {
     window.addEventListener(ev, unlock, { capture: true, passive: true });
   }
+  window.addEventListener('admiral:unlock-audio', unlock);
 
   function stopAudio(a) {
     if (!a) return;
@@ -80,19 +179,20 @@ function createSoundDirector(manifest = {}) {
     if (muted.music || musicPaused) return;
     const entry = pick(kind);
     if (!entry) return;
-    const a = new Audio(entry.url);
+    const a = backend ? backend.music(entry.url) : new Audio(window.AdmiralAssets?.url(entry.url) || entry.url);
+    fading.delete(a);
     a.preload = 'auto';
     musicGain = crossfade ? 0.02 : musicLevel();
     a.volume = musicGain;
-    a.addEventListener('ended', () => {
+    a.onended = () => {
       if (music !== a) return;
       music = null; currentTrack = null;
       if (mood) playMusicTrack(mood, false);
-    });
-    a.addEventListener('error', () => {
+    };
+    a.onerror = () => {
       if (music !== a) return;
       music = null; currentTrack = null;
-    });
+    };
     music = a;
     currentTrack = entry;
     safePlay(a);
@@ -125,7 +225,7 @@ function createSoundDirector(manifest = {}) {
     if (muted.effects || quiet) return null;
     const entry = pick(kind);
     if (!entry) return null;
-    const a = new Audio(entry.url);
+    const a = clip(entry.url);
     a.volume = volumes.effects;
     liveEffects.add(a);
     const done = () => liveEffects.delete(a);
@@ -140,7 +240,7 @@ function createSoundDirector(manifest = {}) {
     if (swim || muted.effects || quiet) return;
     const entry = pick('swimming');
     if (!entry) return;
-    const a = new Audio(entry.url);
+    const a = clip(entry.url);
     a.loop = true;
     a.volume = volumes.effects;
     swim = a;
@@ -162,7 +262,7 @@ function createSoundDirector(manifest = {}) {
   }
 
   function playVoice(url) {
-    const a = new Audio(url);
+    const a = clip(url);
     a.volume = volumes.commentator;
     voice = a;
     const done = () => {

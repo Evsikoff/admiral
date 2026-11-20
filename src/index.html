@@ -347,7 +347,7 @@
     width: var(--plank-w, 360px); aspect-ratio: 1024 / 254; padding: 0 6%; gap: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     border: 0; border-radius: 7px; white-space: normal; text-align: center;
-    background: #5a3b22 url(assets/menu/plank.webp) center / 100% 100% no-repeat;
+    background: #5a3b22 var(--asset-plank, url(assets/menu/plank.webp)) center / 100% 100% no-repeat;
     color: #f8e8c2; font-family: Georgia, "Times New Roman", serif;
     text-shadow: 0 1px 0 rgba(20, 10, 2, .85), 0 0 10px rgba(20, 10, 2, .55);
     box-shadow: 0 10px 22px rgba(0, 0, 0, .55), 0 2px 0 rgba(0, 0, 0, .35);
@@ -387,6 +387,12 @@
   #intro-start .plank { --plank-w: min(300px, 72vw); }
   #intro-start .plank-title { font-size: max(18px, 8.6cqw); letter-spacing: .05em; }
   .start-hint { margin: -6px 0 0; font-size: 12px; letter-spacing: .06em; color: #8fa1b0; }
+  .start-loading { width: min(360px, 82vw); text-align: center; }
+  .start-loading progress { width: 100%; height: 10px; accent-color: #e3b456; }
+  .start-loading p { margin: 8px 0; color: #c9bfa3; font-size: 14px; }
+  .start-loading .load-detail { min-height: 1.4em; color: #8fa1b0; font-size: 12px; }
+  #intro-continue { margin: 16px auto 0; }
+  #intro-film-status { position: absolute; inset: 0; display: grid; place-content: center; gap: 16px; text-align: center; cursor: auto; }
   @keyframes start-rise { from { opacity: 0; transform: translateY(14px); } }
   @keyframes logo-breathe { 50% { transform: translateY(-4px) scale(1.012); } }
   @media (prefers-reduced-motion: reduce) { .start-stack, .start-logo { animation: none; } }
@@ -405,7 +411,7 @@
     position: absolute; left: 50%; top: 50%;
     width: max(100vw, 100vh * 1.7915); width: max(100vw, 100dvh * 1.7915); aspect-ratio: 2560 / 1429;
     transform: translate(-50%, -50%) scale(1.045); will-change: transform;    /* intro.js adds the mouse parallax */
-    background: url(assets/menu/tavern.webp) center / 100% 100% no-repeat;
+    background: var(--asset-tavern, url(assets/menu/tavern.webp)) center / 100% 100% no-repeat;
     --fire-x: 22.6%; --fire-y: 67%; --fire-w: 30%;
     --lamp1-x: 28.9%; --lamp1-y: 19.5%; --lamp2-x: 72.5%; --lamp2-y: 19.5%; --lamp-w: 13%;
     --candle-x: 11%; --candle-y: 70%; --candle-w: 15%;
@@ -414,7 +420,7 @@
   @media (max-aspect-ratio: 1/1) {
     .tavern {
       width: max(100vw, 100vh * .5582); width: max(100vw, 100dvh * .5582); aspect-ratio: 1228 / 2200;
-      background-image: url(assets/menu/tavern_portrait.webp);
+      background-image: var(--asset-tavern-portrait, url(assets/menu/tavern_portrait.webp));
       --fire-x: 6.5%; --fire-y: 69%; --fire-w: 52%;
       --lamp1-x: 10%; --lamp1-y: 15.5%; --lamp2-x: 92.7%; --lamp2-y: 15.8%; --lamp-w: 30%;
       --candle-x: 9%; --candle-y: 78%; --candle-w: 30%;
@@ -502,7 +508,7 @@
     position: relative; flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
     padding: 22px 28px 24px; border-radius: 8px;
     color: #3b2814; font: 15px/1.4 Georgia, "Times New Roman", serif;
-    background: #ead8ae url(assets/menu/parchment.webp) center / 100% 100% no-repeat;
+    background: #ead8ae var(--asset-parchment, url(assets/menu/parchment.webp)) center / 100% 100% no-repeat;
     box-shadow: 0 0 0 5px #3a2412, 0 0 0 6px rgba(240, 200, 130, .35), 0 22px 54px rgba(0, 0, 0, .65);
     animation: club-in .45s cubic-bezier(.2, .8, .3, 1) both;
   }
@@ -517,7 +523,7 @@
   .club button:disabled { opacity: .45; cursor: default; border-color: rgba(80, 52, 22, .4); background: rgba(255, 248, 230, .35); }
   .club button.club-primary {
     justify-content: center; color: #f8e8c2; border: 0; padding: 9px 20px; min-height: 38px;
-    background: #5a3b22 url(assets/menu/plank.webp) center / 100% 100% no-repeat;
+    background: #5a3b22 var(--asset-plank, url(assets/menu/plank.webp)) center / 100% 100% no-repeat;
     font: 600 15px Georgia, "Times New Roman", serif; letter-spacing: .02em;
     text-shadow: 0 1px 0 rgba(20, 10, 2, .85);
     box-shadow: 0 3px 8px rgba(40, 20, 4, .35), inset 0 0 0 1px rgba(255, 220, 160, .12);
@@ -681,11 +687,19 @@
     <img class="start-logo" src="assets/game_logo.png" alt="Адмирал" draggable="false">
     <button id="intro-launch" class="plank" type="button"><span class="plank-title">Запустить</span></button>
     <p class="start-hint">Лучше со звуком</p>
+    <div id="intro-loading" class="start-loading" hidden>
+      <label for="intro-progress">Поднимаем паруса… <span id="intro-percent">0%</span></label>
+      <progress id="intro-progress" max="100" value="0"></progress>
+      <p id="intro-load-status" role="status">Загружаем видео и звук</p>
+      <p id="intro-load-detail" class="load-detail"></p>
+      <button id="intro-continue" type="button" hidden>Повторить загрузку</button>
+    </div>
   </div>
 </section>
 <section id="intro-films" class="intro-layer" aria-label="Вступительный ролик" hidden>
   <video id="intro-video" playsinline disablepictureinpicture disableremoteplayback
          controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"></video>
+  <div id="intro-film-status" hidden><p id="intro-film-message" role="status">Подготавливаем видео…</p><button id="intro-film-play" type="button" hidden>Продолжить со звуком</button></div>
 </section>
 <section id="intro-menu" class="intro-layer" aria-label="Главное меню" hidden>
   <div class="tavern" aria-hidden="true">
@@ -881,6 +895,7 @@
 
 <script>
   /*__DATA__*/
+  /*__ASSET_DATA__*/
   setTimeout(function () {
     if (!window.__admiralStarted) {
       document.getElementById('loading').innerHTML =

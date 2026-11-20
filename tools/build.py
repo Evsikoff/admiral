@@ -1,6 +1,6 @@
 """Inlines data + app code into a single self-contained admiral-3d.html."""
-import base64, hashlib, io, json, pathlib, sys, zipfile
-from urllib.parse import quote
+import base64, hashlib, io, json, mimetypes, pathlib, sys, zipfile
+from urllib.parse import quote, unquote
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(root / 'tools'))
@@ -91,10 +91,22 @@ rules_data = {
     'ship': uri((previews / 'ship-medium.png').read_bytes(), 'image/png'),
     'wreck': uri((previews / 'ship-wreck.png').read_bytes(), 'image/png'),
 }
+# Sizes drive download progress; hashes invalidate cached media after a deployment.
+media = ['assets/video/studio.mp4', 'assets/video/game_intro.mp4', 'assets/game_logo.png']
+media += ['assets/menu/' + name for name in ('plank.webp', 'tavern.webp', 'tavern_portrait.webp', 'parchment.webp')]
+media += [url for group in data['sounds'].values() for urls in group.values() for url in urls]
+if rules_data['audio']: media.append(rules_data['audio'])
+manifest = []
+for url in dict.fromkeys(media):
+    file = root / unquote(url.split('?')[0])
+    content = file.read_bytes()
+    manifest.append({'url': url, 'size': len(content), 'hash': hashlib.sha256(content).hexdigest()[:12],
+                     'type': mimetypes.guess_type(file.name)[0] or 'application/octet-stream'})
+html = html.replace('/*__ASSET_DATA__*/', 'window.ADMIRAL.preload = ' + json.dumps(manifest) + ';')
 # the start screen, the intro films, the main menu and its online club work before (and without) the 3D map;
 # so do the names of the bots' styles, which the club shows at its tables
 intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
-                  for name in ('bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
+                  for name in ('assets.js', 'bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
 intro = intro.replace('/*__RULES_DATA__*/ null', json.dumps(rules_data, ensure_ascii=False).replace('<', '\\u003c'))
 html = html.replace('/*__INTRO__*/', intro)
 (root / 'admiral-3d.html').write_text(html, encoding='utf8')

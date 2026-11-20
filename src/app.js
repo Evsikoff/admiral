@@ -3304,7 +3304,12 @@ function frame() {
   controls.update();
   updateReflections(time);
   renderer.render(scene, camera);
-  if (firstFrame) { firstFrame = false; document.getElementById('loading').classList.add('hide'); }
+  if (firstFrame) {
+    firstFrame = false;
+    document.getElementById('loading').classList.add('hide');
+    window.__admiralReady = true;
+    window.dispatchEvent(new Event('admiral:ready'));
+  }
 }
 // an online game found in the tavern (src/online.js) — perhaps before the map was ready — is played from here
 if (net) net.attach(onlineHandler);

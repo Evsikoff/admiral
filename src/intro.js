@@ -9,8 +9,7 @@
 // with enterGame('online-game'). After a reload in the middle of an online game the start screen offers to go
 // back to it, without the films.
 (function () {
-  const FILMS = ['assets/video/studio.webm', 'assets/video/game_intro.mp4'];
-  const PICTURES = ['assets/menu/tavern.webp', 'assets/menu/tavern_portrait.webp'];
+  const FILMS = ['assets/video/studio.mp4', 'assets/video/game_intro.mp4'];
   const FADE = 600;           // ms; the fades of the layers are set from here
   const FILM_GAP = 350;       // ms of black between the films
   const STALL = 12000;        // a film that shows nothing new for this long is given up, so nobody is left on black
@@ -18,10 +17,13 @@
   const $ = (id) => document.getElementById(id);
   const startEl = $('intro-start'), filmsEl = $('intro-films'), menuEl = $('intro-menu');
   const video = $('intro-video'), launchBtn = $('intro-launch');
+  const loadEl = $('intro-loading'), progressEl = $('intro-progress'), percentEl = $('intro-percent');
+  const loadStatus = $('intro-load-status'), loadDetail = $('intro-load-detail'), retryBtn = $('intro-continue');
+  const filmStatus = $('intro-film-status'), filmMessage = $('intro-film-message'), filmPlay = $('intro-film-play');
   const localBtn = $('menu-local'), onlineBtn = $('menu-online'), noteEl = $('menu-note');
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-  // stage: start → films → menu ⇄ local; menu ⇄ online (the club) → online-game
+  // stage: start → loading → films → menu ⇄ local; menu ⇄ online (the club) → online-game
   const api = { stage: 'start', showMenu, enterGame, backFromClub, setResume, openClubFromStart };
   window.AdmiralIntro = api;
   const emit = (name) => window.dispatchEvent(new CustomEvent(name));
@@ -43,10 +45,8 @@
   // while a layer covers the whole screen the 3D map behind it is not drawn (app.js checks this class)
   const cover = (on) => document.body.classList.toggle('intro-open', on);
 
-  // ---- start screen: the first film and the tavern load while the player looks at the logo
-  video.src = FILMS[0];
+  // Media is explicitly downloaded after launch; preload="auto" alone is only a browser hint.
   video.preload = 'auto';
-  for (const url of PICTURES) { const img = new Image(); img.decoding = 'async'; img.src = url; }
   launchBtn.addEventListener('click', startFilms);
   const launchTitle = launchBtn.querySelector('.plank-title'), startHint = startEl.querySelector('.start-hint');
   const LAUNCH = launchTitle.textContent, HINT = startHint.textContent;
@@ -58,45 +58,88 @@
 
   // ---- the films: no controls, no seeking, no pausing; only their end (or a broken file) moves on
   let film = -1, switching = false, watchdog = 0, lastTime = -1, lastProgress = 0;
-  function startFilms() {
-    if (api.stage !== 'start') return;
-    if (window.AdmiralOnline?.resume()) return;
+  let preparing = false, waitingForTap = false;
+  async function startFilms() {
+    if (preparing || !['start', 'loading'].includes(api.stage)) return;
+    preparing = true;
+    api.stage = 'loading';
+    emit('admiral:unlock-audio');                    // synchronous with the original tap, before any await
+    launchBtn.hidden = true; startHint.hidden = true; loadEl.hidden = false; retryBtn.hidden = true;
+    loadStatus.textContent = 'Загружаем видео и звук';
+    try {
+      await window.AdmiralAssets.load(({ loaded, total, completed, count }) => {
+        const percent = total ? Math.floor(loaded / total * 97) : 0;
+        progressEl.value = percent; percentEl.textContent = percent + '%';
+        loadDetail.textContent = `${(loaded / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} МБ · ${completed} / ${count} файлов`;
+      });
+      loadStatus.textContent = 'Подготавливаем 3D-карту…';
+      if (!window.__admiralReady) await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          window.removeEventListener('admiral:ready', ready);
+          reject(new Error('Не удалось подготовить 3D-карту. Обновите страницу и проверьте поддержку WebGL.'));
+        }, 60000);
+        function ready() { clearTimeout(timer); resolve(); }
+        window.addEventListener('admiral:ready', ready, { once: true });
+      });
+      progressEl.value = 100; percentEl.textContent = '100%';
+      loadStatus.textContent = 'Готово';
+      api.stage = 'start';
+      if (!window.AdmiralOnline?.resume()) beginFilms();
+    } catch (error) {
+      loadStatus.textContent = error.message;
+      retryBtn.hidden = false;
+      retryBtn.focus({ preventScroll: true });
+    } finally { preparing = false; }
+  }
+  retryBtn.addEventListener('click', startFilms);
+  function beginFilms() {
     api.stage = 'films';
     guardMedia(true);
     show(filmsEl, 0);                               // black at once under the start screen, which then fades away
     hide(startEl, 450);
-    playFilm(0);                                    // inside the click, so the browser lets the film play with sound
+    playFilm(0);
     watchdog = setInterval(checkStall, 1000);
   }
   function playFilm(i) {
     film = i;
     if (i >= FILMS.length) { endFilms(); return; }
-    if (i > 0) video.src = FILMS[i];                // the same element: a browser that let it play once lets it again
-    else if (video.error) { nextFilm(); return; }   // the first film failed to load while the start screen was up
+    video.src = window.AdmiralAssets.url(FILMS[i]);  // reuse the fully downloaded bytes and the same video element
     video.muted = false;
+    waitingForTap = false; filmStatus.hidden = false; filmPlay.hidden = true;
+    filmMessage.textContent = 'Подготавливаем видео…';
     lastTime = -1; lastProgress = performance.now();
     tryPlay();
   }
   function tryPlay() {
     let p;
-    try { p = video.play(); } catch { return; }
+    try { p = video.play(); } catch (error) { playbackFailed(error); return; }
     if (p && typeof p.catch === 'function') {
       p.catch((err) => {
         if (api.stage !== 'films' || !err) return;
-        // a browser that will not play it with sound shows it silently rather than not at all
-        if (err.name === 'NotAllowedError' && !video.muted) { video.muted = true; tryPlay(); }
-        else if (err.name === 'NotSupportedError') nextFilm();      // a format this browser cannot play
+        playbackFailed(err);
       });
     }
   }
+  function playbackFailed(error) {
+    if (api.stage !== 'films') return;
+    if (error.name === 'NotSupportedError') { nextFilm(); return; }
+    if (error.name === 'AbortError') return;
+    waitingForTap = true; filmStatus.hidden = false; filmPlay.hidden = false;
+    filmMessage.textContent = 'Нажмите, чтобы продолжить видео со звуком';
+  }
+  filmPlay.addEventListener('click', () => {
+    emit('admiral:unlock-audio');
+    waitingForTap = false; lastProgress = performance.now();
+    filmPlay.hidden = true; tryPlay();
+  });
   function nextFilm() {
-    if (api.stage !== 'films' || switching) return;
+    if (api.stage !== 'films' || switching || waitingForTap) return;
     switching = true;
     video.classList.remove('lit');
     setTimeout(() => { switching = false; playFilm(film + 1); }, FILM_GAP);
   }
   function checkStall() {
-    if (api.stage !== 'films' || switching) return;
+    if (api.stage !== 'films' || switching || waitingForTap) return;
     if (document.hidden) { lastProgress = performance.now(); return; }
     if (performance.now() - lastProgress > STALL) nextFilm();
   }
@@ -107,7 +150,15 @@
     video.load();
     openMenu(true);
   }
-  video.addEventListener('playing', () => video.classList.add('lit'));
+  video.addEventListener('playing', () => {
+    video.classList.add('lit'); filmStatus.hidden = true; waitingForTap = false;
+    lastProgress = performance.now();
+  });
+  video.addEventListener('waiting', () => {
+    if (api.stage === 'films' && !switching && !waitingForTap) {
+      filmStatus.hidden = false; filmMessage.textContent = 'Подготавливаем видео…';
+    }
+  });
   video.addEventListener('ended', nextFilm);
   video.addEventListener('error', () => { if (video.getAttribute('src')) nextFilm(); });
   video.addEventListener('timeupdate', () => {
@@ -115,7 +166,7 @@
   });
   // nothing may pause a film: not a media key, not the browser's media controls; a hidden tab resumes when shown
   video.addEventListener('pause', () => {
-    if (api.stage === 'films' && !switching && !video.ended && !document.hidden) tryPlay();
+    if (api.stage === 'films' && !switching && !waitingForTap && !video.ended && !document.hidden) tryPlay();
   });
   document.addEventListener('visibilitychange', () => {
     if (api.stage === 'films' && !document.hidden && !switching && video.paused && !video.ended) tryPlay();
@@ -130,6 +181,7 @@
   }
   window.addEventListener('keydown', (ev) => {
     if (api.stage === 'films') {
+      if (ev.target.closest?.('#intro-film-play') && (ev.key === 'Enter' || ev.key === ' ')) return;
       // keys do nothing during the films (browser shortcuts with Ctrl/Alt/⌘ and F-keys still work)
       if (ev.ctrlKey || ev.metaKey || ev.altKey || /^F\d+$/.test(ev.key)) return;
       ev.preventDefault(); ev.stopImmediatePropagation();
@@ -152,7 +204,7 @@
     setTimeout(() => { if (api.stage === 'menu' && !document.activeElement?.closest?.('#intro-menu')) localBtn.focus({ preventScroll: true }); }, afterFilms ? 1200 : 500);
   }
   function showMenu() {
-    if (api.stage === 'menu' || api.stage === 'online' || api.stage === 'start' || api.stage === 'films') return;
+    if (['menu', 'online', 'start', 'loading', 'films'].includes(api.stage)) return;
     openMenu(false);
   }
   // from the menu (or straight from the start screen, back into an online game) to the map

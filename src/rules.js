@@ -135,7 +135,7 @@ window.AdmiralRules = (function () {
     chapter = cue = -1;
     muted = silent;
     onClose = closed;
-    if (data.audio && !audio.getAttribute('src')) audio.src = data.audio;
+    if (data.audio && !audio.getAttribute('src')) audio.src = window.AdmiralAssets?.url(data.audio) || data.audio;
     if (data.audio && !audio.error) audio.currentTime = 0;
     audio.muted = muted;
     clockOnly = !data.audio || Boolean(audio.error);
