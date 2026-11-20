@@ -694,7 +694,7 @@ const SHIPS_PER_NATION = 5;
 const SHIP_SCALE = 1.1;
 const KIT_SCALE = 0.068;      // kit units → board units: the hull is ≈ 0.72 long and 0.33 wide
 const NAMES = { ru: 'Россия', se: 'Швеция', en: 'Англия', nl: 'Голландия' };
-// bold team colours, clearly different from each other (sails, pennants, torn sails of wrecks)
+// bold team colours for sails, pennants, decks, hull trim and torn sails of wrecks
 const TEAM_COLOR = { ru: '#2f6fe4', se: '#f5c518', en: '#e0342b', nl: '#2fae4e' };
 const QI = { ru: 0, se: 1, en: 2, nl: 3 };
 const smokeGeo = new THREE.SphereGeometry(0.07, 10, 8);
@@ -715,7 +715,7 @@ const kitMesh = (root, name) => { let m = null; root.traverse((o) => { if (!m &&
 
 // the kit paints everything from one 8×8 palette texture; sails and pennants use its white swatch,
 // so a copy of the palette with that swatch dyed gives every nation its own sails
-const sailMat = {}, ragMat = {};
+const sailMat = {}, hullAccentMat = {}, ragMat = {};
 for (const q of NATIONS) {
   const img = kitImg, c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
@@ -725,6 +725,7 @@ for (const q of NATIONS) {
   const t = new THREE.CanvasTexture(c);
   t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
   sailMat[q] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9, side: THREE.DoubleSide });
+  hullAccentMat[q] = new THREE.MeshStandardMaterial({ color: TEAM_COLOR[q], roughness: 1, side: THREE.DoubleSide });
   ragMat[q] = new THREE.MeshStandardMaterial({
     color: new THREE.Color(TEAM_COLOR[q]).lerp(new THREE.Color(0x1a1512), 0.35), roughness: 0.95, side: THREE.DoubleSide,
   });
@@ -739,6 +740,30 @@ function kitModel(gltf) {
   return wrap;
 }
 const intactProto = kitModel(intactKit);
+const intactHull = kitMesh(intactProto, 'ship-medium');
+{
+  // The rails and deck rim use the rightmost wood swatch, shared with a band below the deck.
+  // The deck floors use column 5 of the palette and lie flat at two heights in ship-medium.
+  const geometry = intactHull.geometry;
+  const { position, uv } = geometry.attributes;
+  const indices = geometry.index.array;
+  const mainDeckY = 2.1, raisedDeckY = 3.5, heightTolerance = 1e-5;
+  const deckHeights = [mainDeckY, raisedDeckY];
+  const hullFaces = [], accentFaces = [];
+  const isTrim = (i) => uv.getX(i) >= 7 / 8 && position.getY(i) >= mainDeckY - heightTolerance;
+  const isDeckAt = (i, height) => uv.getX(i) >= 5 / 8 && uv.getX(i) < 6 / 8
+    && Math.abs(position.getY(i) - height) < heightTolerance;
+  for (let i = 0; i < indices.length; i += 3) {
+    const a = indices[i], b = indices[i + 1], c = indices[i + 2];
+    const trim = isTrim(a) && isTrim(b) && isTrim(c);
+    const deck = deckHeights.some((height) => isDeckAt(a, height) && isDeckAt(b, height) && isDeckAt(c, height));
+    (trim || deck ? accentFaces : hullFaces).push(a, b, c);
+  }
+  geometry.setIndex(hullFaces.concat(accentFaces));
+  geometry.clearGroups();
+  geometry.addGroup(0, hullFaces.length, 0);
+  geometry.addGroup(hullFaces.length, accentFaces.length, 1);
+}
 const mainPennant = intactProto.getObjectByName('flag-b');          // top of the main mast
 const masthead = mainPennant.getWorldPosition(new THREE.Vector3());
 mainPennant.removeFromParent();                                      // the national flag flies there instead
@@ -776,7 +801,11 @@ const ragGeo = (() => {               // a sail in tatters, hanging from its yar
 
 function buildIntact(q) {
   const g = intactProto.clone();
-  g.traverse((o) => { if (o.isMesh && /^(sail|flag)/.test(o.name)) o.material = sailMat[q]; });
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.geometry === intactHull.geometry) o.material = [intactHull.material, hullAccentMat[q]];
+    else if (/^(sail|flag)/.test(o.name)) o.material = sailMat[q];
+  });
   const flag = makeFlag(q, 0.17, 0.11, 6);
   flag.position.copy(masthead); flag.position.y += 0.025; flag.rotation.y = Math.PI;     // streams aft
   g.add(flag);
@@ -896,9 +925,14 @@ world.broadphase = new CANNON.NaiveBroadphase();
 world.solver.iterations = 14;
 world.allowSleep = true;
 const mDesk = new CANNON.Material('desk'), mBarrier = new CANNON.Material('barrier'), mDie = new CANNON.Material('die');
+const mNudgingShip = new CANNON.Material('nudging ship'), mSettledDie = new CANNON.Material('settled die');
 world.addContactMaterial(new CANNON.ContactMaterial(mDesk, mDie, { friction: 0.6, restitution: 0.5 }));
 world.addContactMaterial(new CANNON.ContactMaterial(mBarrier, mDie, { friction: 0.6, restitution: 1.0 }));
 world.addContactMaterial(new CANNON.ContactMaterial(mDie, mDie, { friction: 0.6, restitution: 0.5 }));
+world.addContactMaterial(new CANNON.ContactMaterial(mDesk, mSettledDie, { friction: 0.16, restitution: 0 }));
+world.addContactMaterial(new CANNON.ContactMaterial(mNudgingShip, mSettledDie, {
+  friction: 0, restitution: 0, contactEquationRelaxation: 10,
+}));
 
 // the board itself: islands and hills as a height field; the sea is a flat painted board at y = 0
 const HF_ES = 0.2, HF_N = Math.round(30 / HF_ES) + 1;
@@ -985,7 +1019,7 @@ for (const s of ships) {
   }
 }
 const hullWorldPosition = new THREE.Vector3(), hullWorldRotation = new THREE.Quaternion();
-function syncShipBodies(full) {
+function syncShipBodies(full, nudging = false) {
   for (const s of ships) {
     const want = s.obj.visible ? (s.state === 'ok' ? s.bodyOk : s.bodyWreck) : null;
     for (const b of [s.bodyOk, s.bodyWreck]) {
@@ -995,6 +1029,8 @@ function syncShipBodies(full) {
         if (b === want && !inWorld) world.addBody(b);
       }
       if (b === want) {
+        b.material = nudging ? mNudgingShip : mDesk;
+        if (nudging && s.movedSinceDiceStep) b.wakeUp();
         s.model.getWorldPosition(hullWorldPosition); s.model.getWorldQuaternion(hullWorldRotation);
         b.position.copy(hullWorldPosition); b.quaternion.copy(hullWorldRotation);
         b.aabbNeedsUpdate = true;
@@ -1038,6 +1074,23 @@ for (let v = 1; v <= 6; v++) {
   });
 }
 const dieGeo = new RoundedBoxGeometry(DIE, DIE, DIE, 4, 0.085);
+const DIE_NUDGE_SPEED = 3.4, DIE_NUDGE_LIFT = 2;
+const dieBumpImpulse = new CANNON.Vec3();
+function nudgeDie(body, hull, { ni, bi }) {
+  const horizontal = Math.hypot(ni.x, ni.z);
+  if (horizontal < 0.25) return;
+  const direction = (bi === body ? -1 : 1) / horizontal;
+  const x = ni.x * direction, z = ni.z * direction;
+  const rightX = Math.sin(hull.ship.heading), rightZ = Math.cos(hull.ship.heading);
+  const offset = (body.position.x - hull.position.x) * rightX + (body.position.z - hull.position.z) * rightZ;
+  // A bow-on hit also sends the die to the nearer side, so it clears the ship's path.
+  const headOn = Math.abs(x * rightZ - z * rightX);
+  const side = offset < 0 ? -1 : 1;
+  const sideways = side * headOn * 2.6;
+  const normal = 1 - 0.65 * headOn;
+  dieBumpImpulse.set(x * normal + sideways * rightX, DIE_NUDGE_LIFT, z * normal + sideways * rightZ);
+  body.applyImpulse(dieBumpImpulse.scale(body.mass, dieBumpImpulse));
+}
 const dice = [0, 1].map(() => {
   const body = dieBody();
   body.isDie = true;
@@ -1048,7 +1101,11 @@ const dice = [0, 1].map(() => {
   const obj = new THREE.Group(); obj.add(mesh); obj.visible = false; scene.add(obj);
   const d = { body, mesh, obj, mats, ship: null };
   body.addEventListener('collide', (e) => {
-    if (!roll || roll.done) return;
+    if (!roll) return;
+    if (roll.done) {
+      if (roll.pushable && e.body.ship?.movedSinceDiceStep) nudgeDie(body, e.body, e.contact);
+      return;
+    }
     if (e.body.ship && !d.ship) d.ship = e.body.ship;
     if (!roll.landed && !e.body.isDie && !e.body.isTable) {
       roll.landed = true;
@@ -1102,23 +1159,44 @@ function readDie(quat) {
 const MAX_TILT = 30;
 
 let roll = null;                // the throw in progress: { t, done, landed, onDone }
-function throwDice(q, onDone) {
+world.addEventListener('preStep', () => {
+  if (!roll?.pushable) return;
+  // After the solver, limit the speed of a settled die even if the hull catches it between frames.
+  for (const { body: { velocity } } of dice) {
+    const speed = Math.hypot(velocity.x, velocity.z);
+    if (speed > DIE_NUDGE_SPEED) {
+      velocity.x *= DIE_NUDGE_SPEED / speed;
+      velocity.z *= DIE_NUDGE_SPEED / speed;
+    }
+    velocity.y = Math.min(velocity.y, DIE_NUDGE_LIFT);
+  }
+});
+function prepareThrow() {
   syncBoardBodies(); syncShipBodies(true);
+  for (const d of dice) {
+    if (!world.bodies.includes(d.body)) world.addBody(d.body);
+    d.body.material = mDie;
+    if (d.body.fixedRotation) {
+      d.body.fixedRotation = false;
+      d.body.quaternion.set(0, 0, 0, 1);  // compute the cube's inertia before the launch pose is applied
+      d.body.updateMassProperties();
+    }
+    d.ship = null; tintDie(d, false); d.obj.visible = true;
+  }
+}
+function throwDice(q, onDone) {
+  prepareThrow();
   const plan = throwPlan(q);
   dice.forEach((d, k) => {
-    if (!world.bodies.includes(d.body)) world.addBody(d.body);
-    d.ship = null; tintDie(d, false); d.obj.visible = true;
     launch(d.body, plan[k].origin, plan[k].dir, plan[k].power);
     d.obj.position.copy(d.body.position); d.obj.quaternion.copy(d.body.quaternion);
   });
   roll = { t: 0, done: false, landed: false, onDone };
 }
 function flingDice(plan, onDone) {
-  syncBoardBodies(); syncShipBodies(true);
+  prepareThrow();
   dice.forEach((d, k) => {
     const p = plan[k], b = d.body;
-    if (!world.bodies.includes(b)) world.addBody(b);
-    d.ship = null; tintDie(d, false); d.obj.visible = true;
     b.position.set(p.origin.x, p.origin.y, p.origin.z);
     b.velocity.set(p.vel.x, p.vel.y, p.vel.z);
     b.angularVelocity.set(p.spin.x, p.spin.y, p.spin.z);
@@ -1142,10 +1220,24 @@ function readRoll(timedOut) {
     return r;
   });
 }
-function finishRoll(timedOut) {
+function finishDice(res) {
   roll.done = true;
-  const res = readRoll(timedOut);
   dice.forEach((d, i) => tintDie(d, !res[i].ok));
+  roll.pushable = res.every((r) => r.ok);
+  if (roll.pushable) {
+    syncBoardBodies();
+    for (const s of ships) s.movedSinceDiceStep = false;
+    for (const { body, obj } of dice) {
+      // An online throw ends at the last pose from the recording. Keep the counted face up.
+      body.position.copy(obj.position);
+      body.quaternion.copy(obj.quaternion);
+      body.material = mSettledDie;
+      body.fixedRotation = true;
+      body.updateMassProperties();
+      body.sleep();
+      if (!world.bodies.includes(body)) world.addBody(body);
+    }
+  }
   if (roll.onDone) roll.onDone(res);
 }
 // ---- an online throw is worked out once, by the thrower, and recorded: every screen then plays the same flight.
@@ -1198,19 +1290,29 @@ function stepPlayback(dt) {
 function finishPlayback() {
   const play = roll.play;
   poseDice(play, play.count);
-  roll.done = true;
-  dice.forEach((d, i) => tintDie(d, !play.res[i].ok));
-  if (roll.onDone) roll.onDone(play.res);
+  finishDice(play.res);
 }
 function stepDice(dt) {
-  if (!roll || roll.done) return;
-  if (roll.play) { stepPlayback(dt); return; }
-  syncShipBodies(false);
+  if (!roll) return;
+  if (roll.done) {
+    if (!roll.pushable || (!ships.some((s) => s.obj.visible && s.movedSinceDiceStep)
+      && dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING))) return;
+    syncShipBodies(true, true);
+  } else {
+    if (roll.play) { stepPlayback(dt); return; }
+    syncShipBodies(false);
+  }
+  const before = world.stepnumber;
   world.step(1 / 60, dt, 5);
-  roll.t += dt;
   for (const d of dice) { d.obj.position.copy(d.body.position); d.obj.quaternion.copy(d.body.quaternion); }
+  if (roll.done) {
+    // A fast display can render a frame before the next physics step is due.
+    if (world.stepnumber !== before) for (const s of ships) s.movedSinceDiceStep = false;
+    return;
+  }
+  roll.t += dt;
   const still = dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING);
-  if (still || roll.t > 12) finishRoll(!still);
+  if (still || roll.t > 12) finishDice(readRoll(!still));
 }
 function clearDice() {
   roll = null;
@@ -2695,8 +2797,9 @@ function stepShips(dt) {
     a.t = Math.min(1, a.t + dt / a.dur);
     const u = a.ease ? easeInOut(a.t) : a.t, i = animPoint(a, u, tmpV);
     a.segment = i;
+    if (a.hop) tmpV.y += Math.sin(Math.PI * a.t) * a.hop;
+    if (roll?.pushable && s.obj.position.distanceToSquared(tmpV) > 1e-8) s.movedSinceDiceStep = true;
     s.obj.position.copy(tmpV);
-    if (a.hop) s.obj.position.y += Math.sin(Math.PI * a.t) * a.hop;
     if (a.turn && a.t < 0.98) {
       const p0 = a.pts[i - 1], p1 = a.pts[i], dx = p1.x - p0.x, dz = p1.z - p0.z;
       if (Math.hypot(dx, dz) > 0.05) {
