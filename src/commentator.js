@@ -3,30 +3,30 @@
 // names, dice, routes. A line is spoken by the fleet whose turn it is, except where noted.
 // lines: { '<event>_<nation>': [variant text, ...] }, the clip <bucket>/<NN>.mp3 is variant NN.
 function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO }) {
-  // a variant of the bucket: the clip starts playing, its text comes back for the caption
-  function pick(q, event, interrupt) {
+  // Pick the caption variant and play its clip if the commentator is free.
+  function pick(q, event) {
     const bucket = `${event}_${q}`, list = lines[bucket] || [];
-    const idx = sound.speak(bucket, list.length, { interrupt });
+    const idx = sound.speak(bucket, list.length);
     return list.length ? list[idx % list.length] : '';
   }
   const detail = (t) => (t ? ` <span class="cap-detail">${t}</span>` : '');
   // the caption starts with the colour of the fleet whose narrator speaks
-  function line(q, event, { interrupt = false, lead = '', more = '', cls = '' } = {}) {
-    say(`${swatch(q)}${lead}${pick(q, event, interrupt)}${detail(more)}`, cls);
+  function line(q, event, { lead = '', more = '', cls = '' } = {}) {
+    say(`${swatch(q)}${lead}${pick(q, event)}${detail(more)}`, cls);
   }
 
   return {
     // voice of the fleet that moves first
     gameStart(q, rosterHTML) {
-      line(q, 'game_start', { interrupt: true, more: `На воде: ${rosterHTML}.` });
+      line(q, 'game_start', { more: `На воде: ${rosterHTML}.` });
     },
     // the player's first turn explains the throw; later turns only say whose turn it is
-    turnStart(q, nameHTML, interrupt, first) {
-      line(q, first ? 'turn_first' : 'turn', { interrupt, more: `(${nameHTML})`, cls: 'turn' });
+    turnStart(q, nameHTML, first) {
+      line(q, first ? 'turn_first' : 'turn', { more: `(${nameHTML})`, cls: 'turn' });
     },
     // the reason and the request to throw again are one line
     foulRetry(kind, whyText, q) {
-      line(q, `foul_${kind}`, { interrupt: true, more: `(${whyText})`, cls: 'bad' });
+      line(q, `foul_${kind}`, { more: `(${whyText})`, cls: 'bad' });
     },
     doubleBonus(q) {
       line(q, 'double_bonus', { cls: 'turn' });
@@ -35,12 +35,10 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
     // explainSix: the first time this player has no six while every ship is at the shipyard
     afterRollOrStep({ q, first, dice, leftV, o, detail: optionsText, prompt, explainSix }) {
       let lead = '';
-      let interrupt = first;
       if (first && dice) {
         const [a, b] = dice;
         if (a === b) {
-          lead = `${pick(q, 'roll_double', true)}${detail(`(${DIE_TWO[a]})`)} `;
-          interrupt = false;
+          lead = `${pick(q, 'roll_double')}${detail(`(${DIE_TWO[a]})`)} `;
         } else {
           lead = `На костях ${DIE_NOM[a]} и ${DIE_NOM[b]}. `;
         }
@@ -51,7 +49,7 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
           const event = !o.sailing && !o.held && !o.six
             ? (explainSix ? 'no_move_empty_first' : 'no_move_empty')
             : !o.six ? 'no_move_blocked' : 'no_move_with_six';
-          line(q, event, { interrupt, lead, cls: 'good' });
+          line(q, event, { lead, cls: 'good' });
         } else if (leftV) {
           line(q, o.held ? 'unspent_captured' : 'unspent_blocked', { more: `(осталась ${DIE_NOM[leftV]})` });
         }
@@ -65,31 +63,30 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
             : !o.movers ? 'opt_ransom_only'
               : first ? 'opt_sail_first' : 'opt_second_die';
       const more = [optionsText && `(${optionsText})`, prompt].filter(Boolean).join(' ');
-      line(q, event, { interrupt, lead, more, cls: first ? 'good' : '' });
+      line(q, event, { lead, more, cls: first ? 'good' : '' });
     },
     // q: the fleet of the ship that sails (on the jailer's six steps, the jailer)
     shipMove({ comp, q, fromHarbor, enteringParade, toBay, skippedNames, route, victimsText, hasVictims }) {
       const lead = comp ? 'Ответный трофейный ход! ' : '';
-      const interrupt = !comp;
       if (hasVictims) {
-        line(q, 'boarding', { interrupt, lead, more: `(${route}; в плену: ${victimsText})`, cls: 'cap' });
+        line(q, 'boarding', { lead, more: `(${route}; в плену: ${victimsText})`, cls: 'cap' });
       } else if (enteringParade) {
-        line(q, 'parade', { interrupt, lead, more: `(${route})` });
+        line(q, 'parade', { lead, more: `(${route})` });
       } else if (fromHarbor) {
-        line(q, 'harbor', { interrupt, lead, more: `(${route})` });
+        line(q, 'harbor', { lead, more: `(${route})` });
       } else if (toBay) {
-        line(q, 'move_bay', { interrupt, lead, more: `(${route})` });
+        line(q, 'move_bay', { lead, more: `(${route})` });
       } else if (skippedNames) {
-        line(q, 'move_bypass', { interrupt, lead, more: `(в обход ${skippedNames}; ${route})` });
+        line(q, 'move_bypass', { lead, more: `(в обход ${skippedNames}; ${route})` });
       } else {
-        line(q, 'sail', { interrupt, lead, more: `(${route})` });
+        line(q, 'sail', { lead, more: `(${route})` });
       }
     },
     repair(q) {
-      line(q, 'repair', { interrupt: true });
+      line(q, 'repair');
     },
     ransom(q, fromText, X) {
-      line(q, 'ransom', { interrupt: true, more: `(корабль возвращается ${fromText} на верфь; шесть шагов получает ${NAMES[X]})` });
+      line(q, 'ransom', { more: `(корабль возвращается ${fromText} на верфь; шесть шагов получает ${NAMES[X]})` });
     },
     // the jailer's six steps: voice of the jailer's fleet X
     compNone(X) {
@@ -107,7 +104,7 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
       else say(text, 'warn');
     },
     victory(q, nameHTML) {
-      line(q, 'victory', { interrupt: true, more: `(${nameHTML})`, cls: 'win' });
+      line(q, 'victory', { more: `(${nameHTML})`, cls: 'win' });
     },
   };
 }

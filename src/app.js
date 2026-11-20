@@ -2015,7 +2015,6 @@ function backToNames() {
 }
 function openSetup() {
   sound.stopSwimming();
-  sound.stopVoice();
   if (!game) sound.setMood(intro ? 'start' : 'calm');      // the menu's theme plays on until the game begins
   // a bot named after its style («Корсар», «Корсар 2») has no name of its own: in the next game it is named afresh
   const styleNamed = (p) => { const t = botStyleInfo(p.bot).title; return p.name === t || new RegExp(`^${t} \\d+$`).test(p.name); };
@@ -2248,7 +2247,7 @@ function startTurn(i) {
   select(null); renderTurn(); syncMusicMood();
   const introduced = (game.introduced ??= new Set()), first = !introduced.has(i);
   introduced.add(i);
-  announcer.turnStart(game.players[i].q, nameHTML(i), false, first && !isBot(i));   // a bot needs no lesson in throwing
+  announcer.turnStart(game.players[i].q, nameHTML(i), first && !isBot(i));          // a bot needs no lesson in throwing
   if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
 }
 
@@ -2324,7 +2323,6 @@ function fling(at, v) {
     const R = ROT[game.players[game.turn].q]; right.set(Math.cos(R), 0, -Math.sin(R));
   }
   const plan = swipeThrowPlan(at, v, right, dice.map((d) => d.obj.quaternion));
-  sound.stopVoice();
   if (online) { sendAction({ kind: 'throw', ...recordThrow(plan) }); return; }
   rollDice(plan);
 }
@@ -2775,7 +2773,7 @@ function applyAction(a) {
   return false;
 }
 function playThrow(a) {
-  cancelGrab(); sound.stopVoice();
+  cancelGrab();
   Object.assign(game, { phase: 'rolling', dice: null, acts: null, allActs: null });
   select(null, false); renderTurn();
   const res = a.res.map((r) => {
@@ -2961,9 +2959,8 @@ const onlineHandler = {
 // of the board) and chooses its moves with the brain of src/bot.js, in its style. A local game plays its bots here.
 // Online, the first connected player with the commentator on leads the bots, followed by the other listeners
 // and then the muted players in game order. Each backup waits longer for the server to relay a bot's decision.
-// A bot takes its time like a person: a moment before each throw and choice, and it listens to the commentator —
-// sometimes to the end of his line, sometimes only to the middle of it (its throw or move then cuts him short, as a
-// player's does). With the commentator off for everyone who watches, there is nothing to wait for: bots play at once.
+// A bot pauses before each throw and choice, sometimes waiting for the whole line, sometimes acting while it plays.
+// With the commentator off for everyone who watches, bots play at once.
 const brain = createBotBrain({ cells, harbors, shipyards, prisons });
 const BOT_PAUSE = { throw: 0.9, act: 0.8, show: 0.6 };   // s: before a throw, before a choice, the chosen ship shown
 const BOT_HEAR_OUT = 0.55;                               // how often a bot lets the commentator finish his line
@@ -3004,7 +3001,7 @@ function botTick(dt) {
   const late = BOT_BACKUP[Math.min(rank, BOT_BACKUP.length - 1)];
   const quick = botsHurry();
   if (quick) { if (b.t < late) return; } else {
-    // it listens to one line: the one being spoken (a line queued after it counts as the end of it)
+    // It listens to one line: a different clip means the one it heard has finished.
     const clip = sound.currentVoice;
     if (clip && !b.clip) b.clip = clip;
     const heard = clip == null ? null : clip !== b.clip ? 1 : sound.voiceProgress;
@@ -3039,7 +3036,6 @@ function botThrowPlan(q) {
 function botThrow() {
   const plan = botThrowPlan(game.players[game.turn].q);
   if (online) return net.act(online.applied, { kind: 'throw', ...recordThrow(plan), bot: controllerId() });
-  sound.stopVoice();                                       // a throw cuts the commentator short, as a player's does
   rollDice(plan);
   return true;
 }

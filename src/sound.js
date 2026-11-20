@@ -25,7 +25,7 @@ function createSoundDirector(manifest = {}) {
   }
 
   const liveEffects = new Set(), fading = new Set(), blocked = new Set();
-  const history = [], voiceHistory = [], voiceQueue = [];
+  const history = [], voiceHistory = [];
   let mood = null, music = null, musicGain = 0, currentTrack = null, musicPaused = false;
   let swim = null, swimmingWanted = false, voice = null, hadGame = false;
   // switched off by the player: nothing of that kind is played (captions still pick their variants)
@@ -33,16 +33,15 @@ function createSoundDirector(manifest = {}) {
   // quiet: a game being caught up at once (an online game rejoined) makes no sound at all; captions still pick variants
   let quiet = false;
 
-  function safePlay(a) {
+  function safePlay(a, onError) {
+    const failed = (err) => {
+      if (a.dataset.stopped) return;
+      if (onError) onError();
+      else if (err?.name === 'NotAllowedError') blocked.add(a);
+    };
     try {
-      const p = a.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch((err) => {
-          if (a.dataset.stopped) return;
-          if (err && err.name === 'NotAllowedError') blocked.add(a);
-        });
-      }
-    } catch { /* audio unavailable */ }
+      a.play()?.catch(failed);
+    } catch (err) { failed(err); }
   }
 
   function unlock() {
@@ -155,29 +154,25 @@ function createSoundDirector(manifest = {}) {
   }
 
   function stopVoice() {
-    voiceQueue.length = 0;
     if (!voice) return;
     stopAudio(voice);
     voice = null;
   }
 
-  function playNextVoice() {
-    if (voice || !voiceQueue.length) return;
-    const url = voiceQueue.shift();
+  function playVoice(url) {
     const a = new Audio(url);
     a.volume = volumes.commentator;
     voice = a;
-    const next = () => {
-      if (voice !== a) return;
-      voice = null;
-      playNextVoice();
+    const done = () => {
+      if (voice === a) voice = null;
     };
-    a.addEventListener('ended', next);
-    a.addEventListener('error', next);
-    safePlay(a);
+    a.addEventListener('ended', done);
+    a.addEventListener('error', done);
+    // A blocked clip is dropped so a later gesture cannot replay an old event.
+    safePlay(a, done);
   }
 
-  function speak(bucket, variantCount = 0, { interrupt = false } = {}) {
+  function speak(bucket, variantCount = 0) {
     let list = voicePools.get(bucket);
     if ((!list || !list.length) && variantCount > 0) {
       list = Array.from({ length: variantCount }, (_, idx) => ({ url: null, idx, plays: 0 }));
@@ -192,12 +187,7 @@ function createSoundDirector(manifest = {}) {
     voiceHistory.push({ bucket, idx: chosen.idx, url: chosen.url, plays: chosen.plays });
     if (voiceHistory.length > 300) voiceHistory.shift();
 
-    if (interrupt) stopVoice();
-    if (chosen.url && !muted.commentator && !quiet) {
-      while (voiceQueue.length >= 2) voiceQueue.shift();
-      voiceQueue.push(chosen.url);
-      playNextVoice();
-    }
+    if ((!voice || voice.ended) && chosen.url && !muted.commentator && !quiet) playVoice(chosen.url);
     return chosen.idx;
   }
 
@@ -287,13 +277,13 @@ function createSoundDirector(manifest = {}) {
     get mood() { return mood; },
     get muted() { return { ...muted }; },
     get swimming() { return swimmingWanted && Boolean(swim); },
-    get speaking() { return Boolean(voice); },
-    // how much of the line being spoken has been said, 0…1; null while he is silent (or the browser holds the clip back)
+    get speaking() { return Boolean(voice && !voice.ended); },
+    // how much of the line being spoken has been said, 0…1; null while he is silent
     get voiceProgress() {
-      if (!voice || blocked.has(voice)) return null;
+      if (!voice || voice.ended) return null;
       return voice.duration > 0 ? Math.min(1, voice.currentTime / voice.duration) : 0;
     },
-    get currentVoice() { return voice ? voice.src : null; },
+    get currentVoice() { return voice && !voice.ended ? voice.src : null; },
     get currentMusic() { return currentTrack ? currentTrack.url : null; },
     get musicVolume() { return music ? music.volume : 0; },
   };
