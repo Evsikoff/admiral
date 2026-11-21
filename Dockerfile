@@ -2,6 +2,7 @@
 # Northflank: a combined/deployment service built from this Dockerfile, ONE instance (tables live in memory),
 # public HTTP port 8080 (WebSocket at /ws goes through the same port), health check GET /healthz.
 # Optional: TURN_SECONDS — the time for a decision in a game (60 by default, at least 15).
+# VK payments: set VK_APP_ID, VK_APP_SECRET, and VK_PAYMENTS_DB_PATH on a persistent volume.
 
 # 1) the page: tools/build.py puts the sources, the board data, the engine and the ship models into admiral-3d.html
 FROM python:3.12-slim AS page
@@ -22,6 +23,6 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY server server
 COPY assets assets
 COPY --from=page /app/admiral-3d.html ./
-USER node
+USER node:node
 EXPOSE 8080
 CMD ["node", "server/server.js"]

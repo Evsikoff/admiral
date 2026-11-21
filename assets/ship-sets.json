@@ -22,7 +22,7 @@
       "intact": "assets/models/sailing-ship.glb",
       "wreck": "assets/models/sailing-ship-wreck.glb"
     },
-    "basePriceVk": 1000,
+    "basePriceVk": 100,
     "winDiscountPercentByPlayerCount": {
       "2": 30,
       "3": 40,

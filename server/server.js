@@ -8,12 +8,29 @@ import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.js';
+import { createPaymentsHandler } from './payments.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PAGE = path.join(ROOT, 'admiral-3d.html');
 const ASSETS = path.join(ROOT, 'assets');
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
+
+const appId = process.env.VK_APP_ID;
+const appSecret = process.env.VK_APP_SECRET;
+const databasePath = process.env.VK_PAYMENTS_DB_PATH;
+let handlePayments;
+if (appId && appSecret && databasePath) {
+  try {
+    const catalog = JSON.parse(fs.readFileSync(path.join(ASSETS, 'ship-sets.json'), 'utf8'));
+    handlePayments = await createPaymentsHandler({
+      appId, appSecret, databasePath, catalog, publicOrigin: process.env.VK_PUBLIC_ORIGIN,
+    });
+  } catch (error) {
+    console.error('VK payments are disabled:', error.message);
+  }
+}
+handlePayments ??= await createPaymentsHandler();
 
 // only what the page loads is served: nothing else in the repository (tools, keys, sources) leaves the server
 const TYPES = {
@@ -83,8 +100,9 @@ function notFound(res) { res.writeHead(404, { 'content-type': 'text/plain; chars
 // the time for a decision in a game, in seconds (TURN_SECONDS, at least 15; 60 by default)
 const lobby = new Lobby({ turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
 const server = http.createServer((req, res) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   const urlPath = (req.url || '/').split('?')[0];
+  if (urlPath === '/vk/payments' || urlPath === '/vk/purchases') return handlePayments(req, res);
+  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/admiral-3d.html') return sendPage(req, res);
   if (urlPath.startsWith('/assets/')) return sendAsset(req, res, urlPath);
   if (urlPath === '/healthz') {
@@ -129,6 +147,11 @@ const heartbeat = setInterval(() => {
 server.listen(PORT, HOST, () => {
   console.log(`Admiral: http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}/  (page ${loadPage() ? 'ready' : 'NOT BUILT — run python tools/build.py'})`);
 });
-const stop = () => { clearInterval(heartbeat); wss.close(); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); };
+const stop = () => {
+  clearInterval(heartbeat);
+  wss.close();
+  server.close(() => { handlePayments.close(); process.exit(0); });
+  setTimeout(() => process.exit(0), 3000).unref();
+};
 process.on('SIGTERM', stop);
 process.on('SIGINT', stop);
