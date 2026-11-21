@@ -1,0 +1,32 @@
+[
+  {
+    "id": "basic",
+    "name": "Базовые корабли",
+    "iconUrl": "/assets/ship-sets/basic.png",
+    "models": {
+      "intact": "kenney_pirate-kit_2.1/Models/GLB format/ship-medium.glb",
+      "wreck": "kenney_pirate-kit_2.1/Models/GLB format/ship-wreck.glb"
+    },
+    "basePriceVk": 0,
+    "winDiscountPercentByPlayerCount": {
+      "2": 0,
+      "3": 0,
+      "4": 0
+    }
+  },
+  {
+    "id": "super",
+    "name": "Суперкорабли",
+    "iconUrl": "/assets/ship-sets/super.png",
+    "models": {
+      "intact": "assets/models/sailing-ship.glb",
+      "wreck": "assets/models/sailing-ship-wreck.glb"
+    },
+    "basePriceVk": 1000,
+    "winDiscountPercentByPlayerCount": {
+      "2": 30,
+      "3": 40,
+      "4": 50
+    }
+  }
+]
