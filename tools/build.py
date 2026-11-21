@@ -106,7 +106,7 @@ html = html.replace('/*__ASSET_DATA__*/', 'window.ADMIRAL.preload = ' + json.dum
 # the start screen, the intro films, the main menu and its online club work before (and without) the 3D map;
 # so do the names of the bots' styles, which the club shows at its tables
 intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
-                  for name in ('assets.js', 'bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
+                  for name in ('assets.js', 'vk.js', 'bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
 intro = intro.replace('/*__RULES_DATA__*/ null', json.dumps(rules_data, ensure_ascii=False).replace('<', '\\u003c'))
 html = html.replace('/*__INTRO__*/', intro)
 (root / 'admiral-3d.html').write_text(html, encoding='utf8')

@@ -64,7 +64,16 @@
     } catch { /* no storage */ }
     return '';
   }
-  nameInput.value = savedName().slice(0, 20);
+  const vkName = () => window.isVKApp ? window.vkUserName : '';
+  function applyVKName() {
+    const name = vkName();
+    if (!name) return '';
+    nameInput.value = name;
+    nameInput.readOnly = true;
+    nameInput.title = 'Имя из профиля VK';
+    return name;
+  }
+  nameInput.value = (applyVKName() || savedName()).slice(0, 20);
   // whether this player hears the commentator: the others' bots play at once when nobody at the table does
   function savedVoiceOn() {
     try { return JSON.parse(localStorage.getItem(AUDIO_KEY))?.commentator !== true; } catch { return true; }
@@ -119,7 +128,7 @@
       case 'welcome':
         me = m.id; token = m.token;
         try { sessionStorage.setItem(TOKEN_KEY, token); } catch { /* no storage */ }
-        if (m.name && m.name !== nameInput.value.trim()) nameInput.value = m.name;
+        if (!window.isVKApp && m.name && m.name !== nameInput.value.trim()) nameInput.value = m.name;
         return;
       case 'tables': tables = m.list; renderList(); return;
       case 'table': {
@@ -259,13 +268,14 @@
   let nameTimer = 0;
   function saveName() {
     clearTimeout(nameTimer);
-    const name = nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 20);
+    const name = vkName() || nameInput.value.replace(/\s+/g, ' ').trim().slice(0, 20);
     try { localStorage.setItem(NAME_KEY, name); } catch { /* no storage */ }
     if (name) send({ t: 'name', name });
   }
   nameInput.addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(saveName, 700); });
   nameInput.addEventListener('change', saveName);
   nameInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); saveName(); nameInput.blur(); } });
+  window.addEventListener('admiral:vk-user', () => { applyVKName(); saveName(); });
 
   function renderTable() {
     if (!table) return;

@@ -2071,6 +2071,14 @@ const FLAG_URL = Object.fromEntries(NATIONS.map((q) => [q, flagTex[q].image.toDa
 const intro = window.AdmiralIntro || null;
 // draft: { names: [...], bots: [null | style, ...], players: [{ name, q, bot }] once drawn }
 let draft = null, setupBack = null;
+const localVKName = () => window.isVKApp ? window.vkUserName : '';
+function applyVKSeat() {
+  const name = localVKName();
+  if (!name || !draft) return;
+  draft.names[0] = name;
+  draft.bots[0] = null;
+  if (draft.players) draft.players[0] = { ...draft.players[0], name, bot: null };
+}
 
 // the seats of the last game: names, and the style of each bot (null: a person plays)
 function savedSeats() {
@@ -2121,6 +2129,11 @@ function renderNames(focus) {
     };
     input.value = name;
     kind.value = draft.bots[i] || '';
+    if (i === 0 && localVKName()) {
+      input.readOnly = true;
+      input.title = 'Имя из профиля VK';
+      kind.disabled = true;
+    }
     input.addEventListener('input', () => { draft.names[i] = input.value; });
     kind.addEventListener('change', () => { draft.bots[i] = kind.value || null; show(); });
     show();
@@ -2136,6 +2149,7 @@ function setPlayerCount(n) {
 }
 // the draw: every player gets a side; the board behind shows the sides in play at once
 function drawLots() {
+  applyVKSeat();
   const qs = drawSides(draft.names.length), taken = draft.names.map((name) => name.trim());
   draft.players = draft.names.map((name, i) => {
     const bot = draft.bots[i] || null;
@@ -2172,6 +2186,7 @@ function openSetup() {
     ? { names: game.players.map((p) => (p.bot && styleNamed(p) ? '' : p.name)), bots: game.players.map((p) => p.bot || null) }
     : savedSeats();
   draft.players = null;
+  applyVKSeat();
   setupBack = game ? { pos: camera.position.clone(), target: controls.target.clone(), shot:cameraShot, selected,
     turn:game.turn, phase:game.phase, acts:game.acts } : null;
   setupCancel.hidden = !game && !intro;
@@ -2183,6 +2198,20 @@ function openSetup() {
   renderNames('#setup-draw');
   applyFrame(); view('top', !game);
 }
+window.addEventListener('admiral:vk-user', () => {
+  if (!draft || setupEl.hidden) return;
+  const drawn = !!draft.players;
+  applyVKSeat();
+  const seat = setupPlayersEl.querySelector('.pl-seat');
+  const input = seat?.querySelector('.pl-name'), kind = seat?.querySelector('.pl-kind');
+  if (input) {
+    input.value = localVKName(); input.readOnly = true; input.title = 'Имя из профиля VK';
+    kind.value = ''; kind.disabled = true;
+    seat.classList.remove('bot');
+    const about = seat.querySelector('.pl-about'); about.hidden = true; about.textContent = '';
+  }
+  if (drawn) setupLotList.querySelector('.lot-name').textContent = localVKName();
+});
 function closeSetup() {
   document.body.classList.remove('setup-open'); setupEl.hidden = true;
   if (game) renderRoll();
