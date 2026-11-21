@@ -24,8 +24,15 @@
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // stage: start → loading → films → menu ⇄ local; menu ⇄ online (the club) → online-game
-  const api = { stage: 'start', showMenu, enterGame, backFromClub, setResume, openClubFromStart };
+  const api = { stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart };
   window.AdmiralIntro = api;
+  function enterFullscreen() {
+    if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    try {
+      const request = document.documentElement.requestFullscreen();
+      request?.catch?.(() => {});
+    } catch { /* the game still starts if fullscreen is unavailable */ }
+  }
   const emit = (name) => window.dispatchEvent(new CustomEvent(name));
 
   // ---- layers: shown and hidden by fading; a hidden layer is out of the page (and of the keyboard's way)

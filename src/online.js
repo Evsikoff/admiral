@@ -346,6 +346,7 @@
   function stopCountdown() { clearInterval(countdownTimer); countdownTimer = 0; }
   readyBtn.addEventListener('click', () => {
     const mine = table?.players.find((p) => p.id === me);
+    if (!mine?.ready) intro.enterFullscreen();
     send({ t: 'ready', on: !mine?.ready });
   });
   leaveBtn.addEventListener('click', () => send({ t: 'leave' }));
@@ -380,6 +381,7 @@
   function beginGame() {
     clearTimeout(drawTimer);
     if (!game) return;
+    intro.enterFullscreen();
     closeClub();
     intro.enterGame('online-game');
     pendingStart = game;

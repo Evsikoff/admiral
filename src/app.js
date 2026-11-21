@@ -437,12 +437,17 @@ for (const q of NATIONS) {
   const z = Z.nations[q];
   const g = new THREE.Group(); decor.add(g);
   const roofMat = new THREE.MeshStandardMaterial({ color: z.roof, roughness: 0.7 });
-  const wall = z.wall, WH = 0.36, WT = 0.12;
+  const wallMat = q === 'nl'
+    ? new THREE.MeshStandardMaterial({ color: 0xc58c70, map: masonry, roughness: 0.92 })
+    : q === 'se'
+      ? new THREE.MeshStandardMaterial({ color: 0xeee0b5, map: masonry, roughness: 0.88 })
+      : stoneMat;
+  const wall = z.wall, WH = q === 'se' ? 0.42 : q === 'nl' ? 0.3 : 0.36, WT = q === 'nl' ? 0.16 : 0.12;
   for (let i = 0; i < wall.length; i++) {
     const [ax, ay] = wall[i], [bx, by] = wall[(i + 1) % wall.length];
     const x1 = wx(ax), z1 = wz(ay), x2 = wx(bx), z2 = wz(by);
     const L = Math.hypot(x2 - x1, z2 - z1), ang = Math.atan2(z2 - z1, x2 - x1);
-    const w = shadowy(new THREE.Mesh(new THREE.BoxGeometry(L + WT, WH + 0.25, WT), stoneMat));
+    const w = shadowy(new THREE.Mesh(new THREE.BoxGeometry(L + WT, WH + 0.25, WT), wallMat));
     const faceUV=w.geometry.attributes.uv, pos=w.geometry.attributes.position, normal=w.geometry.attributes.normal;
     for (let j=0;j<faceUV.count;j++) {
       const u=Math.abs(normal.getX(j))>0.5?pos.getZ(j):pos.getX(j);
@@ -460,21 +465,48 @@ for (const q of NATIONS) {
   }
   for (const [tx, ty, s] of z.towers) {
     const r = 0.22 * s, h = 0.95 * s, x = wx(tx), zz = wz(ty);
-    const body = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.08, h, 16), stoneMat));
-    const towerUV=body.geometry.attributes.uv;
-    for (let j=0;j<towerUV.count;j++) towerUV.setXY(j,towerUV.getX(j)*Math.max(1,Math.round(2*Math.PI*r/1.10)),towerUV.getY(j)*h/0.76);
-    body.position.set(x, COURT_H - 0.25 + h / 2, zz); g.add(body); collCyl(x, body.position.y, zz, r * 1.12, r * 1.08, h);
-    const ring = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(r * 1.12, r * 1.12, 0.07, 16), stoneDark));
-    ring.position.set(x, COURT_H - 0.25 + h, zz); g.add(ring);
-    if (q === 'en') {
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2;
-        merlonMats.push(new THREE.Matrix4().compose(new THREE.Vector3(x + Math.cos(a) * r, COURT_H - 0.25 + h + 0.07, zz + Math.sin(a) * r),
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2 - a), new THREE.Vector3(1.1, 1.3, 1.1)));
-      }
+    const top = COURT_H - 0.25 + h;
+    if (q === 'se') {
+      const body = shadowy(new THREE.Mesh(new THREE.BoxGeometry(r * 2, h, r * 2), wallMat));
+      body.position.set(x, COURT_H - 0.25 + h / 2, zz); g.add(body);
+      collBox(x, body.position.y, zz, r * 2, h, r * 2);
+      const ring = shadowy(new THREE.Mesh(new THREE.BoxGeometry(r * 2.28, 0.09, r * 2.28), stoneDark));
+      ring.position.set(x, top, zz); g.add(ring);
+      const roofH = 0.72 * s;
+      const roof = shadowy(new THREE.Mesh(new THREE.ConeGeometry(r * 1.62, roofH, 4), roofMat));
+      roof.rotation.y = Math.PI / 4; roof.position.set(x, top + 0.04 + roofH / 2, zz); g.add(roof);
+      collCyl(x, roof.position.y, zz, 0.02, r * 1.62, roofH);
+      const spire = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.2 * s, 6), goldMat));
+      spire.position.set(x, top + roofH + 0.1 * s, zz); g.add(spire);
     } else {
-      const roof = shadowy(new THREE.Mesh(new THREE.ConeGeometry(r * 1.35, 0.55 * s, 16), roofMat));
-      roof.position.set(x, COURT_H - 0.25 + h + 0.03 + 0.275 * s, zz); g.add(roof); collCyl(x, roof.position.y, zz, 0.02, r * 1.35, 0.55 * s);
+      const sides = q === 'nl' ? 12 : 16;
+      const body = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.08, h, sides), wallMat));
+      const towerUV=body.geometry.attributes.uv;
+      for (let j=0;j<towerUV.count;j++) towerUV.setXY(j,towerUV.getX(j)*Math.max(1,Math.round(2*Math.PI*r/1.10)),towerUV.getY(j)*h/0.76);
+      body.position.set(x, COURT_H - 0.25 + h / 2, zz); g.add(body); collCyl(x, body.position.y, zz, r * 1.12, r * 1.08, h);
+      const ring = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(r * 1.12, r * 1.12, 0.07, sides), stoneDark));
+      ring.position.set(x, top, zz); g.add(ring);
+      if (q === 'en') {
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          merlonMats.push(new THREE.Matrix4().compose(new THREE.Vector3(x + Math.cos(a) * r, COURT_H - 0.25 + h + 0.07, zz + Math.sin(a) * r),
+            new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2 - a), new THREE.Vector3(1.1, 1.3, 1.1)));
+        }
+      } else {
+        const roofH = (q === 'nl' ? 0.38 : 0.55) * s;
+        const roof = shadowy(new THREE.Mesh(new THREE.ConeGeometry(r * (q === 'nl' ? 1.48 : 1.35), roofH, sides), roofMat));
+        roof.position.set(x, top + 0.03 + roofH / 2, zz); g.add(roof);
+        collCyl(x, roof.position.y, zz, 0.02, r * (q === 'nl' ? 1.48 : 1.35), roofH);
+        if (q === 'ru') {
+          const finial = shadowy(new THREE.Mesh(new THREE.SphereGeometry(0.035 * s, 8, 6), goldMat));
+          finial.position.set(x, top + 0.04 + roofH, zz); g.add(finial);
+        } else {
+          const eave = shadowy(new THREE.Mesh(new THREE.TorusGeometry(r * 1.4, 0.025, 6, 24), stoneDark));
+          eave.rotation.x = Math.PI / 2; eave.position.set(x, top + 0.04, zz); g.add(eave);
+          const lantern = shadowy(new THREE.Mesh(new THREE.CylinderGeometry(0.045 * s, 0.055 * s, 0.13 * s, 8), wallMat));
+          lantern.position.set(x, top + roofH + 0.065 * s, zz); g.add(lantern);
+        }
+      }
     }
   }
   // a few buildings inside the walls
@@ -485,11 +517,21 @@ for (const q of NATIONS) {
     const bx = lerp(cx, vx, 0.72), by = lerp(cy, vy, 0.72);
     const ang = Math.atan2(vy - cy, vx - cx);
     const house = new THREE.Group();
-    const w = 0.42 + 0.1 * n, d = 0.26, hh = 0.24;
-    const walls = shadowy(new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), stoneMat)); walls.position.y = hh / 2; house.add(walls);
-    const roof = shadowy(new THREE.Mesh(prismGeo(), roofMat)); roof.scale.set(w * 1.06, 0.18, d * 1.12); roof.position.y = hh; house.add(roof);
+    const w = q === 'se' ? 0.34 + 0.09 * n : q === 'nl' ? 0.46 + 0.08 * n : 0.42 + 0.1 * n;
+    const d = q === 'se' ? 0.3 : q === 'nl' ? 0.3 : 0.26;
+    const hh = q === 'se' ? 0.34 : q === 'nl' ? 0.3 : 0.24;
+    const roofH = q === 'se' ? 0.32 : q === 'nl' ? 0.2 : 0.18;
+    const walls = shadowy(new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), wallMat)); walls.position.y = hh / 2; house.add(walls);
+    const roof = shadowy(new THREE.Mesh(prismGeo(), roofMat)); roof.scale.set(w * 1.06, roofH, d * 1.12); roof.position.y = hh; house.add(roof);
+    if (q === 'nl') {
+      for (const side of [-1, 1]) for (let step = 0; step < 3; step++) {
+        const gable = shadowy(new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.08, d * (1 - step * 0.28)), wallMat));
+        gable.position.set(side * (w / 2 + 0.025), hh + 0.04 + step * 0.065, 0); house.add(gable);
+      }
+    }
     house.position.set(wx(bx), COURT_H - 0.01, wz(by)); house.rotation.y = -ang + Math.PI / 2;
-    g.add(house); collBox(wx(bx), COURT_H - 0.01 + (hh + 0.12) / 2, wz(by), w, hh + 0.12, d, -ang + Math.PI / 2);
+    const collisionH = q === 'en' ? hh + 0.12 : hh + roofH;
+    g.add(house); collBox(wx(bx), COURT_H - 0.01 + collisionH / 2, wz(by), w, collisionH, d, -ang + Math.PI / 2);
   });
   if (q === 'ru') {   // the church with a golden dome, as on the picture
     const [chx, chy] = [796, 1003];
@@ -2162,6 +2204,7 @@ function cancelSetup() {
 }
 function startGame() {
   if (!draft.players) return;
+  intro?.enterFullscreen();
   const players = draft.players;
   // what was typed is kept, not the names the bots were given by the draw
   try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: draft.names.map((n) => n.trim()), bots: draft.bots })); } catch { /* no storage */ }
