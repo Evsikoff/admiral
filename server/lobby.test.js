@@ -83,6 +83,38 @@ test('un-ready or leaving during the countdown stops it', () => {
   assert.equal(a.last('start'), undefined);
 });
 
+test('asset progress is visible at the table and the countdown waits for every player', () => {
+  const { lobby, advance, client } = setup();
+  const a = client('Анна'), b = client('Борис'), watcher = client('Вера');
+  watcher.say({ t: 'watch', on: true });
+  a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'assets', progress: 42 });
+  assert.equal(b.last('table').table.players[0].assets, 42);
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  assert.equal(a.last('table').table.status, 'waiting');
+  advance(COUNTDOWN_MS);
+  assert.equal(a.last('start'), undefined);
+  a.say({ t: 'assets', progress: 100 });
+  assert.equal(a.last('table').table.status, 'countdown');
+  advance(60);
+  assert.equal(watcher.last('tables').list[0].status, 'countdown');
+  b.say({ t: 'assets', progress: 99 });
+  assert.equal(a.last('table').table.status, 'waiting', 'loading again cancels the countdown');
+  advance(60);
+  assert.equal(watcher.last('tables').list[0].status, 'waiting');
+  b.say({ t: 'assets', progress: 101 });
+  assert.equal(a.last('table').table.players[1].assets, 99, 'invalid progress is ignored');
+  b.say({ t: 'assets', progress: 100 });
+  advance(COUNTDOWN_MS);
+  assert.deepEqual(a.last('start').assets, { [a.p.id]: 100, [b.p.id]: 100 });
+  a.say({ t: 'assets', progress: 80 });
+  assert.deepEqual(b.last('assets'), { t: 'assets', id: a.p.id, progress: 80 });
+  lobby.disconnect(b.p, b.conn);
+  const inbox = [];
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token, assets: 100 });
+  assert.equal(inbox.find((m) => m.t === 'game').assets[a.p.id], 80, 'a rejoined player gets the latest progress');
+});
+
 test('a full table leaves the list at once', () => {
   const { advance, client } = setup();
   const w = client('W'); w.say({ t: 'watch', on: true });

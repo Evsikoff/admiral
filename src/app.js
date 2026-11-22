@@ -2231,14 +2231,20 @@ function cancelSetup() {
     else flyTo(setupBack.target, setupBack.pos.clone().sub(setupBack.target));
   } else if (game.acts?.size) autoSelect(); else view(moverQ());
 }
-function startGame() {
-  if (!draft.players) return;
-  intro?.enterFullscreen();
+let startingGame = false;
+async function startGame() {
+  if (!draft.players || startingGame) return;
   const players = draft.players;
-  // what was typed is kept, not the names the bots were given by the draw
-  try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: draft.names.map((n) => n.trim()), bots: draft.bots })); } catch { /* no storage */ }
-  closeSetup();
-  newGame(players);
+  startingGame = true; setupStart.disabled = true;
+  try {
+    intro?.enterFullscreen();
+    if (intro) await intro.prepareGame();
+    if (!setupIsOpen() || draft.players !== players) return;
+    // what was typed is kept, not the names the bots were given by the draw
+    try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: draft.names.map((n) => n.trim()), bots: draft.bots })); } catch { /* no storage */ }
+    closeSetup();
+    newGame(players);
+  } finally { startingGame = false; setupStart.disabled = false; }
 }
 setupCountEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setPlayerCount(+b.dataset.n)));
 setupDraw.addEventListener('click', drawLots);
@@ -2404,6 +2410,11 @@ function renderWho() {
     if (p.id === online.me) html = `${reply ? 'Трофейные 6 шагов · ваш выбор' : 'Ваш ход'} · ${swatch(p.q)}<b>${NAMES[p.q]}</b>`;
     else if (online.presence[p.id] === 'offline') html += ' <span class="who-away">· нет связи</span>';
     else if (online.presence[p.id] === 'left') html += ' <span class="who-away">· вне игры</span>';
+  }
+  if (online && ph !== 'over') {
+    const loading = game.players.filter((p) => !p.bot && p.id !== online.me
+      && online.presence[p.id] === 'online' && online.assets[p.id] < 100);
+    if (loading.length) html += `<span class="who-loading">Загрузка ресурсов: ${loading.map((p) => `${escHTML(p.name)} — ${online.assets[p.id]}%`).join(', ')}</span>`;
   }
   if (online && !net.connected) html += ' <span class="who-away">· нет связи с сервером</span>';
   if (online?.clock && ph !== 'over') {
@@ -3027,7 +3038,7 @@ function startOnline(g) {
   if (setupIsOpen()) closeSetup();
   online = { no: g.no, me: g.me, applied: 0, queue: [], presence: { ...g.presence }, dirty: false,
     stallKey: '', stallAt: 0, skipKey: '', turnKey: '', turnAt: 0, turnMs: g.turnMs || 0, clock: '', clockLow: false,
-    linked: true, hasBots: g.players.some((p) => p.bot), voice: { ...(g.voice || {}) } };          // voice: { id: whether that player hears the commentator }
+    linked: true, hasBots: g.players.some((p) => p.bot), voice: { ...(g.voice || {}) }, assets: { ...(g.assets || {}) } };
   syncNewButton();
   const log = g.log || [];
   if (!log.length) { newGame(g.players); return; }
@@ -3054,6 +3065,7 @@ function resyncOnline(g) {
   if (!online || g.no !== online.no || online.dirty || g.log.length < online.applied) { startOnline(g); return; }
   online.presence = { ...g.presence };
   if (g.voice) online.voice = { ...g.voice };
+  if (g.assets) online.assets = { ...g.assets };
   if (g.turnMs) online.turnMs = g.turnMs;
   for (let n = online.applied; n < g.log.length; n++) if (!online.queue.some((m) => m.n === n)) online.queue.push({ n, a: g.log[n] });
   online.queue.sort((x, y) => x.n - y.n);
@@ -3136,6 +3148,7 @@ const onlineHandler = {
   },
   presence: presenceOnline,
   voice(m) { if (online) online.voice[m.id] = m.on; },   // a player switched the commentator on or off
+  assets(m) { if (online) { online.assets[m.id] = m.progress; if (game) renderWho(); } },
   state: resyncOnline,
   reject(m) {
     if (!online || m.kind === 'skip') return;                 // somebody else skipped that decision first

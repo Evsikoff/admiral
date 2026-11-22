@@ -2,7 +2,7 @@
 // The server does not know the rules of the game. Every client runs the same game; the server keeps the order:
 // it numbers the actions of a game, keeps them (a player who comes back replays them) and passes them on.
 // It draws the sides, and it knows who is still at the table: a player who has gone may have their turns skipped,
-// and so may a player who takes longer than the time for a turn.
+// and so may a player who takes longer than the time for a turn. A countdown waits for every player's assets to reach 100%.
 // A table may have bots in its free seats. A bot has no connection: one of the players' screens plays it (app.js)
 // and sends its decisions with the bot's id; the server only checks that the bot plays in that game.
 import { randomBytes, randomInt } from 'node:crypto';
@@ -83,11 +83,12 @@ export class Lobby {
     } else {
       let id; do id = randomBytes(4).toString('hex'); while (this.byId.has(id));
       p = { id, token: randomBytes(16).toString('hex'), name: '', conn: null, table: null, ready: false, watching: false, forget: null,
-        voice: true };
+        voice: true, assets: 100 };
       this.players.set(p.token, p); this.byId.set(id, p);
     }
     p.conn = conn;
     if (typeof msg.voice === 'boolean') this.setVoice(p, msg.voice);
+    if (isInt(msg.assets, 0, 100)) this.setAssets(p, msg.assets);
     const name = cleanName(msg.name);
     if (name && !(p.table && p.table.status === 'playing')) p.name = name;
     if (!p.name) p.name = `Капитан ${p.id.slice(0, 3).toUpperCase()}`;
@@ -154,6 +155,7 @@ export class Lobby {
       case 'act': return this.act(p, msg);
       case 'sync': if (p.table?.status === 'playing') p.conn?.send(this.gameState(p.table, p)); return;
       case 'voice': return this.setVoice(p, !!msg.on);
+      case 'assets': return this.setAssets(p, msg.progress);
       default:
     }
   }
@@ -224,8 +226,9 @@ export class Lobby {
   seat(p, table) {
     if (p.table && p.table !== table) this.leaveTable(p);
     p.table = table; p.online = !!p.conn;
-    // a player who sits down during the countdown plays too: the countdown goes on
-    p.ready = table.status === 'countdown';
+    // a player who sits down during the countdown plays too, once their assets are ready
+    p.ready = table.status === 'countdown' && p.assets === 100;
+    if (table.status === 'countdown' && p.assets < 100) this.cancelCountdown(table);
     if (!table.players.includes(p)) table.players.push(p);
     this.sendTable(table); this.listChanged();
   }
@@ -239,7 +242,7 @@ export class Lobby {
   }
   checkStart(table) {
     if (table.status !== 'waiting' || seats(table) < 2) return;
-    if (!table.players.every((p) => p.ready && p.conn)) return;
+    if (!table.players.every((p) => p.ready && p.conn && p.assets === 100)) return;
     table.status = 'countdown';
     table.startsAt = this.now() + COUNTDOWN_MS;
     table.timer = this.timers.set(() => { table.timer = null; this.begin(table); }, COUNTDOWN_MS);
@@ -271,7 +274,7 @@ export class Lobby {
     return {
       no: table.no, private: table.private, code: table.players.includes(viewer) ? table.code : null,
       status: table.status, startsIn: table.status === 'countdown' ? Math.max(0, table.startsAt - this.now()) : 0,
-      players: table.players.map((o) => ({ id: o.id, name: o.name, ready: o.ready, online: !!o.conn })),
+      players: table.players.map((o) => ({ id: o.id, name: o.name, ready: o.ready, online: !!o.conn, assets: o.assets })),
       bots: table.bots.map((b) => ({ id: b.id, name: b.name, style: b.style })),
     };
   }
@@ -333,14 +336,32 @@ export class Lobby {
       lastAt: this.now(), bots: new Set(table.bots.map((b) => b.id)),
     };
     for (const p of table.players) p.ready = false;
-    const voice = this.voiceOf(table);
-    for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice });
+    const voice = this.voiceOf(table), assets = this.assetsOf(table);
+    for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice, assets });
     this.listChanged();
   }
   gameState(table, p) {
     const g = table.game;
     return { t: 'game', no: table.no, players: g.players, log: g.log, presence: Object.fromEntries(g.presence), me: p.id,
-      turnMs: this.turnMs, voice: this.voiceOf(table) };
+      turnMs: this.turnMs, voice: this.voiceOf(table), assets: this.assetsOf(table) };
+  }
+  setAssets(p, progress) {
+    if (!isInt(progress, 0, 100) || p.assets === progress) return;
+    p.assets = progress;
+    const table = p.table;
+    if (!table) return;
+    if (table.status === 'playing') {
+      if (table.game.presence.has(p.id)) this.toGame(table, { t: 'assets', id: p.id, progress });
+    } else {
+      const status = table.status;
+      if (progress < 100) this.cancelCountdown(table);
+      this.checkStart(table);
+      this.sendTable(table);
+      if (status !== table.status) this.listChanged();
+    }
+  }
+  assetsOf(table) {
+    return Object.fromEntries([...table.game.presence.keys()].map((id) => [id, this.byId.get(id)?.assets ?? 100]));
   }
   // whether a player hears the commentator: the screen that plays the bots makes them wait for him only if somebody does
   setVoice(p, on) {

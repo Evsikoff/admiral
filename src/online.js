@@ -10,6 +10,7 @@
 //   handler.act(msg)         an action of the game: { n, a, from }
 //   handler.presence(msg)    { id, state: 'online' | 'offline' | 'left' }
 //   handler.voice(msg)       { id, on }: a player switched the commentator on or off (game.voice: { id: on })
+//   handler.assets(msg)      { id, progress }: a player's asset loading percentage (game.assets: { id: percent })
 //   handler.state(game)      the whole game again, after a lost connection or when asked for (AdmiralOnline.sync())
 //   handler.reject(msg)      the server refused an action of this client: { n, have, kind }
 (function () {
@@ -53,6 +54,7 @@
   let ws = null, connected = false, wanted = false, retry = 0, retryTimer = 0, replaced = false;
   let me = null, token = null, tables = [], table = null, game = null, handler = null, pendingStart = null;
   let open = false, askingNo = null, countdownTimer = 0, drawTimer = 0, msgTimer = 0;
+  let preparingReady = false;
   try { token = sessionStorage.getItem(TOKEN_KEY); } catch { /* no storage */ }
 
   function savedName() {
@@ -79,6 +81,14 @@
     try { return JSON.parse(localStorage.getItem(AUDIO_KEY))?.commentator !== true; } catch { return true; }
   }
   let commentatorOn = savedVoiceOn();
+  let assetPercent = window.AdmiralAssets?.isReady() === false ? 0 : 100;
+  window.AdmiralAssets?.subscribe(({ loaded, total }) => {
+    const loadedPercent = total ? Math.floor(loaded / total * 100) : 100;
+    const percent = window.AdmiralAssets.isReady() ? 100 : Math.min(99, loadedPercent);
+    if (assetPercent === percent) return;
+    assetPercent = percent;
+    send({ t: 'assets', progress: percent });
+  });
 
   // ---- the connection: opened when the club is opened, or at once when this tab was at a table before a reload
   function connect() {
@@ -91,7 +101,7 @@
     ws = socket;
     socket.onopen = () => {
       connected = true; retry = 0;
-      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn }));
+      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn, assets: assetPercent }));
       if (open && !table && !game) send({ t: 'watch', on: true });
       netStatus();
     };
@@ -145,13 +155,13 @@
       case 'error': note(m.text); return;
       case 'start':
         table = null;
-        game = { no: m.no, players: m.players, me: m.me, log: [], turnMs: m.turnMs, voice: m.voice || {},
+        game = { no: m.no, players: m.players, me: m.me, log: [], turnMs: m.turnMs, voice: m.voice || {}, assets: m.assets || {},
           presence: Object.fromEntries(m.players.filter((p) => !p.bot).map((p) => [p.id, 'online'])) };
         showDraw();
         return;
       case 'game': {
         const fresh = !game || game.no !== m.no;
-        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {} };
+        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {}, assets: m.assets || {} };
         table = null;
         if (pendingStart) { pendingStart = game; deliverStart(); }
         else if (handler && handler.inGame?.()) handler.state(game);
@@ -174,6 +184,10 @@
       case 'voice':
         if (game) game.voice[m.id] = m.on;
         handler?.voice?.(m);
+        return;
+      case 'assets':
+        if (game) game.assets[m.id] = m.progress;
+        handler?.assets?.(m);
         return;
       case 'reject': handler?.reject(m); return;
       case 'replaced':
@@ -320,15 +334,17 @@
         del.addEventListener('click', () => send({ t: 'bot-remove', id: p.id }));
         return li;
       }
-      li.className = [p.ready ? 'ready' : '', p.online ? '' : 'away', p.id === me ? 'me' : ''].filter(Boolean).join(' ');
+      const loading = p.online && p.assets < 100;
+      li.className = [p.ready ? 'ready' : '', p.online ? '' : 'away', loading ? 'loading' : '', p.id === me ? 'me' : ''].filter(Boolean).join(' ');
       li.innerHTML = `<span class="ol-seat">${i + 1}</span><span class="ol-pname"></span><span class="ol-pstate"></span>`;
       li.querySelector('.ol-pname').textContent = p.name + (p.id === me ? ' (вы)' : '');
-      li.querySelector('.ol-pstate').textContent = !p.online ? 'нет связи' : p.ready ? 'готов' : n > 1 ? 'не готов' : '';
+      li.querySelector('.ol-pstate').textContent = !p.online ? 'нет связи' : loading ? `${p.ready ? 'готов · ' : ''}загрузка ${p.assets}%`
+        : p.ready ? 'готов' : n > 1 ? 'не готов' : '';
       return li;
     }));
     if (focused) seatsEl.querySelector(`[data-key="${focused}"]`)?.focus({ preventScroll: true });
     const mine = table.players.find((p) => p.id === me);
-    readyBtn.disabled = n < 2;
+    readyBtn.disabled = n < 2 || preparingReady;
     readyBtn.setAttribute('aria-pressed', String(!!mine?.ready));
     readyBtn.textContent = mine?.ready ? 'Готов ✓' : 'Готов';
     readyBtn.classList.toggle('on', !!mine?.ready);
@@ -348,16 +364,23 @@
         + (STYLES.length ? ' — или посадите за стол бота.' : '.');
     } else {
       const waiting = table.players.filter((p) => !p.ready).length;
-      tableStatus.textContent = waiting
-        ? `Когда все нажмут «Готов», игра начнётся через 3 секунды. Ждём: ${waiting}.`
-        : 'Все готовы.';
+      const loading = table.players.filter((p) => p.online && p.assets < 100);
+      tableStatus.textContent = loading.length
+        ? `Ждём загрузку ресурсов: ${loading.map((p) => `${p.name} — ${p.assets}%`).join(', ')}.`
+        : waiting ? `Когда все нажмут «Готов», игра начнётся через 3 секунды. Ждём: ${waiting}.` : 'Все готовы.';
     }
   }
   function stopCountdown() { clearInterval(countdownTimer); countdownTimer = 0; }
-  readyBtn.addEventListener('click', () => {
-    const mine = table?.players.find((p) => p.id === me);
-    if (!mine?.ready) intro.enterFullscreen();
-    send({ t: 'ready', on: !mine?.ready });
+  readyBtn.addEventListener('click', async () => {
+    const tableNo = table?.no, mine = table?.players.find((p) => p.id === me);
+    if (!mine || preparingReady) return;
+    const on = !mine.ready;
+    if (on) {
+      intro.enterFullscreen();
+      preparingReady = true; readyBtn.disabled = true;
+      try { await intro.prepareGame(); } finally { preparingReady = false; renderTable(); }
+    }
+    if (table?.no === tableNo) send({ t: 'ready', on });
   });
   leaveBtn.addEventListener('click', () => send({ t: 'leave' }));
   $('ol-copy').addEventListener('click', () => {
@@ -388,14 +411,21 @@
     clearTimeout(drawTimer);
     drawTimer = setTimeout(beginGame, DRAW_MS);
   }
-  function beginGame() {
+  let beginningGame = false;
+  async function beginGame() {
     clearTimeout(drawTimer);
-    if (!game) return;
+    if (!game || beginningGame) return;
+    const gameNo = game.no;
+    beginningGame = true;
     intro.enterFullscreen();
-    closeClub();
-    intro.enterGame('online-game');
-    pendingStart = game;
-    deliverStart();
+    try {
+      await intro.prepareGame();
+      if (game?.no !== gameNo) return;
+      closeClub();
+      intro.enterGame('online-game');
+      pendingStart = game;
+      deliverStart();
+    } finally { beginningGame = false; }
   }
   function deliverStart() {
     if (!handler || !pendingStart) return;

@@ -73,6 +73,7 @@
   }
   #who b { color: var(--accent); font-weight: 600; }
   #who .who-away { color: #ffc9be; font-size: .82em; white-space: nowrap; }
+  #who .who-loading { display: block; margin-top: 3px; color: #f4dfac; font: 12px/1.4 "Segoe UI", system-ui, sans-serif; }
   #who .who-bot {
     display: inline-block; margin-left: 5px; padding: 0 6px; border-radius: 4px; vertical-align: 2px;
     font: 600 11px/1.5 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase;
@@ -340,6 +341,7 @@
   #intro-menu { z-index: 40; }
   #intro-films { z-index: 41; }
   #intro-start { z-index: 42; }
+  #game-loading { z-index: 60; }
 
   /* a plank signboard: the menu's buttons */
   button.plank {
@@ -391,7 +393,11 @@
   .start-loading progress { width: 100%; height: 10px; accent-color: #e3b456; }
   .start-loading p { margin: 8px 0; color: #c9bfa3; font-size: 14px; }
   .start-loading .load-detail { min-height: 1.4em; color: #8fa1b0; font-size: 12px; }
-  #intro-continue { margin: 16px auto 0; }
+  #intro-continue, #game-retry { margin: 16px auto 0; }
+  #game-loading {
+    display: grid; place-items: center; padding: 16px;
+    background: radial-gradient(ellipse 70% 60% at 50% 42%, #1c2c3c 0%, #0c141d 52%, #04070a 100%);
+  }
   #intro-film-status { position: absolute; inset: 0; display: grid; place-content: center; gap: 16px; text-align: center; cursor: auto; }
   @keyframes start-rise { from { opacity: 0; transform: translateY(14px); } }
   @keyframes logo-breathe { 50% { transform: translateY(-4px) scale(1.012); } }
@@ -615,6 +621,7 @@
   .club-seats li.ready .ol-pstate { color: #1f6a2c; }
   .club-seats li.ready .ol-pstate::before { content: '✓ '; }
   .club-seats li.away .ol-pstate { color: #9a2a10; }
+  .club-seats li.loading .ol-pstate { color: #8a4f12; }
   /* a bot at the table: its name and style, a choice of style, and a button that takes it away */
   .club-seats li.bot { background: rgba(255, 248, 230, .32); }
   .club-seats li.bot .ol-seat { background: transparent; color: #5a3b22; border: 1.5px solid #5a3b22; }
@@ -691,7 +698,7 @@
     <div id="intro-loading" class="start-loading" hidden>
       <label for="intro-progress">Поднимаем паруса… <span id="intro-percent">0%</span></label>
       <progress id="intro-progress" max="100" value="0"></progress>
-      <p id="intro-load-status" role="status">Загружаем видео и звук</p>
+      <p id="intro-load-status" role="status">Загружаем вступительные видео</p>
       <p id="intro-load-detail" class="load-detail"></p>
       <button id="intro-continue" type="button" hidden>Повторить загрузку</button>
     </div>
@@ -701,6 +708,15 @@
   <video id="intro-video" playsinline disablepictureinpicture disableremoteplayback
          controlslist="nodownload nofullscreen noremoteplayback noplaybackrate"></video>
   <div id="intro-film-status" hidden><p id="intro-film-message" role="status">Подготавливаем видео…</p><button id="intro-film-play" type="button" hidden>Продолжить со звуком</button></div>
+</section>
+<section id="game-loading" class="intro-layer" aria-label="Загрузка игры" hidden>
+  <div class="start-loading">
+    <label for="game-progress">Поднимаем паруса… <span id="game-percent">0%</span></label>
+    <progress id="game-progress" max="100" value="0"></progress>
+    <p id="game-load-status" role="status">Загружаем ресурсы игры</p>
+    <p id="game-load-detail" class="load-detail"></p>
+    <button id="game-retry" type="button" hidden>Повторить загрузку</button>
+  </div>
 </section>
 <section id="intro-menu" class="intro-layer" aria-label="Главное меню" hidden>
   <div class="tavern" aria-hidden="true">
@@ -825,6 +841,10 @@
   <audio id="rules-audio" preload="none"></audio>
 </dialog>
 <script>
+  /*__DATA__*/
+  /*__ASSET_DATA__*/
+</script>
+<script>
 /*__INTRO__*/
 </script>
 <div id="app"></div>
@@ -895,8 +915,6 @@
 </div>
 
 <script>
-  /*__DATA__*/
-  /*__ASSET_DATA__*/
   setTimeout(function () {
     if (!window.__admiralStarted) {
       document.getElementById('loading').innerHTML =

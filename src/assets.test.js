@@ -47,6 +47,39 @@ test('a failed file prevents readiness and retry downloads only missing files', 
   assert.deepEqual(requests, ['good.mp3?v=abc123', 'bad.mp3?version=1&v=abc123', 'bad.mp3?version=1&v=abc123']);
 });
 
+test('films form a separate first group; the remaining files load without fetching them again', async () => {
+  const entries = [
+    { ...entry('studio.mp4'), type: 'video/mp4' },
+    { ...entry('voice.mp3') },
+    { ...entry('intro.mp4'), type: 'video/mp4' },
+  ];
+  const requests = [];
+  const assets = setup(entries, async (url) => { requests.push(url); return response(); });
+  await assets.loadFilms();
+  assert.deepEqual(requests, ['studio.mp4?v=abc123', 'intro.mp4?v=abc123']);
+  assert.equal(assets.filmsReady(), true);
+  assert.equal(assets.isReady(), false);
+  await assets.load();
+  assert.deepEqual(requests, ['studio.mp4?v=abc123', 'intro.mp4?v=abc123', 'voice.mp3?v=abc123']);
+  assert.equal(assets.isReady(), true);
+});
+
+test('concurrent groups share downloads and progress subscriptions see the final state', async () => {
+  let respond;
+  const requests = [], states = [];
+  const assets = setup([entry('voice.mp3')], async (url) => {
+    requests.push(url);
+    return new Promise((resolve) => { respond = () => resolve(response()); });
+  });
+  const unsubscribe = assets.subscribe((state) => states.push(state));
+  const first = assets.load(), second = assets.load();
+  assert.equal(requests.length, 1);
+  respond();
+  await Promise.all([first, second]);
+  assert.deepEqual(states.at(-1), { loaded: 6, total: 6, completed: 1, count: 1 });
+  unsubscribe();
+});
+
 test('truncated media is rejected and downloads are limited to four at a time', async () => {
   const entries = Array.from({ length: 9 }, (_, i) => entry(`${i}.mp3`));
   let active = 0, peak = 0;

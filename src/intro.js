@@ -1,7 +1,8 @@
 // ------------------------------------------------------------------ the way into the game
 // A start screen (the logo and «Запустить»), then two films that cannot be skipped or paused, then the main menu:
 // a sailors' tavern with its own theme. Nothing here needs the 3D map, so it works while the map is still being
-// built. app.js listens for its events on window:
+// built. The films download first, immediately; everything else continues in the background after them.
+// app.js listens for its events on window:
 //   'admiral:menu'        the main menu has opened: its music starts
 //   'admiral:play-local'  «Играть локально»: the setup screen of a game at one computer opens
 // and brings the menu back with AdmiralIntro.showMenu() (the setup screen's «В меню», leaving an online game).
@@ -19,12 +20,14 @@
   const video = $('intro-video'), launchBtn = $('intro-launch');
   const loadEl = $('intro-loading'), progressEl = $('intro-progress'), percentEl = $('intro-percent');
   const loadStatus = $('intro-load-status'), loadDetail = $('intro-load-detail'), retryBtn = $('intro-continue');
+  const gameLoadEl = $('game-loading'), gameProgress = $('game-progress'), gamePercent = $('game-percent');
+  const gameLoadStatus = $('game-load-status'), gameLoadDetail = $('game-load-detail'), gameRetry = $('game-retry');
   const filmStatus = $('intro-film-status'), filmMessage = $('intro-film-message'), filmPlay = $('intro-film-play');
   const localBtn = $('menu-local'), onlineBtn = $('menu-online'), noteEl = $('menu-note');
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // stage: start → loading → films → menu ⇄ local; menu ⇄ online (the club) → online-game
-  const api = { stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart };
+  const api = { stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart, prepareGame };
   window.AdmiralIntro = api;
   function enterFullscreen() {
     if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
@@ -52,9 +55,15 @@
   // while a layer covers the whole screen the 3D map behind it is not drawn (app.js checks this class)
   const cover = (on) => document.body.classList.toggle('intro-open', on);
 
-  // Media is explicitly downloaded after launch; preload="auto" alone is only a browser hint.
+  // Start with the films on the start screen; the rest follows while they play and in the menu.
   video.preload = 'auto';
   launchBtn.addEventListener('click', startFilms);
+  function preload(onProgress) {
+    const loading = window.AdmiralAssets.loadFilms(onProgress);
+    loading.then(() => { window.AdmiralAssets.load().catch(() => {}); }, () => {});
+    return loading;
+  }
+  preload();
   const launchTitle = launchBtn.querySelector('.plank-title'), startHint = startEl.querySelector('.start-hint');
   const LAUNCH = launchTitle.textContent, HINT = startHint.textContent;
   // a tab that was at a table or in a game before a reload: «Запустить» becomes the way back to it
@@ -68,28 +77,21 @@
   let preparing = false, waitingForTap = false;
   async function startFilms() {
     if (preparing || !['start', 'loading'].includes(api.stage)) return;
+    emit('admiral:unlock-audio');                    // synchronous with the original tap, before any await
+    if (window.AdmiralAssets.filmsReady()) {
+      if (!window.AdmiralOnline?.resume()) beginFilms();
+      return;
+    }
     preparing = true;
     api.stage = 'loading';
-    emit('admiral:unlock-audio');                    // synchronous with the original tap, before any await
     launchBtn.hidden = true; startHint.hidden = true; loadEl.hidden = false; retryBtn.hidden = true;
-    loadStatus.textContent = 'Загружаем видео и звук';
+    loadStatus.textContent = 'Загружаем вступительные видео';
     try {
-      await window.AdmiralAssets.load(({ loaded, total, completed, count }) => {
-        const percent = total ? Math.floor(loaded / total * 97) : 0;
+      await preload(({ loaded, total, completed, count }) => {
+        const percent = total ? Math.floor(loaded / total * 100) : 100;
         progressEl.value = percent; percentEl.textContent = percent + '%';
         loadDetail.textContent = `${(loaded / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} МБ · ${completed} / ${count} файлов`;
       });
-      loadStatus.textContent = 'Подготавливаем 3D-карту…';
-      if (!window.__admiralReady) await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          window.removeEventListener('admiral:ready', ready);
-          reject(new Error('Не удалось подготовить 3D-карту. Обновите страницу и проверьте поддержку WebGL.'));
-        }, 60000);
-        function ready() { clearTimeout(timer); resolve(); }
-        window.addEventListener('admiral:ready', ready, { once: true });
-      });
-      progressEl.value = 100; percentEl.textContent = '100%';
-      loadStatus.textContent = 'Готово';
       api.stage = 'start';
       if (!window.AdmiralOnline?.resume()) beginFilms();
     } catch (error) {
@@ -99,6 +101,52 @@
     } finally { preparing = false; }
   }
   retryBtn.addEventListener('click', startFilms);
+
+  let gamePreparation = null, finishPreparation = null, preparingGame = false;
+  function prepareGame() {
+    if (window.AdmiralAssets.isReady() && window.__admiralReady) return Promise.resolve();
+    if (!gamePreparation) {
+      gamePreparation = new Promise((resolve) => { finishPreparation = resolve; });
+      show(gameLoadEl, 0);
+      loadForGame();
+    }
+    return gamePreparation;
+  }
+  async function loadForGame() {
+    if (preparingGame) return;
+    preparingGame = true; gameRetry.hidden = true;
+    gameLoadStatus.textContent = 'Загружаем ресурсы игры';
+    try {
+      await window.AdmiralAssets.load(({ loaded, total, completed, count }) => {
+        const percent = total ? Math.floor(loaded / total * 100) : 100;
+        gameProgress.value = percent; gamePercent.textContent = percent + '%';
+        gameLoadDetail.textContent = `${(loaded / 1048576).toFixed(1)} / ${(total / 1048576).toFixed(1)} МБ · ${completed} / ${count} файлов`;
+      });
+      gameProgress.value = 100; gamePercent.textContent = '100%';
+      gameLoadStatus.textContent = 'Подготавливаем 3D-карту…';
+      await waitForMap();
+      hide(gameLoadEl, 300);
+      const done = finishPreparation;
+      gamePreparation = null; finishPreparation = null;
+      done();
+    } catch (error) {
+      gameLoadStatus.textContent = error.message;
+      gameRetry.hidden = false;
+      gameRetry.focus({ preventScroll: true });
+    } finally { preparingGame = false; }
+  }
+  gameRetry.addEventListener('click', loadForGame);
+  function waitForMap() {
+    if (window.__admiralReady) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        window.removeEventListener('admiral:ready', ready);
+        reject(new Error('Не удалось подготовить 3D-карту. Обновите страницу и проверьте поддержку WebGL.'));
+      }, 60000);
+      function ready() { clearTimeout(timer); resolve(); }
+      window.addEventListener('admiral:ready', ready, { once: true });
+    });
+  }
   function beginFilms() {
     api.stage = 'films';
     guardMedia(true);
