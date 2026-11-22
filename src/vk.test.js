@@ -42,11 +42,23 @@ test('a refused VK request leaves the usual name controls available', async () =
   assert.equal(events.length, 0);
 });
 
-test('an empty profile name and a missing Bridge are not treated as VK', async () => {
+test('an empty profile name still identifies VK, while a missing Bridge does not', async () => {
   const empty = setup(async () => ({}));
   await empty.window.AdmiralVK.ready;
-  assert.equal(empty.window.isVKApp, false);
+  assert.equal(empty.window.isVKApp, true);
+  assert.equal(empty.window.vkUserName, '');
   const missing = setup();
   await missing.window.AdmiralVK.ready;
   assert.equal(missing.window.isVKApp, false);
+});
+
+test('a refused user info request does not undo a successful VK initialization', async () => {
+  const { window, events } = setup(async (method) => {
+    if (method === 'VKWebAppGetUserInfo') throw new Error('refused');
+    return {};
+  });
+  await window.AdmiralVK.ready;
+  assert.equal(window.isVKApp, true);
+  assert.equal(window.vkUserName, '');
+  assert.equal(events.length, 0);
 });

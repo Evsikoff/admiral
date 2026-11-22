@@ -6,11 +6,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.js';
 import { createPaymentsHandler } from './payments.js';
+import { createUsersHandler } from './users.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+dotenv.config({ path: path.join(ROOT, 'secrets.txt'), quiet: true });
 const PAGE = path.join(ROOT, 'admiral-3d.html');
 const ASSETS = path.join(ROOT, 'assets');
 const PORT = Number(process.env.PORT) || 8080;
@@ -31,6 +34,11 @@ if (appId && appSecret && databasePath) {
   }
 }
 handlePayments ??= await createPaymentsHandler();
+const handleUsers = createUsersHandler({
+  supabaseUrl: process.env.SUPABASE_URL,
+  secretKey: process.env.SUPABASE_SECRET_KEY,
+  appId, appSecret,
+});
 
 // only what the page loads is served: nothing else in the repository (tools, keys, sources) leaves the server
 const TYPES = {
@@ -101,6 +109,7 @@ function notFound(res) { res.writeHead(404, { 'content-type': 'text/plain; chars
 const lobby = new Lobby({ turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
 const server = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
+  if (urlPath === '/api/users/register') return handleUsers(req, res);
   if (urlPath === '/vk/payments' || urlPath === '/vk/purchases') return handlePayments(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/admiral-3d.html') return sendPage(req, res);

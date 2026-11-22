@@ -1,6 +1,7 @@
-# the Gemini key never goes into an image
+# local credentials never go into an image
 gemini
 **/gemini
+secrets.txt
 .git
 .claude
 node_modules

@@ -13,6 +13,7 @@
     "test": "node --test server/*.test.js src/*.test.js"
   },
   "dependencies": {
+    "dotenv": "^18.0.10",
     "ws": "^8.18.0"
   }
 }

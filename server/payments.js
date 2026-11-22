@@ -1,7 +1,7 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { verifyVkLaunch } from './vk-launch.js';
 
 const MAX_FORM_BYTES = 16 * 1024;
-const MAX_LAUNCH_AGE = 24 * 60 * 60;
 
 function positiveInteger(value) {
   const number = Number(value);
@@ -168,17 +168,9 @@ export async function createPaymentsHandler({ appId, appSecret, databasePath, ca
     };
 
     getPurchases = (form) => {
-      const userId = positiveInteger(form.get('vk_user_id'));
-      const timestamp = positiveInteger(form.get('vk_ts'));
-      const now = Math.floor(Date.now() / 1000);
-      if (positiveInteger(form.get('vk_app_id')) !== appId || !userId || !timestamp ||
-          timestamp > now + 60 || now - timestamp > MAX_LAUNCH_AGE) return null;
-      form.sort();
-      const signedFields = Array.from(form).filter(([key]) => key.startsWith('vk_'))
-        .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&');
-      const expected = createHmac('sha256', appSecret).update(signedFields).digest('base64url');
-      if (!signaturesMatch(form.get('sign'), expected)) return null;
-      return { shipSets: listOwned.all(appId, userId).map((row) => row.ship_set_id) };
+      const launch = verifyVkLaunch(form, { appId, appSecret });
+      if (!launch) return null;
+      return { shipSets: listOwned.all(appId, launch.userId).map((row) => row.ship_set_id) };
     };
   }
 

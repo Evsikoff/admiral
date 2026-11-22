@@ -1,5 +1,6 @@
-# the Gemini key stays on this computer
+# local credentials stay on this computer
 gemini
+secrets.txt
 node_modules/
 __pycache__/
 debug.log

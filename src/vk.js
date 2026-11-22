@@ -15,10 +15,10 @@
     if (!bridge) return;
     try {
       await bridge.send('VKWebAppInit');
+      window.isVKApp = true;
       const user = await bridge.send('VKWebAppGetUserInfo');
       const name = `${user?.first_name || ''} ${user?.last_name || ''}`.replace(/\s+/g, ' ').trim().slice(0, 20);
       if (!name) return;
-      window.isVKApp = true;
       window.vkUserName = name;
       window.dispatchEvent(new CustomEvent('admiral:vk-user', { detail: { name } }));
     } catch { /* Bridge is unavailable or the user data request was refused. */ }
