@@ -1090,8 +1090,8 @@ function placeShipsNow() {
 // to ours (half-size 0.36). Gravity and lengths shrink together, so the dice tumble just as long.
 const DIE = 0.72, DH = DIE / 2;
 const DICE_HZ = 60, DICE_STEP = 1 / DICE_HZ;
-const DICE_SETTLE_STEPS = DICE_HZ;                              // one second after both dice have landed
-const DICE_FLIGHT_LIMIT = 12;                                    // fallback if a die never lands
+const DICE_SETTLE_TIME = 1;                                     // seconds after the first surface contact
+const DICE_FLIGHT_LIMIT = 12;                                   // fallback if neither die reaches a surface
 const DK = DH / 51.96;                                           // dice-box units → board units
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.8 * 400 * DK, 0) });     // ≈ −27 units/s²
@@ -1273,7 +1273,7 @@ const dice = [0, 1].map(() => {
   mesh.castShadow = mesh.receiveShadow = true;
   mesh.position.copy(PIP_AXIS).multiplyScalar(dieLoad);
   const obj = new THREE.Group(); obj.add(mesh); obj.visible = false; scene.add(obj);
-  const d = { body, mesh, obj, mats, ship: null, landed: false };
+  const d = { body, mesh, obj, mats, ship: null };
   body.addEventListener('collide', (e) => {
     if (!roll) return;
     if (roll.done) {
@@ -1281,10 +1281,6 @@ const dice = [0, 1].map(() => {
       return;
     }
     if (e.body.ship && !d.ship) d.ship = e.body.ship;
-    if (!e.body.isDie && !d.landed) {
-      d.landed = true;
-      if (dice.every((d) => d.landed)) roll.settleStep = world.stepnumber + 1 + DICE_SETTLE_STEPS;
-    }
     if (!roll.landed && !e.body.isDie && !e.body.isTable) {
       roll.landed = true;
       if (roll.recording) roll.land = roll.t;          // a recorded throw sounds when its playback gets there
@@ -1337,6 +1333,13 @@ function readDie(quat) {
 const MAX_TILT = 30;
 
 let roll = null;                // the throw in progress: { t, done, landed, onDone }
+world.addEventListener('postStep', () => {
+  if (!roll || roll.done || roll.settleAt !== undefined) return;
+  // A corner can keep scraping the same obstacle without another collide event.
+  if (world.contacts.some(({ bi, bj, enabled }) => enabled && Boolean(bi.isDie) !== Boolean(bj.isDie))) {
+    roll.settleAt = roll.t + DICE_SETTLE_TIME;
+  }
+});
 world.addEventListener('preStep', () => {
   if (!roll?.pushable) return;
   // After the solver, limit the speed of a settled die even if the hull catches it between frames.
@@ -1359,7 +1362,7 @@ function prepareThrow() {
       d.body.quaternion.set(0, 0, 0, 1);  // compute the cube's inertia before the launch pose is applied
       d.body.updateMassProperties();
     }
-    d.ship = null; d.landed = false; tintDie(d, false); d.obj.visible = true;
+    d.ship = null; tintDie(d, false); d.obj.visible = true;
   }
 }
 function throwDice(q, onDone) {
@@ -1400,7 +1403,7 @@ function readRoll(timedOut) {
 }
 function readFinishedRoll() {
   const still = dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING);
-  const recognitionExpired = world.stepnumber >= (roll.settleStep ?? Infinity);
+  const recognitionExpired = roll.t + 1e-9 >= (roll.settleAt ?? Infinity);
   if (still || recognitionExpired) return readRoll(false);
   return roll.t >= DICE_FLIGHT_LIMIT ? readRoll(true) : null;
 }
@@ -1441,7 +1444,8 @@ function recordThrow(plan) {
   put();
   let step = 0, res;
   do {
-    world.step(DICE_STEP); step++; roll.t = step / DICE_HZ;
+    step++; roll.t = step / DICE_HZ;
+    world.step(DICE_STEP);
     res = readFinishedRoll();
     if (res || step % REC_STRIDE === 0) put();
   } while (!res);
@@ -1474,26 +1478,25 @@ function finishPlayback() {
   poseDice(play, play.count);
   finishDice(play.res);
 }
-function stepDice(dt) {
+function stepDice(dt, elapsed = dt) {
   if (!roll) return;
   if (roll.done) {
     if (!roll.pushable || (!ships.some((s) => s.obj.visible && s.movedSinceDiceStep)
       && dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING))) return;
     syncShipBodies(true, true);
   } else {
-    if (roll.play) { stepPlayback(dt); return; }
+    if (roll.play) { stepPlayback(elapsed); return; }
+    roll.t += elapsed;                                             // the recognition deadline is in real time
     syncShipBodies(false);
   }
   const before = world.stepnumber;
-  const remainingSteps = roll.done ? Infinity : (roll.settleStep ?? Infinity) - before;
-  world.step(DICE_STEP, dt, Math.min(5, remainingSteps));
+  world.step(DICE_STEP, dt, 5);
   for (const d of dice) { d.obj.position.copy(d.body.position); d.obj.quaternion.copy(d.body.quaternion); }
   if (roll.done) {
     // A fast display can render a frame before the next physics step is due.
     if (world.stepnumber !== before) for (const s of ships) s.movedSinceDiceStep = false;
     return;
   }
-  roll.t += dt;
   const res = readFinishedRoll();
   if (res) finishDice(res);
 }
@@ -1866,17 +1869,27 @@ const VIEWS = {
   ru: [0, 21, 23], se: [23, 21, 0], en: [0, 21, -23], nl: [-23, 21, 0], top: [0, 40, 0.01],
 };
 let fly = null, cameraShot = null, frameArea = null;
+let frameFlight = null, cameraMaxDistance = controls.maxDistance;
 let overhead = false, overheadReturn = null;
 const viewButton = document.getElementById('t-view'), statRail = document.getElementById('broadcast');
 const broadcast = createFleetBroadcast(statRail);
 const cameraOffset = new THREE.Vector3(), orbit = new THREE.Spherical();
+const frameOffset = new THREE.Vector2();
+const CAMERA_REFIT_TIME = 0.32;
 function startFlight(target, offset, duration) {
   const from = new THREE.Spherical().setFromVector3(cameraOffset.subVectors(camera.position,controls.target));
   const to = new THREE.Spherical().setFromVector3(offset);
   const turn = to.theta-from.theta;
   to.theta = from.theta + Math.atan2(Math.sin(turn), Math.cos(turn));
-  if (!duration || (controls.target.distanceToSquared(target)<0.001 && cameraOffset.distanceToSquared(offset)<0.001)) {
-    fly=null; controls.target.copy(target); camera.position.copy(target).add(offset); controls.update(); return 0;
+  if (!duration) {
+    fly = null;
+    controls.target.copy(target); camera.position.copy(target).add(offset);
+    controls.maxDistance = cameraMaxDistance; controls.update();
+    return 0;
+  }
+  if (controls.target.distanceToSquared(target) < 1e-10 && cameraOffset.distanceToSquared(offset) < 1e-10) {
+    fly = null;
+    return 0;
   }
   fly = {elapsed:0, duration, from, to, start:controls.target.clone(), target:target.clone()};
   return duration;
@@ -1906,13 +1919,37 @@ function freeArea() {
   const bottom = Math.max(top + 2, captions.height ? captions.top - 3 : H - 3);
   return { W, H, top, bottom, left: 3, right };
 }
-function applyFrame() {
+function applyFrame(instant = false) {
+  const previous = frameArea;
   frameArea = freeArea();
   const { W, H, top, bottom, left, right } = frameArea;
-  camera.aspect = W / H;
-  camera.fov = W < H ? 52 : 38;                                       // wider lens on phones
-  // centre the picture in the free area
-  camera.setViewOffset(W, H, W / 2 - (left + right) / 2, H / 2 - (top + bottom) / 2, W, H);
+  const fov = W < H ? 52 : 38;                                        // wider lens on phones
+  const offsetX = 0.5 - (left + right) / (2 * W), offsetY = 0.5 - (top + bottom) / (2 * H);
+  Object.assign(frameArea, { fov, offsetX, offsetY });
+  if (instant) {
+    frameFlight = null;
+    stepProjection(0);
+  } else if (fov !== previous.fov || offsetX !== previous.offsetX || offsetY !== previous.offsetY) {
+    frameFlight = { elapsed: 0, fov: camera.fov, x: frameOffset.x, y: frameOffset.y };
+  }
+}
+function stepProjection(dt) {
+  const { W, H, fov, offsetX, offsetY } = frameArea;
+  // HUD panels can reflow between animation frames. Ease the optical centre to their new layout.
+  let lens = fov;
+  if (frameFlight) {
+    frameFlight.elapsed = Math.min(CAMERA_REFIT_TIME, frameFlight.elapsed + dt);
+    const k = easeInOut(frameFlight.elapsed / CAMERA_REFIT_TIME);
+    frameOffset.set(lerp(frameFlight.x, offsetX, k), lerp(frameFlight.y, offsetY, k));
+    lens = lerp(frameFlight.fov, fov, k);
+    if (frameFlight.elapsed >= CAMERA_REFIT_TIME) frameFlight = null;
+  } else {
+    frameOffset.set(offsetX, offsetY);
+  }
+  const x = frameOffset.x * W, y = frameOffset.y * H, view = camera.view;
+  if (lens === camera.fov && view?.fullWidth === W && view.fullHeight === H && view.offsetX === x && view.offsetY === y) return;
+  camera.fov = lens;
+  camera.setViewOffset(W, H, x, y, W, H);
 }
 const shotBounds = new THREE.Box3(), shotTarget = new THREE.Vector3(), shotOffset = new THREE.Vector3();
 const shotRight = new THREE.Vector3(), shotUp = new THREE.Vector3(), corner = new THREE.Vector3();
@@ -1946,9 +1983,9 @@ function fitBoard(side, elevation, tanX, tanY) {
   return dx - dy;
 }
 function measureBoard(side, width, height) {
-  const {W, H} = frameArea;
-  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-  const tanX = tan * camera.aspect * width / W, tanY = tan * height / H;
+  const { H, fov } = frameArea;
+  const tan = Math.tan(THREE.MathUtils.degToRad(fov / 2));
+  const tanX = tan * width / H, tanY = tan * height / H;
   if (side === 'top') {
     fitBoard(side, Math.PI / 2 - 0.0001, tanX, tanY);
   } else {
@@ -1959,12 +1996,12 @@ function measureBoard(side, width, height) {
       if (fitBoard(side, mid, tanX, tanY) > 0) low = mid; else high = mid;
     }
   }
-  controls.maxDistance = Math.max(70, shotOffset.length() * 1.35);
+  cameraMaxDistance = Math.max(70, shotOffset.length() * 1.35);
   camera.far = Math.max(300, shotOffset.length() + 60); camera.updateProjectionMatrix();
 }
 // Fit the bounds to the unobscured part of the screen. Each corner must fit both perspective axes.
 function measureShot(shot) {
-  const {W,H,top,bottom,left,right} = frameArea;
+  const {W,H,top,bottom,left,right,fov} = frameArea;
   if (!shot.ship && !shot.points) {
     measureBoard(shot.side, Math.max(1, right-left-4), Math.max(1, bottom-top-4));
     return;
@@ -1982,8 +2019,8 @@ function measureShot(shot) {
   shotOffset.set(...VIEWS[shot.side]);
   if (W < H && shot.side !== 'top') { shotOffset.x *= 0.5; shotOffset.z *= 0.5; }
   shotOffset.normalize(); shotRight.crossVectors(Y_UP,shotOffset).normalize(); shotUp.crossVectors(shotOffset,shotRight);
-  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
-  const tanX = tan*camera.aspect*Math.max(0.05,(right-left)/W)*0.92;
+  const tan = Math.tan(THREE.MathUtils.degToRad(fov/2));
+  const tanX = tan*(W/H)*Math.max(0.05,(right-left)/W)*0.92;
   const tanY = tan*Math.max(0.05,(bottom-top)/H)*0.92;
   let distance = 5.2;
   for (const x of [shotBounds.min.x,shotBounds.max.x]) for (const y of [shotBounds.min.y,shotBounds.max.y]) {
@@ -1993,14 +2030,14 @@ function measureShot(shot) {
     }
   }
   shotOffset.multiplyScalar(distance);
-  controls.maxDistance = Math.max(70,distance*1.35);
+  cameraMaxDistance = Math.max(70,distance*1.35);
 }
 function setShot(shot,duration=0.65) {
   if (overhead && shot.side !== 'top' && !setupIsOpen()) {
     overheadReturn = {shot};
     return 0;
   }
-  cameraShot = shot; applyFrame(); measureShot(shot);
+  cameraShot = shot; applyFrame(duration === 0); measureShot(shot);
   return startFlight(shotTarget,shotOffset,duration);
 }
 function view(side, instant = false) { setShot({side},instant ? 0 : 0.8); }
@@ -2039,6 +2076,7 @@ function followShip(ship) {
   return setShot({side:ship.q, ship, motion:ship.anim},0.52);
 }
 function stepCamera(dt) {
+  stepProjection(dt);
   if (fly) {
     fly.elapsed = Math.min(fly.duration,fly.elapsed+dt);
     const k = easeInOut(fly.elapsed/fly.duration);
@@ -2047,13 +2085,21 @@ function stepCamera(dt) {
     camera.position.copy(controls.target).add(cameraOffset.setFromSpherical(orbit));
     if (fly.elapsed >= fly.duration) fly=null;
   } else if (cameraShot?.ship) {
+    const { side, ship } = cameraShot;
+    if (!ship.anim) cameraShot = { side, points: [ship.obj.position.clone()] };
     measureShot(cameraShot);
-    controls.target.copy(shotTarget); camera.position.copy(shotTarget).add(shotOffset);
-    if (!cameraShot.ship.anim) cameraShot = {side:cameraShot.side, points:[cameraShot.ship.obj.position.clone()]};
+    if (ship.anim) {
+      const blend = 1 - Math.exp(-13 * dt);
+      controls.target.lerp(shotTarget, blend);
+      camera.position.lerp(cameraOffset.addVectors(shotTarget, shotOffset), blend);
+    } else {
+      startFlight(shotTarget, shotOffset, CAMERA_REFIT_TIME);
+    }
   }
+  // Let a wide shot fly in from its current distance before enforcing the tighter zoom limit.
+  controls.maxDistance = Math.max(cameraMaxDistance, camera.position.distanceTo(controls.target));
 }
 function releaseCamera() { if (!overhead) { fly = null; cameraShot = null; } }
-applyFrame();
 view('ru', true);
 window.__admiral = { camera, controls, view, THREE, ships, pucks, renderer, scene, CANNON, world, dice, COLL, rollStats, throwDice, stepDice, settleDice, readDie, setDieLoad, THROW };
 
@@ -2337,7 +2383,7 @@ function openSetup() {
   showSetupStep(false);
   applySides(new Set(NATIONS));
   renderNames('#setup-draw');
-  applyFrame(); view('top', !game);
+  view('top');
 }
 window.addEventListener('admiral:vk-user', () => {
   if (!draft || setupEl.hidden) return;
@@ -3274,7 +3320,7 @@ function closeOnline(giveUpSeat, showMenu) {
   overhead = false; overheadReturn = null; syncViewButton(); syncControls();
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
   applySides(new Set(NATIONS)); placeShipsNow();
-  view('top', true);
+  view('top');
   if (showMenu) intro?.showMenu();
 }
 function leaveOnline() { closeOnline(true, true); }
@@ -3454,8 +3500,10 @@ function refitViewport() {
   broadcast.layout();
   applyFrame();
   if (!cameraShot || ['W','H','top','bottom','left','right'].every(k => Math.abs(old[k]-frameArea[k])<0.5)) return;
+  if (cameraShot.ship && !fly) return;                              // the follow shot refits on the next frame
   measureShot(cameraShot);
-  startFlight(shotTarget,shotOffset,fly ? Math.max(0.02,fly.duration-fly.elapsed) : 0);
+  const remaining = fly ? fly.duration - fly.elapsed : 0;
+  startFlight(shotTarget, shotOffset, Math.max(CAMERA_REFIT_TIME, remaining));
 }
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -3529,7 +3577,7 @@ function frame() {
     }
   }
 
-  if (ticksHere) { stepDice(dt); onlineTick(); botTick(dt); }
+  if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); }
   stepCamera(dt);
   controls.update();
   updateReflections(time);
