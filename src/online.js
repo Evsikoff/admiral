@@ -12,6 +12,7 @@
 //   handler.voice(msg)       { id, on }: a player switched the commentator on or off (game.voice: { id: on })
 //   handler.assets(msg)      { id, progress }: a player's asset loading percentage (game.assets: { id: percent })
 //   handler.state(game)      the whole game again, after a lost connection or when asked for (AdmiralOnline.sync())
+//   handler.table(table)     the finished game is left for a new table with the same players and bots
 //   handler.reject(msg)      the server refused an action of this client: { n, have, kind }
 (function () {
   const intro = window.AdmiralIntro;
@@ -142,9 +143,16 @@
         return;
       case 'tables': tables = m.list; renderList(); return;
       case 'table': {
-        const was = table;
-        table = m.table;
-        if (table && game && game.no !== table.no) game = null;
+        const was = table, next = m.table;
+        const rematch = next && game && game.no !== next.no;
+        table = next;
+        if (rematch) {
+          game = null; pendingStart = null;
+          handler?.table?.(table);
+          intro.showMenu();
+          intro.stage = 'online';
+          if (!open) openClub();
+        }
         if (!table && was && open && !game) { showView('lobby'); send({ t: 'watch', on: true }); }
         if (table) { askingNo = null; codeBox.hidden = true; if (open && !game) showView('table'); }
         renderTable();
@@ -462,6 +470,7 @@
     },
     act: (n, a) => send({ t: 'act', n, a }),
     sync: () => send({ t: 'sync' }),
+    rematch: () => send({ t: 'rematch' }),
     // leaving the game: the seat is given up; the board goes back to the tavern
     leaveGame() {
       send({ t: 'leave' });

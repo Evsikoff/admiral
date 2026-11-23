@@ -356,6 +356,35 @@ test('bots: a player\'s screen sends the bot\'s decisions; the log says they wer
   assert.equal(lobby.tables.size, 0);
 });
 
+test('rematch: a fresh table gathers the remaining players and bots, with nobody ready yet', () => {
+  const { lobby, advance, client } = setup();
+  const a = client('A'), b = client('B'), c = client('C');
+  a.say({ t: 'create', private: true });
+  const code = a.last('table').table.code;
+  b.say({ t: 'join', no: 1, code }); c.say({ t: 'join', no: 1, code });
+  a.say({ t: 'bot-add', style: 'corsair' });
+  const botId = a.last('table').table.bots[0].id;
+  for (const p of [a, b, c]) p.say({ t: 'ready', on: true });
+  advance(COUNTDOWN_MS);
+  c.say({ t: 'leave' });
+  a.say({ t: 'rematch' });
+  const view = a.last('table').table;
+  assert.equal(view.no, 2, 'a new table, not the finished game reset in place');
+  assert.equal(view.private, true);
+  assert.equal(view.status, 'waiting');
+  assert.deepEqual(view.players.map((p) => p.id), [a.p.id, b.p.id], 'a player who deliberately left stays out');
+  assert.ok(view.players.every((p) => !p.ready && p.online));
+  assert.deepEqual(view.bots.map((bot) => [bot.id, bot.style]), [[botId, 'corsair']]);
+  assert.deepEqual(b.last('table').table, view, 'the whole company is shown the same new table');
+  assert.equal(lobby.tables.size, 1, 'the finished table is closed');
+  assert.equal(lobby.tables.has(1), false);
+  const starts = a.inbox.filter((m) => m.t === 'start').length;
+  b.say({ t: 'rematch' });
+  assert.equal(lobby.tables.size, 1, 'another request at the waiting table does not create a third table');
+  advance(COUNTDOWN_MS);
+  assert.equal(a.inbox.filter((m) => m.t === 'start').length, starts, 'everybody confirms the next game again');
+});
+
 test('bots: the styles of the server are those of the game', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../src/bot-styles.js', import.meta.url), 'utf8');

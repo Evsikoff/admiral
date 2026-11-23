@@ -1697,7 +1697,7 @@ function renderMenu() {
     const b = document.createElement('button'); b.textContent = label; b.className = cls;
     b.addEventListener('click', fn); menuEl.appendChild(b);
   };
-  if (online && game?.phase === 'over') { add({ label: 'Вернуться в таверну', cls: 'go', fn: leaveOnline }); return; }
+  if (online && game?.phase === 'over') { add({ label: 'Вернуться за стол', cls: 'go', fn: () => net.rematch() }); return; }
   if (!game || (game.phase !== 'move' && game.phase !== 'comp') || !myControl()) return;
   const items = game.phase === 'move' ? menuItems() : [];
   if (game.mode === 'menu') {
@@ -3121,10 +3121,10 @@ function setClock(ms) {
   online.clock = text; online.clockLow = sec != null && sec <= 10;
   renderWho();
 }
-// leaving an online game: the seat is given up, the board is cleared, the tavern comes back
-function leaveOnline() {
+// leaving an online game: the board is cleared; normally the seat is given up and the tavern comes back
+function closeOnline(giveUpSeat, showMenu) {
   if (!online) return;
-  net.leaveGame();
+  if (giveUpSeat) net.leaveGame();
   online = null;
   syncNewButton();
   cancelGrab(); clearDice(); sound.stopVoice(); sound.stopSwimming();
@@ -3134,11 +3134,13 @@ function leaveOnline() {
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
   applySides(new Set(NATIONS)); placeShipsNow();
   view('top', true);
-  intro?.showMenu();
+  if (showMenu) intro?.showMenu();
 }
+function leaveOnline() { closeOnline(true, true); }
 const onlineHandler = {
   start: startOnline,
   inGame: () => !!online,
+  table: () => closeOnline(false, false),
   act(m) {
     if (!online) return;
     if (m.n < online.applied || online.queue.some((x) => x.n === m.n)) return;

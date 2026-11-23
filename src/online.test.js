@@ -27,6 +27,7 @@ function setup() {
     stage: 'menu', enterFullscreen() {}, setResume() {},
     prepareGame: () => loading,
     enterGame: (stage) => entered.push(stage),
+    showMenu() { this.stage = 'menu'; },
   };
   const root = element();
   const window = { AdmiralIntro: intro, addEventListener() {} };
@@ -44,7 +45,7 @@ function setup() {
   online.open(); socket.onopen();
   const receive = (message) => socket.onmessage({ data: JSON.stringify(message) });
   receive({ t: 'welcome', id: 'a', token: 'token' });
-  return { online, receive, finishLoading, sent, entered, ready: document.getElementById('ol-ready') };
+  return { online, receive, finishLoading, sent, entered, intro, document, ready: document.getElementById('ol-ready') };
 }
 
 test('ready click survives table updates while the game assets are loading', async () => {
@@ -65,6 +66,28 @@ test('ready click survives table updates while the game assets are loading', asy
   await click;
   assert.equal(ready.disabled, false);
   assert.deepEqual(sent.at(-1), { t: 'ready', on: true });
+});
+
+test('a rematch opens the new table instead of leaving it', () => {
+  const { online, receive, sent, intro, document } = setup();
+  const returned = [];
+  online.attach({ inGame: () => true, state() {}, table: (table) => returned.push(table.no) });
+  intro.stage = 'online-game';
+  receive({ t: 'game', no: 1, me: 'a', players: [{ id: 'a', name: 'Анна', q: 'ru' }], presence: {}, log: [] });
+  online.close();
+  online.rematch();
+  assert.deepEqual(sent.at(-1), { t: 'rematch' });
+  receive({ t: 'table', table: {
+    no: 2, private: false, status: 'waiting',
+    players: [{ id: 'a', name: 'Анна', online: true, ready: false, assets: 100 }], bots: [],
+  } });
+  assert.deepEqual(returned, [2]);
+  assert.equal(online.game, null);
+  assert.equal(intro.stage, 'online');
+  assert.equal(document.getElementById('online').hidden, false);
+  assert.equal(document.getElementById('ol-table').hidden, false);
+  assert.equal(document.getElementById('ol-lobby').hidden, true);
+  assert.equal(sent.some(({ t }) => t === 'leave'), false, 'the new seat is not given up while opening it');
 });
 
 test('opening a game after loading uses the newest server snapshot', async () => {

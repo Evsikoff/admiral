@@ -5,6 +5,7 @@
 // and so may a player who takes longer than the time for a turn. A countdown waits for every player's assets to reach 100%.
 // A table may have bots in its free seats. A bot has no connection: one of the players' screens plays it (app.js)
 // and sends its decisions with the bot's id; the server only checks that the bot plays in that game.
+// After a victory, a rematch request moves everyone still seated, and the bots, to a fresh waiting table.
 import { randomBytes, randomInt } from 'node:crypto';
 
 export const NATIONS = ['ru', 'se', 'en', 'nl'];
@@ -152,6 +153,7 @@ export class Lobby {
       case 'bot-style': return this.setBotStyle(p, msg.id, msg.style);
       case 'bot-remove': return this.removeBot(p, msg.id);
       case 'leave': return this.leaveTable(p, true);
+      case 'rematch': return this.rematch(p);
       case 'act': return this.act(p, msg);
       case 'sync': if (p.table?.status === 'playing') p.conn?.send(this.gameState(p.table, p)); return;
       case 'voice': return this.setVoice(p, !!msg.on);
@@ -339,6 +341,27 @@ export class Lobby {
     const voice = this.voiceOf(table), assets = this.assetsOf(table);
     for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice, assets });
     this.listChanged();
+  }
+  // The clients detect victory. The first player returning to the table moves the whole company to a fresh one;
+  // later requests find a waiting table and do nothing. Nobody is ready automatically: the next game is confirmed again.
+  rematch(p) {
+    const old = p.table;
+    if (!old || old.status !== 'playing') return;
+    const table = { no: this.freeNumber(), private: old.private, code: old.private ? this.freeCode() : null,
+      status: 'waiting', players: [], bots: old.bots, timer: null, startsAt: 0, game: null, created: this.now() };
+    this.tables.set(table.no, table);
+    for (const o of old.players) {
+      if (o.table !== old) continue;             // a player who deliberately left is not brought back
+      this.timers.clear(o.away);
+      o.table = table; o.ready = false; o.online = !!o.conn; o.away = null;
+      table.players.push(o);
+      if (!o.conn) o.away = this.timers.set(() => {
+        o.away = null; if (o.table === table && !o.conn) this.leaveTable(o);
+      }, WAIT_GRACE_MS);
+    }
+    this.timers.clear(old.timer); old.timer = null;
+    this.tables.delete(old.no);
+    this.sendTable(table); this.listChanged();
   }
   gameState(table, p) {
     const g = table.game;
