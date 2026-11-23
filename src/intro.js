@@ -25,9 +25,13 @@
   const filmStatus = $('intro-film-status'), filmMessage = $('intro-film-message'), filmPlay = $('intro-film-play');
   const localBtn = $('menu-local'), onlineBtn = $('menu-online'), noteEl = $('menu-note');
   const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let selectedShipSet = null;
 
   // stage: start → loading → films → menu ⇄ local; menu ⇄ online (the club) → online-game
-  const api = { stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart, prepareGame };
+  const api = {
+    stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart, prepareGame,
+    get shipSet() { return selectedShipSet; },
+  };
   window.AdmiralIntro = api;
   function enterFullscreen() {
     if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
@@ -249,6 +253,107 @@
   filmsEl.addEventListener('contextmenu', (ev) => ev.preventDefault());
 
   // ---- the main menu
+  const shipSetsEl = $('menu-ship-sets'), shipSummary = shipSetsEl.querySelector('summary');
+  const shipName = $('menu-ship-name'), shipIcon = $('menu-ship-icon'), shipOptions = $('menu-ship-options');
+  const shipButtons = new Map();
+  const SHIP_SET_KEY = 'admiral.ship-set.v1';
+  const chipNumber = new Intl.NumberFormat('ru');
+  const chipPlural = new Intl.PluralRules('ru');
+  const identity = window.AdmiralIdentity;
+  identity?.ready.then((valid) => {
+    if (!valid) return;
+    $('menu-chip-balance').textContent = chipNumber.format(identity.chips);
+    const price = $('menu-online-price');
+    price.lastElementChild.textContent = `${chipAmount(identity.onlinePartyPrice)} за партию`;
+    price.hidden = false;
+    const sets = identity.shipSets;
+    if (sets.length) {
+      shipOptions.replaceChildren(...sets.map(shipOption));
+      let saved = null;
+      try { saved = localStorage.getItem(SHIP_SET_KEY); } catch { /* no storage */ }
+      const available = sets.filter((set) => set.free || set.owned);
+      const initial = available.find((set) => String(set.id) === saved) || available.find((set) => set.free) || available[0];
+      if (initial) selectShipSet(initial);
+      else shipName.textContent = 'Посмотреть наборы';
+      shipSetsEl.hidden = false;
+    }
+    $('menu-account').hidden = false;
+  });
+  function chipAmount(amount) {
+    const units = { one: 'фишка', few: 'фишки', many: 'фишек' };
+    return `${chipNumber.format(amount)} ${units[chipPlural.select(amount)]}`;
+  }
+  function shipOption(set) {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    const icon = document.createElement('img');
+    icon.alt = '';
+    icon.className = 'menu-ship-icon';
+    icon.loading = 'lazy';
+    icon.src = set.icon;
+    const label = document.createElement('span');
+    label.className = 'menu-ship-option-name';
+    label.textContent = set.name;
+    button.append(icon, label);
+    if (set.free || set.owned) {
+      const check = document.createElement('span');
+      check.className = 'menu-ship-selected';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = '✓';
+      check.hidden = true;
+      button.append(check);
+      button.setAttribute('aria-pressed', 'false');
+      shipButtons.set(set, button);
+      button.addEventListener('click', () => {
+        selectShipSet(set);
+        try { localStorage.setItem(SHIP_SET_KEY, String(set.id)); } catch { /* no storage */ }
+        closeShipSets(true);
+      });
+    } else {
+      button.disabled = true;
+      const price = document.createElement('span');
+      price.className = 'menu-ship-option-price';
+      const amount = set.prices.find((tier) => tier.number_defeated_opponents === 0).price;
+      price.textContent = chipAmount(amount);
+      button.append(price);
+    }
+    row.append(button);
+    return row;
+  }
+  function selectShipSet(set) {
+    if (set === selectedShipSet) return;
+    const previous = shipButtons.get(selectedShipSet);
+    if (previous) {
+      previous.setAttribute('aria-pressed', 'false');
+      previous.lastElementChild.hidden = true;
+    }
+    selectedShipSet = set;
+    const button = shipButtons.get(set);
+    button.setAttribute('aria-pressed', 'true');
+    button.lastElementChild.hidden = false;
+    shipName.textContent = set.name;
+    shipIcon.src = set.icon;
+    shipIcon.hidden = false;
+    emit('admiral:ship-set');
+  }
+  function closeShipSets(restoreFocus = false) {
+    shipSetsEl.open = false;
+    if (restoreFocus) shipSummary.focus({ preventScroll: true });
+  }
+  shipSetsEl.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !shipSetsEl.open) return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeShipSets(true);
+  });
+  shipSetsEl.addEventListener('focusout', (event) => {
+    if (event.relatedTarget && !shipSetsEl.contains(event.relatedTarget)) closeShipSets();
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (shipSetsEl.open && !shipSetsEl.contains(event.target)) closeShipSets();
+  });
+
   function openMenu(afterFilms) {
     api.stage = 'menu';
     cover(true);
@@ -266,6 +371,7 @@
   function enterGame(kind) {
     const from = api.stage;
     api.stage = kind;
+    closeShipSets();
     clearNote();
     cover(false);                                    // the map is drawn again while the menu fades away
     if (from === 'start') { hide(startEl, 450); dropFilms(); }
@@ -281,6 +387,7 @@
   onlineBtn.addEventListener('click', () => {
     if (api.stage !== 'menu') return;
     if (!window.AdmiralOnline) { showNote('Онлайн-игра недоступна в этой сборке.'); return; }
+    closeShipSets();
     clearNote();
     api.stage = 'online';
     window.AdmiralOnline.open();
@@ -288,6 +395,7 @@
   const rulesBtn = $('menu-rules');
   rulesBtn.addEventListener('click', () => {
     if (api.stage !== 'menu') return;
+    closeShipSets();
     let audioOff;
     try { audioOff = JSON.parse(localStorage.getItem('admiral.audio.v1')); } catch { /* no storage */ }
     clearNote();

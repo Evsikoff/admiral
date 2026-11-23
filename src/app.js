@@ -651,11 +651,11 @@ for (const q of NATIONS) {
   flagTex[q] = new THREE.CanvasTexture(c); flagTex[q].colorSpace = THREE.SRGBColorSpace; flagTex[q].anisotropy = maxAniso;
 }
 const wavingFlags = [];
-function makeFlag(q, w, h, segs = 14) {
+function makeFlag(q, w, h, segs = 14, phase = rnd() * 6) {
   const geo = new THREE.PlaneGeometry(w, h, segs, 4); geo.translate(w / 2, 0, 0);
   const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: flagTex[q], side: THREE.DoubleSide, roughness: 0.8 }));
   mesh.castShadow = true;
-  wavingFlags.push({ mesh, base: Float32Array.from(geo.attributes.position.array), w, phase: rnd() * 6 });
+  wavingFlags.push({ mesh, base: Float32Array.from(geo.attributes.position.array), w, phase });
   return mesh;
 }
 const poleMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2b, roughness: 0.7 });
@@ -867,7 +867,69 @@ function buildWreck(q) {
     const puff = new THREE.Mesh(smokeGeo, new THREE.MeshStandardMaterial({ color: 0x5d5a57, roughness: 1, transparent: true, opacity: 0.4, depthWrite: false }));
     puff.userData.noPick = true; g.add(puff); smoke.push(puff);
   }
-  return { g, smoke };
+  return { g, body, smoke };
+}
+
+const shipSkinLoader = new GLTFLoader();
+const embeddedShipFolder = new URL('kenney_pirate-kit_2.1/Models/GLB format/', location.href);
+const embeddedShipFiles = { intact: 'ship-medium.glb', wreck: 'ship-wreck.glb' };
+
+function shipSkinUrl(shipSet, type) {
+  if (!shipSet || (!shipSet.free && !shipSet.owned)) return null;
+  const entry = shipSet.models.find((model) => model.model_type === type);
+  if (!entry) return null;
+  const url = new URL(entry.base_model_url, location.href);
+  const embedded = new URL(embeddedShipFiles[type], embeddedShipFolder);
+  if (url.origin === embedded.origin && (url.pathname === embedded.pathname
+    || (type === 'intact' && url.pathname === embedded.pathname.slice(0, -1)))) return null;
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Unsupported ship model URL');
+  return url.href;
+}
+
+async function loadShipSkin(url, type) {
+  if (!url) return null;
+  const { scene: art } = await shipSkinLoader.loadAsync(url);
+  const root = new THREE.Group();
+  root.add(art);
+  const bounds = new THREE.Box3().setFromObject(root, true);
+  const size = bounds.getSize(new THREE.Vector3());
+  if (size.z > size.x) {
+    root.rotation.y = Math.PI / 2;
+    bounds.setFromObject(root, true).getSize(size);
+  }
+  if (bounds.isEmpty() || !Number.isFinite(size.lengthSq()) || size.x <= 0) throw new Error('Empty ship model');
+  const scale = Math.min(0.72 / size.x, 0.35 / size.z, 0.7 / size.y);
+  const center = bounds.getCenter(new THREE.Vector3());
+  root.scale.setScalar(scale);
+  root.position.set(-center.x * scale, -bounds.min.y * scale - (type === 'wreck' ? 0.05 : 0), -center.z * scale);
+  root.updateMatrixWorld(true);
+  const flagAt = new THREE.Vector3(0, -Infinity, 0);
+  const point = new THREE.Vector3();
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.castShadow = obj.receiveShadow = true;
+    const vertices = obj.geometry.attributes.position;
+    for (let index = 0; index < vertices.count; index++) {
+      point.fromBufferAttribute(vertices, index).applyMatrix4(obj.matrixWorld);
+      if (point.y > flagAt.y) flagAt.copy(point);
+    }
+  });
+  return { root, flagAt };
+}
+
+function disposeShipSkins(skins) {
+  const geometries = new Set(), materials = new Set(), textures = new Set();
+  for (const skin of skins) skin?.root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    geometries.add(obj.geometry);
+    for (const material of [obj.material].flat()) materials.add(material);
+  });
+  for (const material of materials) {
+    for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+    material.dispose();
+  }
+  for (const geometry of geometries) geometry.dispose();
+  for (const texture of textures) texture.dispose();
 }
 
 const ships = [];
@@ -889,7 +951,8 @@ const PIN_PX = 30, PIN_MIN = 0.42, PIN_MAX = 1.2, PIN_SELECTED = 1.25;
 for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   const ship = new THREE.Group();
   const model = new THREE.Group(); ship.add(model);
-  const intact = buildIntact(q), wreck = buildWreck(q);
+  const intact = new THREE.Group(), intactBody = buildIntact(q), wreck = buildWreck(q);
+  intact.add(intactBody);
   model.add(intact, wreck.g);
   const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; ring.visible = false; ring.renderOrder = 3; ship.add(ring);   // drawn over the water
@@ -899,12 +962,78 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   scene.add(ship);
   const s = {
     q, n, obj: ship, model, intact, wreck: wreck.g, smoke: wreck.smoke, ring, pin, state: 'wreck', slot: shipyards[q],
+    stockBodies: [intactBody, wreck.body], skinBodies: [],
     anim: null, heading: 0, rest: null, pulse: 1, seed: rnd() * 10, offset: new THREE.Vector3(), wake: createWake(sea, wakeMaterial),
   };
   ship.traverse((o) => { if (o.isMesh && !o.userData.noPick) { o.userData.ship = s; pickables.push(o); } });
   pin.userData.ship=s; pickables.push(pin);
   ships.push(s);
 }
+
+let shipSkinRequest = 0;
+let activeShipSkins = [null, null], activeShipUrls = [null, null];
+function showShipSkins(skins) {
+  for (const s of ships) {
+    for (const { body, flag } of s.skinBodies) {
+      const wave = wavingFlags.findIndex((entry) => entry.mesh === flag);
+      wavingFlags.splice(wave, 1);
+      flag.geometry.dispose();
+      flag.material.dispose();
+      body.traverse((obj) => {
+        const index = pickables.indexOf(obj);
+        if (index !== -1) pickables.splice(index, 1);
+      });
+      body.removeFromParent();
+    }
+    s.skinBodies.length = 0;
+    const states = [s.intact, s.wreck];
+    skins.forEach((skin, index) => {
+      s.stockBodies[index].visible = !skin;
+      if (!skin) return;
+      const body = new THREE.Group();
+      body.add(skin.root.clone());
+      const flag = makeFlag(s.q, 0.22, 0.14, 6, s.seed);
+      flag.position.copy(skin.flagAt);
+      flag.rotation.y = Math.PI;
+      body.add(flag);
+      body.traverse((obj) => {
+        if (!obj.isMesh) return;
+        if (!obj.material.transparent || obj.material.alphaTest > 0) obj.layers.enable(1);
+        obj.userData.ship = s;
+        pickables.push(obj);
+      });
+      states[index].add(body);
+      s.skinBodies.push({ body, flag });
+    });
+    s.pin.position.copy(skins[0]?.flagAt ?? masthead);
+    s.pin.position.y += 0.1;
+  }
+  disposeShipSkins(activeShipSkins);
+  activeShipSkins = skins;
+}
+
+async function syncShipSet() {
+  const request = ++shipSkinRequest;
+  const shipSet = intro?.shipSet;
+  try {
+    const types = ['intact', 'wreck'];
+    const urls = types.map((type) => shipSkinUrl(shipSet, type));
+    if (urls.every((url, index) => url === activeShipUrls[index])) return;
+    const results = await Promise.allSettled(types.map((type, index) => loadShipSkin(urls[index], type)));
+    const skins = results.map((result) => result.status === 'fulfilled' ? result.value : null);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (request !== shipSkinRequest || failure) disposeShipSkins(skins);
+    if (request !== shipSkinRequest) return;
+    if (failure) throw failure.reason;
+    showShipSkins(skins);
+    activeShipUrls = urls;
+  } catch (error) {
+    console.warn('Ship set could not be loaded:', error);
+    showShipSkins([null, null]);
+    activeShipUrls = [null, null];
+  }
+}
+
 function setState(s, state) {
   s.state = state;
   s.intact.visible = state === 'ok';
@@ -3295,6 +3424,8 @@ for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
 placeShipsNow();
 if (!intro) openSetup();
 else {
+  window.addEventListener('admiral:ship-set', syncShipSet);
+  syncShipSet();
   window.addEventListener('admiral:menu', () => sound.setMood('start'));
   window.addEventListener('admiral:rules-open', () => sound.setMusicPaused(true));
   window.addEventListener('admiral:rules-close', () => sound.setMusicPaused(false));

@@ -469,6 +469,68 @@
     gap: clamp(8px, 1.8vh, 16px); padding: 16px;
     --plank-w: min(370px, 82vw, 84vh);
   }
+  .menu-account {
+    position: relative; z-index: 2; display: flex; align-items: stretch;
+    width: min(370px, calc(100vw - 32px)); min-height: 56px;
+    border: 1px solid #886237; border-radius: 8px;
+    color: #f8e8c2; font-family: Georgia, "Times New Roman", serif;
+    background: linear-gradient(#3e281b, #21150f);
+    box-shadow: 0 6px 20px #100804b3, inset 0 0 0 2px #ebbc7820;
+  }
+  .menu-balance { display: flex; align-items: center; gap: 7px; padding: 5px 11px; }
+  .menu-account-label { display: block; color: #dfbd8d; font: 11px/1.25 "Segoe UI", system-ui, sans-serif; }
+  #menu-chip-balance { display: block; font-size: 19px; line-height: 1.1; white-space: nowrap; }
+  .chip-icon {
+    display: inline-grid; flex: none; width: 2.15em; aspect-ratio: 1; place-items: center;
+    color: #40200b; font: 700 17px/1 Georgia, "Times New Roman", serif;
+    text-shadow: 0 1px #ffe3a4; clip-path: circle(50%);
+    background:
+      radial-gradient(circle, #ffe09b 0%, #d69a43 29%, #633511 31% 35%, transparent 36% 46%,
+        #693810 47% 51%, #efc477 52% 58%, #8a4d1f 60% 64%, transparent 65%),
+      repeating-conic-gradient(from -6deg, #c9914c 0 12deg, transparent 12deg 45deg);
+  }
+  .menu-ship-sets { flex: 1; min-width: 0; border-left: 1px solid #88623780; }
+  .menu-ship-sets summary {
+    display: flex; align-items: center; gap: 8px; height: 100%; min-height: 54px;
+    padding: 5px 11px; cursor: pointer; list-style: none;
+    border-radius: 0 7px 7px 0;
+  }
+  .menu-ship-sets summary::-webkit-details-marker { display: none; }
+  .menu-ship-sets summary::after {
+    content: ""; flex: none; width: 7px; height: 7px; margin: -4px 2px 0 auto;
+    border: solid #dfbd8d; border-width: 0 2px 2px 0; transform: rotate(45deg);
+  }
+  .menu-ship-sets[open] summary::after { margin-top: 4px; transform: rotate(225deg); }
+  .menu-ship-sets summary:hover, .menu-ship-sets[open] summary { background: #efc47716; }
+  .menu-ship-sets :is(summary, button):focus-visible { outline: 2px solid #ffd27a; outline-offset: -3px; }
+  .menu-ship-current { min-width: 0; }
+  #menu-ship-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .menu-ship-icon { flex: none; width: 36px; height: 36px; object-fit: contain; border-radius: 4px; }
+  .menu-ship-options {
+    position: absolute; top: calc(100% + 5px); inset-inline: -1px;
+    max-height: min(260px, 44vh); max-height: min(260px, 44dvh); overflow-y: auto; overscroll-behavior: contain;
+    margin: 0; padding: 4px; list-style: none;
+    background: #2c1b12; border: 1px solid #886237; border-radius: 7px;
+    box-shadow: 0 10px 24px #100804d4;
+  }
+  .menu-ship-options button {
+    display: flex; width: 100%; justify-content: space-between; padding: 4px 7px;
+    border: 1px solid transparent; border-radius: 4px; text-align: left;
+    color: inherit; white-space: normal;
+  }
+  .menu-ship-options button:enabled:hover, .menu-ship-options button[aria-pressed="true"] {
+    border-color: #886237; background: #efc47720;
+  }
+  .menu-ship-options button:disabled { opacity: 1; color: #dfbd8d; }
+  .menu-ship-option-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .menu-ship-option-price { flex: none; white-space: nowrap; }
+  .menu-ship-selected { color: #f2cb82; }
+  #menu-online:has(.menu-online-price:not([hidden])) { min-height: 76px; }
+  .menu-online-price {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 3px;
+    color: #ffe0a2; font: 600 12px/1.1 "Segoe UI", system-ui, sans-serif;
+  }
+  .menu-online-price .chip-icon { font-size: 8px; }
   .menu-logo {
     width: auto; height: min(36vh, 64vw, 400px); margin-bottom: clamp(2px, 1.4vh, 14px);
     user-select: none; -webkit-user-drag: none;
@@ -493,7 +555,14 @@
   }
   @media (orientation: landscape) and (max-height: 480px) {
     .menu-stack { flex-direction: row; gap: 4vw; --plank-w: min(300px, 44vw, 82vh); }
+    .menu-stack:has(.menu-account:not([hidden])) {
+      display: grid; grid-template-columns: auto auto; gap: 8px 4vw;
+      --plank-w: min(300px, 44vw, 74vh);
+    }
+    .menu-account { grid-column: 1 / -1; justify-self: center; }
     .menu-logo { height: min(70vh, 40vw); margin: 0; }
+    .menu-stack:has(.menu-account:not([hidden])) .menu-logo { height: min(58vh, 40vw); }
+    .menu-stack:has(.menu-account:not([hidden])) .menu-note:not(.on) { display: none; }
     #intro-menu .menu-snd { right: 10px; bottom: 10px; }
   }
   @media (orientation: landscape) and (max-width: 540px) and (max-height: 480px) {
@@ -725,6 +794,21 @@
   <div class="tavern-shade" aria-hidden="true"></div>
   <canvas class="tavern-motes" aria-hidden="true"></canvas>
   <div class="menu-stack">
+    <div id="menu-account" class="menu-account" hidden>
+      <div class="menu-balance">
+        <span class="chip-icon" aria-hidden="true">А</span>
+        <span><span class="menu-account-label">Фишки</span><strong id="menu-chip-balance"></strong></span>
+      </div>
+      <details id="menu-ship-sets" class="menu-ship-sets" hidden>
+        <summary>
+          <img id="menu-ship-icon" class="menu-ship-icon" alt="" hidden>
+          <span class="menu-ship-current">
+            <span class="menu-account-label">Набор кораблей</span><strong id="menu-ship-name"></strong>
+          </span>
+        </summary>
+        <ul id="menu-ship-options" class="menu-ship-options"></ul>
+      </details>
+    </div>
     <img class="menu-logo" src="assets/game_logo.png" alt="Адмирал" draggable="false">
     <nav class="menu-actions" aria-label="Главное меню">
       <button id="menu-local" class="plank" type="button">
@@ -732,6 +816,9 @@
       </button>
       <button id="menu-online" class="plank" type="button" aria-describedby="menu-note">
         <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети, можно с ботами</span>
+        <span id="menu-online-price" class="menu-online-price" hidden>
+          <span class="chip-icon" aria-hidden="true">А</span><span></span>
+        </span>
       </button>
       <button id="menu-rules" class="plank" type="button" aria-haspopup="dialog">
         <span class="plank-title">Правила игры</span>

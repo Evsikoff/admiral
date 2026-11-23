@@ -9,14 +9,19 @@ const appId = '12345';
 const appSecret = 'example-secret';
 const deviceId = '123e4567-e89b-42d3-a456-426614174000';
 const userId = '50001';
-const chipsField = 'chips_balance';
-const loginExtras = {
-  online_party_price: 10,
-  ship_sets: [{
+const shipSets = [
+  {
     id: 1, name: 'Classic', free: true, icon: 'classic.png', owned: true, prices: [],
-    models: [{ id: 1, model_type: 'ship', base_model_url: 'https://example.com/ship.glb' }],
-  }],
-};
+    models: [{ id: 1, model_type: 'intact', base_model_url: 'https://example.com/ship.glb' }],
+  },
+  {
+    id: 2, name: 'Prestige', free: false, icon: 'prestige.png', owned: false, models: [],
+    prices: [
+      { id: 3, price: 100, item_id: 'prestige_base', discount: null, number_defeated_opponents: 0 },
+      { id: 4, price: 80, item_id: 'prestige_winner_1', discount: 20, number_defeated_opponents: 1 },
+    ],
+  },
+];
 
 function signedLaunch(user = userId) {
   const params = new URLSearchParams({
@@ -41,9 +46,11 @@ async function setup(t, { configured = true, chips = 125 } = {}) {
     assert.equal(init.headers.Authorization, 'Bearer server-secret');
     assert.equal(init.headers['content-type'], 'application/json');
     assert.equal(Object.keys(JSON.parse(init.body)).length, 1);
-    // The login row also carries the online party price and the ship set catalog;
-    // they are accepted but not used yet.
-    return { ok: true, status: 200, json: async () => [{ [chipsField]: chips, ...loginExtras }] };
+    return { ok: true, status: 200, json: async () => [{
+      chips_balance: chips,
+      online_party_price: '10',
+      ship_sets: shipSets,
+    }] };
   }
   const handler = createUsersHandler({
     supabaseUrl: configured ? 'https://supabase.example' : undefined,
@@ -70,11 +77,11 @@ async function setup(t, { configured = true, chips = 125 } = {}) {
   };
 }
 
-test('an external device enters through the database function and receives its chips', async (t) => {
-  const server = await setup(t);
+test('an external device receives the numeric balance, online price and ship set catalog', async (t) => {
+  const server = await setup(t, { chips: '125' });
   const first = await server.post({ vk: false, deviceId });
   const second = await server.post({ vk: false, deviceId });
-  assert.deepEqual(first, { status: 200, body: { ok: true, chips: 125 } });
+  assert.deepEqual(first, { status: 200, body: { ok: true, chips: 125, onlinePartyPrice: 10, shipSets } });
   assert.deepEqual(second, first);
   assert.equal(server.calls.length, 2);
   for (const { init } of server.calls) {
@@ -85,8 +92,9 @@ test('an external device enters through the database function and receives its c
 test('a VK visit enters by vk_id without sending a device identifier', async (t) => {
   const server = await setup(t, { chips: 80 });
   const body = { vk: true, launchParams: signedLaunch(), deviceId };
-  assert.deepEqual(await server.post(body), { status: 200, body: { ok: true, chips: 80 } });
-  assert.deepEqual(await server.post(body), { status: 200, body: { ok: true, chips: 80 } });
+  const result = { status: 200, body: { ok: true, chips: 80, onlinePartyPrice: 10, shipSets } };
+  assert.deepEqual(await server.post(body), result);
+  assert.deepEqual(await server.post(body), result);
   assert.equal(server.calls.length, 2);
   for (const { init } of server.calls) {
     assert.deepEqual(JSON.parse(init.body), { p_vk_id: userId });
@@ -114,4 +122,9 @@ test('user entry can be disabled without affecting other server features', async
   const result = await server.post({ vk: false, deviceId });
   assert.equal(result.status, 503);
   assert.equal(server.calls.length, 0);
+});
+
+test('invalid chip values do not produce a successful login response', async (t) => {
+  const server = await setup(t, { chips: ' ' });
+  assert.equal((await server.post({ vk: false, deviceId })).status, 503);
 });
