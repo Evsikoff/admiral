@@ -9,6 +9,7 @@ const appId = '12345';
 const appSecret = 'example-secret';
 const deviceId = '123e4567-e89b-42d3-a456-426614174000';
 const userId = '50001';
+const chipsField = 'Количество фишек пользователя';
 
 function signedLaunch(user = userId) {
   const params = new URLSearchParams({
@@ -22,24 +23,18 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { initialRows = [], configured = true } = {}) {
-  const rows = initialRows.map((row) => ({ ...row }));
+async function setup(t, { configured = true, chips = 125 } = {}) {
   const calls = [];
-  let nextId = 1;
   async function fetchImpl(url, init = {}) {
     calls.push({ url, init });
     const parsed = new URL(url);
-    assert.equal(parsed.pathname, '/rest/v1/admiral_users');
-    if (init.method === 'POST') {
-      const body = JSON.parse(init.body);
-      rows.push({ id: nextId++, ...body });
-      return { ok: true, status: 201 };
-    }
-    const field = ['device_id', 'vk_id'].find((key) => parsed.searchParams.has(key));
-    assert.ok(field);
-    const value = parsed.searchParams.get(field).slice(3);
-    const matches = rows.filter((row) => row[field] === value).slice(0, Number(parsed.searchParams.get('limit')));
-    return { ok: true, status: 200, json: async () => matches.map(({ id }) => ({ id })) };
+    assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_enter');
+    assert.equal(init.method, 'POST');
+    assert.equal(init.headers.apikey, 'server-secret');
+    assert.equal(init.headers.Authorization, 'Bearer server-secret');
+    assert.equal(init.headers['content-type'], 'application/json');
+    assert.equal(Object.keys(JSON.parse(init.body)).length, 1);
+    return { ok: true, status: 200, json: async () => [{ [chipsField]: chips }] };
   }
   const handler = createUsersHandler({
     supabaseUrl: configured ? 'https://supabase.example' : undefined,
@@ -56,7 +51,7 @@ async function setup(t, { initialRows = [], configured = true } = {}) {
     await closed;
   });
   return {
-    rows, calls,
+    calls,
     async post(body) {
       const response = await fetch(`${origin}/api/users/register`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
@@ -66,34 +61,34 @@ async function setup(t, { initialRows = [], configured = true } = {}) {
   };
 }
 
-test('an external device is inserted once and later visits do nothing', async (t) => {
+test('an external device enters through the database function and receives its chips', async (t) => {
   const server = await setup(t);
   const first = await server.post({ vk: false, deviceId });
   const second = await server.post({ vk: false, deviceId });
-  assert.deepEqual(first, { status: 200, body: { ok: true } });
+  assert.deepEqual(first, { status: 200, body: { ok: true, chips: 125 } });
   assert.deepEqual(second, first);
-  assert.equal(server.rows.length, 1);
-  assert.equal(server.rows[0].device_id, deviceId);
-  assert.equal(server.rows[0].vk_id, undefined);
-  assert.equal(server.calls.filter(({ init }) => init.method === 'POST').length, 1);
+  assert.equal(server.calls.length, 2);
+  for (const { init } of server.calls) {
+    assert.deepEqual(JSON.parse(init.body), { p_device_id: deviceId });
+  }
 });
 
-test('a VK account is inserted once by vk_id without a device identifier', async (t) => {
-  const server = await setup(t);
+test('a VK visit enters by vk_id without sending a device identifier', async (t) => {
+  const server = await setup(t, { chips: 80 });
   const body = { vk: true, launchParams: signedLaunch(), deviceId };
-  assert.equal((await server.post(body)).status, 200);
-  assert.equal((await server.post(body)).status, 200);
-  assert.equal(server.rows.length, 1);
-  assert.equal(server.rows[0].vk_id, userId);
-  assert.equal(server.rows[0].device_id, undefined);
-  assert.equal(server.calls.filter(({ init }) => init.method === 'POST').length, 1);
+  assert.deepEqual(await server.post(body), { status: 200, body: { ok: true, chips: 80 } });
+  assert.deepEqual(await server.post(body), { status: 200, body: { ok: true, chips: 80 } });
+  assert.equal(server.calls.length, 2);
+  for (const { init } of server.calls) {
+    assert.deepEqual(JSON.parse(init.body), { p_vk_id: userId });
+  }
 });
 
-test('concurrent first visits cannot duplicate a device in the single server process', async (t) => {
+test('concurrent visits are forwarded to the atomic database function', async (t) => {
   const server = await setup(t);
   const results = await Promise.all(Array.from({ length: 5 }, () => server.post({ vk: false, deviceId })));
-  assert.ok(results.every(({ status }) => status === 200));
-  assert.equal(server.rows.length, 1);
+  assert.ok(results.every(({ status, body }) => status === 200 && body.chips === 125));
+  assert.equal(server.calls.length, 5);
 });
 
 test('invalid devices and tampered VK launch parameters never reach Supabase', async (t) => {
@@ -102,11 +97,10 @@ test('invalid devices and tampered VK launch parameters never reach Supabase', a
   const tampered = new URLSearchParams(signedLaunch());
   tampered.set('vk_user_id', '50002');
   assert.equal((await server.post({ vk: true, launchParams: `?${tampered}` })).status, 401);
-  assert.equal(server.rows.length, 0);
   assert.equal(server.calls.length, 0);
 });
 
-test('registration can be disabled without affecting other server features', async (t) => {
+test('user entry can be disabled without affecting other server features', async (t) => {
   const server = await setup(t, { configured: false });
   const result = await server.post({ vk: false, deviceId });
   assert.equal(result.status, 503);

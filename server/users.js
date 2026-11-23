@@ -1,6 +1,7 @@
 import { verifyVkLaunch } from './vk-launch.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
+const CHIPS_FIELD = 'Количество фишек пользователя';
 const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function readJson(req) {
@@ -34,42 +35,24 @@ function sendJson(res, status, body, headers = {}) {
 
 export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, fetchImpl = fetch, now } = {}) {
   const enabled = Boolean(supabaseUrl && secretKey);
-  const tableUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/admiral_users` : '';
-  const pending = new Map();
+  const enterUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/admiral_user_enter` : '';
 
-  async function request(query, init = {}) {
-    const response = await fetchImpl(tableUrl + query, {
-      ...init,
-      headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}`, ...init.headers },
+  async function enter(params) {
+    const response = await fetchImpl(enterUrl, {
+      method: 'POST',
+      headers: {
+        apikey: secretKey,
+        Authorization: `Bearer ${secretKey}`,
+        'content-type': 'application/json',
+      },
       signal: AbortSignal.timeout(10000),
+      body: JSON.stringify(params),
     });
     if (!response.ok) throw new Error(`Supabase request failed with status ${response.status}`);
-    return response;
-  }
-
-  async function findUser(field, value) {
-    const query = new URLSearchParams({ [field]: `eq.${value}`, select: 'id', limit: '1' });
-    const rows = await request(`?${query}`).then((response) => response.json());
-    if (!Array.isArray(rows)) throw new Error('Supabase returned an invalid user lookup');
-    return rows[0] || null;
-  }
-
-  async function registerNow(field, value) {
-    if (await findUser(field, value)) return;
-    await request('', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ [field]: value }),
-    });
-  }
-
-  function register(key, field, value) {
-    const previous = pending.get(key) || Promise.resolve();
-    const operation = previous.catch(() => {}).then(() => registerNow(field, value));
-    pending.set(key, operation);
-    return operation.finally(() => {
-      if (pending.get(key) === operation) pending.delete(key);
-    });
+    const rows = await response.json();
+    const chips = Array.isArray(rows) && rows.length === 1 ? rows[0]?.[CHIPS_FIELD] : null;
+    if (!Number.isSafeInteger(chips)) throw new Error('Supabase returned an invalid chip balance');
+    return chips;
   }
 
   return async function handleUsers(req, res) {
@@ -81,18 +64,18 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
     try {
       const body = await readJson(req);
       if (typeof body?.vk !== 'boolean') return sendJson(res, 400, { error: 'Invalid user registration' });
+      let chips;
       if (body.vk) {
         if (typeof body.launchParams !== 'string') return sendJson(res, 400, { error: 'Invalid user registration' });
         const launch = verifyVkLaunch(new URLSearchParams(body.launchParams), { appId, appSecret, now });
         if (!launch) return sendJson(res, 401, { error: 'Invalid VK launch parameters' });
-        const vkId = String(launch.userId);
-        await register(`vk:${vkId}`, 'vk_id', vkId);
+        chips = await enter({ p_vk_id: String(launch.userId) });
       } else {
         const deviceId = typeof body.deviceId === 'string' ? body.deviceId.toLowerCase() : '';
         if (!DEVICE_ID.test(deviceId)) return sendJson(res, 400, { error: 'Invalid user registration' });
-        await register(`device:${deviceId}`, 'device_id', deviceId);
+        chips = await enter({ p_device_id: deviceId });
       }
-      return sendJson(res, 200, { ok: true });
+      return sendJson(res, 200, { ok: true, chips });
     } catch (error) {
       console.error('User registration failed:', error.message);
       return sendJson(res, 503, { error: 'User registration is temporarily unavailable' });

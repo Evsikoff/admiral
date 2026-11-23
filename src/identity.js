@@ -15,7 +15,7 @@
     return deviceId;
   }
 
-  const api = { get deviceId() { return deviceId; }, ready: null };
+  const api = { get deviceId() { return deviceId; }, chips: null, ready: null };
   window.AdmiralIdentity = api;
   api.ready = (async () => {
     if (!served) return false;
@@ -29,6 +29,10 @@
       cache: 'no-store',
       body: JSON.stringify(body),
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const result = await response.json();
+    if (result?.ok !== true || !Number.isSafeInteger(result.chips)) return false;
+    api.chips = result.chips;
+    return true;
   })().catch(() => false);
 })();
