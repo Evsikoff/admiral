@@ -1,12 +1,12 @@
 (function () {
   const DEVICE_KEY = 'admiral.device.id';
-  const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const served = location.protocol === 'http:' || location.protocol === 'https:';
   let deviceId = null;
 
   function externalDeviceId() {
     try { deviceId = localStorage.getItem(DEVICE_KEY); } catch { /* no storage */ }
-    if (!DEVICE_ID.test(deviceId || '')) {
+    if (!UUID_V4.test(deviceId || '')) {
       try {
         deviceId = crypto.randomUUID();
         try { localStorage.setItem(DEVICE_KEY, deviceId); } catch { /* no storage */ }
@@ -15,28 +15,59 @@
     return deviceId;
   }
 
+  function logLogin(level, message, response) {
+    const label = `[admiral:user-login] ${message}`;
+    if (!response) {
+      console[level](label);
+      return;
+    }
+    const details = { status: response.status };
+    const loginId = response.headers?.get('x-admiral-login-id');
+    if (UUID_V4.test(loginId || '')) details.loginId = loginId;
+    console[level](label, details);
+  }
+
   const api = { get deviceId() { return deviceId; }, chips: null, onlinePartyPrice: null, shipSets: null, ready: null };
   window.AdmiralIdentity = api;
   api.ready = (async () => {
-    if (!served) return false;
-    await window.AdmiralVK?.ready;
-    const vk = window.isVKApp === true;
-    const body = vk ? { vk: true, launchParams: location.search } : { vk: false, deviceId: externalDeviceId() };
-    if (!vk && !body.deviceId) return false;
-    const response = await fetch('/api/users/register', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) return false;
-    const result = await response.json();
-    if (result?.ok !== true || !Number.isSafeInteger(result.chips) ||
-        !Number.isSafeInteger(result.onlinePartyPrice) || result.onlinePartyPrice < 0 ||
-        !Array.isArray(result.shipSets)) return false;
-    api.chips = result.chips;
-    api.onlinePartyPrice = result.onlinePartyPrice;
-    api.shipSets = result.shipSets;
-    return true;
-  })().catch(() => false);
+    if (!served) {
+      logLogin('info', 'Login skipped because the game is outside HTTP(S)');
+      return false;
+    }
+    let response;
+    try {
+      await window.AdmiralVK?.ready;
+      const vk = window.isVKApp === true;
+      const body = vk ? { vk: true, launchParams: location.search } : { vk: false, deviceId: externalDeviceId() };
+      if (!vk && !body.deviceId) {
+        logLogin('info', 'Login skipped because a device identifier is unavailable');
+        return false;
+      }
+      response = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        logLogin('warn', 'Registration endpoint returned an error', response);
+        return false;
+      }
+      const result = await response.json();
+      if (result?.ok !== true || !Number.isSafeInteger(result.chips) ||
+          !Number.isSafeInteger(result.onlinePartyPrice) || result.onlinePartyPrice < 0 ||
+          !Array.isArray(result.shipSets)) {
+        logLogin('warn', 'Login response did not match the expected format', response);
+        return false;
+      }
+      api.chips = result.chips;
+      api.onlinePartyPrice = result.onlinePartyPrice;
+      api.shipSets = result.shipSets;
+      logLogin('info', 'Login response accepted', response);
+      return true;
+    } catch {
+      logLogin('warn', response ? 'Could not read the login response' : 'Could not complete the login request', response);
+      return false;
+    }
+  })();
 })();

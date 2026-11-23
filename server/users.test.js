@@ -7,8 +7,10 @@ import { createUsersHandler } from './users.js';
 
 const appId = '12345';
 const appSecret = 'example-secret';
+const serverSecret = 'server-secret';
 const deviceId = '123e4567-e89b-42d3-a456-426614174000';
-const userId = '50001';
+const userId = '500013627108';
+const logPrefix = '[admiral:user-login] ';
 const shipSets = [
   {
     id: 1, name: 'Classic', free: true, icon: 'classic.png', owned: true, prices: [],
@@ -35,17 +37,20 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { configured = true, chips = 125 } = {}) {
-  const calls = [];
+async function setup(t, { configured = true, chips = 125, upstreamError = null } = {}) {
+  const calls = [], logs = [];
+  const captureLog = (...args) => logs.push(args);
+  const logger = { info: captureLog, warn: captureLog, error: captureLog };
   async function fetchImpl(url, init = {}) {
     calls.push({ url, init });
     const parsed = new URL(url);
     assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_login');
     assert.equal(init.method, 'POST');
-    assert.equal(init.headers.apikey, 'server-secret');
-    assert.equal(init.headers.Authorization, 'Bearer server-secret');
+    assert.equal(init.headers.apikey, serverSecret);
+    assert.equal(init.headers.Authorization, `Bearer ${serverSecret}`);
     assert.equal(init.headers['content-type'], 'application/json');
     assert.equal(Object.keys(JSON.parse(init.body)).length, 1);
+    if (upstreamError) return { ok: false, status: upstreamError.status, json: async () => upstreamError.body };
     return { ok: true, status: 200, json: async () => [{
       chips_balance: chips,
       online_party_price: '10',
@@ -54,8 +59,8 @@ async function setup(t, { configured = true, chips = 125 } = {}) {
   }
   const handler = createUsersHandler({
     supabaseUrl: configured ? 'https://supabase.example' : undefined,
-    secretKey: configured ? 'server-secret' : undefined,
-    appId, appSecret, fetchImpl,
+    secretKey: configured ? serverSecret : undefined,
+    appId, appSecret, fetchImpl, logger,
   });
   const server = http.createServer(handler);
   server.listen(0, '127.0.0.1');
@@ -67,22 +72,52 @@ async function setup(t, { configured = true, chips = 125 } = {}) {
     await closed;
   });
   return {
-    calls,
+    calls, logs,
     async post(body) {
       const response = await fetch(`${origin}/api/users/register`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
       });
-      return { status: response.status, body: await response.json() };
+      return { status: response.status, body: await response.json(), loginId: response.headers.get('x-admiral-login-id') };
     },
   };
+}
+
+function events(logs) {
+  return logs.map(([entry, ...extra]) => {
+    assert.equal(extra.length, 0);
+    assert.ok(entry.startsWith(logPrefix));
+    return JSON.parse(entry.slice(logPrefix.length));
+  });
+}
+
+function loginEvents(server, { loginId }) {
+  assert.ok(loginId);
+  return events(server.logs).filter((entry) => entry.loginId === loginId);
+}
+
+function assertTerminalEvent(event, response, mode) {
+  assert.equal(event.status, response.status);
+  if (mode) assert.equal(event.mode, mode);
+  assert.ok(Number.isFinite(event.elapsedMs) && event.elapsedMs >= 0);
 }
 
 test('an external device receives the numeric balance, online price and ship set catalog', async (t) => {
   const server = await setup(t, { chips: '125' });
   const first = await server.post({ vk: false, deviceId });
   const second = await server.post({ vk: false, deviceId });
-  assert.deepEqual(first, { status: 200, body: { ok: true, chips: 125, onlinePartyPrice: 10, shipSets } });
-  assert.deepEqual(second, first);
+  for (const response of [first, second]) {
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body, { ok: true, chips: 125, onlinePartyPrice: 10, shipSets });
+    const trail = loginEvents(server, response);
+    assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
+    assert.equal(trail[0].mode, 'device');
+    assertTerminalEvent(trail[1], response, 'device');
+    assert.equal(trail[1].supabaseStatus, 200);
+  }
+  const config = events(server.logs).find(({ event }) => event === 'configuration');
+  assert.deepEqual(config.missingEnv, []);
+  assert.equal(config.vkConfigured, true);
+  assert.ok(!JSON.stringify(server.logs).includes(deviceId));
   assert.equal(server.calls.length, 2);
   for (const { init } of server.calls) {
     assert.deepEqual(JSON.parse(init.body), { p_device_id: deviceId });
@@ -92,9 +127,18 @@ test('an external device receives the numeric balance, online price and ship set
 test('a VK visit enters by vk_id without sending a device identifier', async (t) => {
   const server = await setup(t, { chips: 80 });
   const body = { vk: true, launchParams: signedLaunch(), deviceId };
-  const result = { status: 200, body: { ok: true, chips: 80, onlinePartyPrice: 10, shipSets } };
-  assert.deepEqual(await server.post(body), result);
-  assert.deepEqual(await server.post(body), result);
+  for (let count = 0; count < 2; count++) {
+    const response = await server.post(body);
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.body, { ok: true, chips: 80, onlinePartyPrice: 10, shipSets });
+    const trail = loginEvents(server, response);
+    assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
+    assert.equal(trail[0].mode, 'vk');
+    assertTerminalEvent(trail[1], response, 'vk');
+  }
+  for (const sensitive of [appSecret, serverSecret, userId, deviceId, new URLSearchParams(body.launchParams).get('sign')]) {
+    assert.ok(!JSON.stringify(server.logs).includes(sensitive));
+  }
   assert.equal(server.calls.length, 2);
   for (const { init } of server.calls) {
     assert.deepEqual(JSON.parse(init.body), { p_vk_id: userId });
@@ -105,6 +149,7 @@ test('concurrent visits are forwarded to the atomic database function', async (t
   const server = await setup(t);
   const results = await Promise.all(Array.from({ length: 5 }, () => server.post({ vk: false, deviceId })));
   assert.ok(results.every(({ status, body }) => status === 200 && body.chips === 125));
+  assert.equal(new Set(results.map(({ loginId }) => loginId)).size, results.length);
   assert.equal(server.calls.length, 5);
 });
 
@@ -122,9 +167,44 @@ test('user entry can be disabled without affecting other server features', async
   const result = await server.post({ vk: false, deviceId });
   assert.equal(result.status, 503);
   assert.equal(server.calls.length, 0);
+  const config = events(server.logs).find(({ event }) => event === 'configuration');
+  assert.deepEqual(new Set(config.missingEnv), new Set(['SUPABASE_URL', 'SUPABASE_SECRET_KEY']));
+  assert.equal(config.vkConfigured, true);
+  const trail = loginEvents(server, result);
+  assert.deepEqual(trail.map((entry) => entry.event), ['failed']);
+  assertTerminalEvent(trail[0], result);
+  assert.equal(trail[0].reason, 'supabase_not_configured');
 });
 
 test('invalid chip values do not produce a successful login response', async (t) => {
-  const server = await setup(t, { chips: ' ' });
-  assert.equal((await server.post({ vk: false, deviceId })).status, 503);
+  const rawValue = 'private value from the database';
+  const server = await setup(t, { chips: rawValue });
+  const result = await server.post({ vk: false, deviceId });
+  assert.equal(result.status, 503);
+  const trail = loginEvents(server, result);
+  assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'failed']);
+  assertTerminalEvent(trail[1], result, 'device');
+  assert.equal(trail[1].reason, 'rpc_validation_failed');
+  assert.equal(trail[1].supabaseStatus, 200);
+  assert.match(trail[1].validationError, /chip.*balance/i);
+  assert.ok(!JSON.stringify(server.logs).includes(rawValue));
+});
+
+test('a Supabase HTTP error logs a safe status and code with the response correlation ID', async (t) => {
+  const message = `upstream details for ${userId} using ${serverSecret}`;
+  const server = await setup(t, {
+    upstreamError: { status: 403, body: { code: '42501', message, details: deviceId, hint: appSecret } },
+  });
+  const result = await server.post({ vk: true, launchParams: signedLaunch() });
+  assert.equal(result.status, 503);
+  const trail = loginEvents(server, result);
+  assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'failed']);
+  assertTerminalEvent(trail[1], result, 'vk');
+  assert.equal(trail[1].reason, 'rpc_http_error');
+  assert.equal(trail[1].supabaseStatus, 403);
+  assert.equal(trail[1].supabaseCode, '42501');
+  const logged = JSON.stringify(server.logs);
+  for (const sensitive of [message, deviceId, userId, appSecret, serverSecret]) {
+    assert.ok(!logged.includes(sensitive));
+  }
 });
