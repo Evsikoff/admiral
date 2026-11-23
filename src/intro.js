@@ -266,7 +266,7 @@
     const price = $('menu-online-price');
     price.lastElementChild.textContent = `${chipAmount(identity.onlinePartyPrice)} за партию`;
     price.hidden = false;
-    const sets = identity.shipSets;
+    const sets = identity.shipSets.filter((set) => !/^мой\s+флот$/iu.test(set.name.trim()));
     if (sets.length) {
       shipOptions.replaceChildren(...sets.map(shipOption));
       let saved = null;
