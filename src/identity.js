@@ -36,9 +36,11 @@
     }
     let response;
     try {
-      await window.AdmiralVK?.ready;
-      const vk = window.isVKApp === true;
-      const body = vk ? { vk: true, launchParams: location.search } : { vk: false, deviceId: externalDeviceId() };
+      // The server verifies VK launch parameters. Bridge initialization and profile loading run independently.
+      const launchParams = location.search;
+      const params = new URLSearchParams(launchParams);
+      const vk = params.has('vk_app_id') && params.has('vk_user_id') && params.has('sign');
+      const body = vk ? { vk: true, launchParams } : { vk: false, deviceId: externalDeviceId() };
       if (!vk && !body.deviceId) {
         logLogin('info', 'Login skipped because a device identifier is unavailable');
         return false;
