@@ -5,7 +5,7 @@
 // app.js listens for its events on window:
 //   'admiral:menu'        the main menu has opened: its music starts
 //   'admiral:play-local'  «Играть локально»: the setup screen of a game at one computer opens
-// and brings the menu back with AdmiralIntro.showMenu() (the setup screen's «В меню», leaving an online game).
+// and brings the menu back with AdmiralIntro.showMenu() (the setup screen's «В меню», leaving a game).
 // «Играть онлайн» opens the club of the tavern (src/online.js) over the menu; a game found there leaves the menu
 // with enterGame('online-game'). After a reload in the middle of an online game the start screen offers to go
 // back to it, without the films.

@@ -2443,7 +2443,8 @@ window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') { ev.preventDefault(); if (draft.players) backToNames(); else cancelSetup(); }
   if (ev.key === 'Enter' && ev.target.matches('.pl-name')) { ev.preventDefault(); drawLots(); }
 });
-const newBtn = document.getElementById('t-new');
+const newBtn = document.getElementById('t-new'), mainMenuBtn = document.getElementById('t-menu');
+mainMenuBtn.addEventListener('click', leaveLocal);
 newBtn.addEventListener('click', () => {
   if (!online) { openSetup(); return; }
   // online the button leaves the game; a second press within three seconds confirms it
@@ -2454,7 +2455,9 @@ newBtn.addEventListener('click', () => {
 function syncNewButton() {
   clearTimeout(newBtn.confirmTimer); delete newBtn.dataset.confirm;
   newBtn.textContent = online ? 'Покинуть игру' : 'Новая игра';
+  mainMenuBtn.hidden = !!online || !intro;
 }
+syncNewButton();
 
 // ------------------------------------------------------------------ sound switches: music, sound effects, the commentator's voice
 // Each is remembered between games. With the commentator off his lines are still written at the bottom.
@@ -3308,12 +3311,8 @@ function setClock(ms) {
   online.clock = text; online.clockLow = sec != null && sec <= 10;
   renderWho();
 }
-// leaving an online game: the board is cleared; normally the seat is given up and the tavern comes back
-function closeOnline(giveUpSeat, showMenu) {
-  if (!online) return;
-  if (giveUpSeat) net.leaveGame();
-  online = null;
-  syncNewButton();
+// leaving a game: the board is cleared and, normally, the tavern comes back
+function closeGame(showMenu) {
   cancelGrab(); clearDice(); sound.stopVoice(); sound.stopSwimming();
   game = null; select(null, false);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';
@@ -3322,6 +3321,17 @@ function closeOnline(giveUpSeat, showMenu) {
   applySides(new Set(NATIONS)); placeShipsNow();
   view('top');
   if (showMenu) intro?.showMenu();
+}
+function leaveLocal() {
+  if (online || !game) return;
+  closeGame(true);
+}
+function closeOnline(giveUpSeat, showMenu) {
+  if (!online) return;
+  if (giveUpSeat) net.leaveGame();
+  online = null;
+  syncNewButton();
+  closeGame(showMenu);
 }
 function leaveOnline() { closeOnline(true, true); }
 const onlineHandler = {
