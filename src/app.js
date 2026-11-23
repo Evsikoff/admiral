@@ -1089,6 +1089,9 @@ function placeShipsNow() {
 // contact materials, damping, sleep rules and throw impulses — rescaled from its d6 (half-size 51.96)
 // to ours (half-size 0.36). Gravity and lengths shrink together, so the dice tumble just as long.
 const DIE = 0.72, DH = DIE / 2;
+const DICE_HZ = 60, DICE_STEP = 1 / DICE_HZ;
+const DICE_SETTLE_STEPS = DICE_HZ;                              // one second after both dice have landed
+const DICE_FLIGHT_LIMIT = 12;                                    // fallback if a die never lands
 const DK = DH / 51.96;                                           // dice-box units → board units
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.8 * 400 * DK, 0) });     // ≈ −27 units/s²
@@ -1270,7 +1273,7 @@ const dice = [0, 1].map(() => {
   mesh.castShadow = mesh.receiveShadow = true;
   mesh.position.copy(PIP_AXIS).multiplyScalar(dieLoad);
   const obj = new THREE.Group(); obj.add(mesh); obj.visible = false; scene.add(obj);
-  const d = { body, mesh, obj, mats, ship: null };
+  const d = { body, mesh, obj, mats, ship: null, landed: false };
   body.addEventListener('collide', (e) => {
     if (!roll) return;
     if (roll.done) {
@@ -1278,6 +1281,10 @@ const dice = [0, 1].map(() => {
       return;
     }
     if (e.body.ship && !d.ship) d.ship = e.body.ship;
+    if (!e.body.isDie && !d.landed) {
+      d.landed = true;
+      if (dice.every((d) => d.landed)) roll.settleStep = world.stepnumber + 1 + DICE_SETTLE_STEPS;
+    }
     if (!roll.landed && !e.body.isDie && !e.body.isTable) {
       roll.landed = true;
       if (roll.recording) roll.land = roll.t;          // a recorded throw sounds when its playback gets there
@@ -1352,7 +1359,7 @@ function prepareThrow() {
       d.body.quaternion.set(0, 0, 0, 1);  // compute the cube's inertia before the launch pose is applied
       d.body.updateMassProperties();
     }
-    d.ship = null; tintDie(d, false); d.obj.visible = true;
+    d.ship = null; d.landed = false; tintDie(d, false); d.obj.visible = true;
   }
 }
 function throwDice(q, onDone) {
@@ -1391,6 +1398,12 @@ function readRoll(timedOut) {
     return r;
   });
 }
+function readFinishedRoll() {
+  const still = dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING);
+  const recognitionExpired = world.stepnumber >= (roll.settleStep ?? Infinity);
+  if (still || recognitionExpired) return readRoll(false);
+  return roll.t >= DICE_FLIGHT_LIMIT ? readRoll(true) : null;
+}
 function finishDice(res) {
   roll.done = true;
   dice.forEach((d, i) => tintDie(d, !res[i].ok));
@@ -1414,7 +1427,7 @@ function finishDice(res) {
 // ---- an online throw is worked out once, by the thrower, and recorded: every screen then plays the same flight.
 // Frames: 30 a second, two dice each, [x, y, z, qx, qy, qz, qw] per die; land: when the dice first hit the board.
 const r4 = (x) => Math.round(x * 1e4) / 1e4;
-const REC_FPS = 30, REC_STRIDE = 60 / REC_FPS;
+const REC_FPS = 30, REC_STRIDE = DICE_HZ / REC_FPS;
 function recordThrow(plan) {
   flingDice(plan, null);
   Object.assign(roll, { recording: true, land: -1 });
@@ -1426,14 +1439,12 @@ function recordThrow(plan) {
     }
   };
   put();
-  let step = 0, still = false;
-  while (!still && step < 12 * 60) {                 // the same limit as a throw on screen: 12 s
-    world.step(1 / 60); step++; roll.t = step / 60;
-    still = dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING);
-    if (step % REC_STRIDE === 0) put();
-  }
-  while (step % REC_STRIDE) { world.step(1 / 60); step++; if (step % REC_STRIDE === 0) put(); }
-  const res = readRoll(!still);
+  let step = 0, res;
+  do {
+    world.step(DICE_STEP); step++; roll.t = step / DICE_HZ;
+    res = readFinishedRoll();
+    if (res || step % REC_STRIDE === 0) put();
+  } while (!res);
   roll.done = true;
   return {
     frames, land: roll.land,
@@ -1474,7 +1485,8 @@ function stepDice(dt) {
     syncShipBodies(false);
   }
   const before = world.stepnumber;
-  world.step(1 / 60, dt, 5);
+  const remainingSteps = roll.done ? Infinity : (roll.settleStep ?? Infinity) - before;
+  world.step(DICE_STEP, dt, Math.min(5, remainingSteps));
   for (const d of dice) { d.obj.position.copy(d.body.position); d.obj.quaternion.copy(d.body.quaternion); }
   if (roll.done) {
     // A fast display can render a frame before the next physics step is due.
@@ -1482,15 +1494,15 @@ function stepDice(dt) {
     return;
   }
   roll.t += dt;
-  const still = dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING);
-  if (still || roll.t > 12) finishDice(readRoll(!still));
+  const res = readFinishedRoll();
+  if (res) finishDice(res);
 }
 function clearDice() {
   roll = null;
   for (const d of dice) { d.obj.visible = false; d.ship = null; tintDie(d, false); if (world.bodies.includes(d.body)) world.removeBody(d.body); }
 }
 // play the current throw to its end at once (tests; the page normally steps it frame by frame)
-function settleDice() { let n = 0; while (roll && !roll.done && n++ < 1200) stepDice(1 / 60); }
+function settleDice() { let n = 0; while (roll && !roll.done && n++ < 1200) stepDice(DICE_STEP); }
 
 function setDieLoad(load) {
   dieLoad = load;
