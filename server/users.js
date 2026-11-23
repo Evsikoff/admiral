@@ -1,7 +1,7 @@
 import { verifyVkLaunch } from './vk-launch.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
-const CHIPS_FIELD = 'Количество фишек пользователя';
+const CHIPS_FIELD = 'chips_balance';
 const DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function readJson(req) {
@@ -35,10 +35,12 @@ function sendJson(res, status, body, headers = {}) {
 
 export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, fetchImpl = fetch, now } = {}) {
   const enabled = Boolean(supabaseUrl && secretKey);
-  const enterUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/admiral_user_enter` : '';
+  const loginUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/admiral_user_login` : '';
 
-  async function enter(params) {
-    const response = await fetchImpl(enterUrl, {
+  // admiral_user_login returns one row: the chip balance, the online party price
+  // and the ship set catalog. Only the chip balance is used for now.
+  async function login(params) {
+    const response = await fetchImpl(loginUrl, {
       method: 'POST',
       headers: {
         apikey: secretKey,
@@ -69,11 +71,11 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
         if (typeof body.launchParams !== 'string') return sendJson(res, 400, { error: 'Invalid user registration' });
         const launch = verifyVkLaunch(new URLSearchParams(body.launchParams), { appId, appSecret, now });
         if (!launch) return sendJson(res, 401, { error: 'Invalid VK launch parameters' });
-        chips = await enter({ p_vk_id: String(launch.userId) });
+        chips = await login({ p_vk_id: String(launch.userId) });
       } else {
         const deviceId = typeof body.deviceId === 'string' ? body.deviceId.toLowerCase() : '';
         if (!DEVICE_ID.test(deviceId)) return sendJson(res, 400, { error: 'Invalid user registration' });
-        chips = await enter({ p_device_id: deviceId });
+        chips = await login({ p_device_id: deviceId });
       }
       return sendJson(res, 200, { ok: true, chips });
     } catch (error) {

@@ -9,7 +9,14 @@ const appId = '12345';
 const appSecret = 'example-secret';
 const deviceId = '123e4567-e89b-42d3-a456-426614174000';
 const userId = '50001';
-const chipsField = 'Количество фишек пользователя';
+const chipsField = 'chips_balance';
+const loginExtras = {
+  online_party_price: 10,
+  ship_sets: [{
+    id: 1, name: 'Classic', free: true, icon: 'classic.png', owned: true, prices: [],
+    models: [{ id: 1, model_type: 'ship', base_model_url: 'https://example.com/ship.glb' }],
+  }],
+};
 
 function signedLaunch(user = userId) {
   const params = new URLSearchParams({
@@ -28,13 +35,15 @@ async function setup(t, { configured = true, chips = 125 } = {}) {
   async function fetchImpl(url, init = {}) {
     calls.push({ url, init });
     const parsed = new URL(url);
-    assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_enter');
+    assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_login');
     assert.equal(init.method, 'POST');
     assert.equal(init.headers.apikey, 'server-secret');
     assert.equal(init.headers.Authorization, 'Bearer server-secret');
     assert.equal(init.headers['content-type'], 'application/json');
     assert.equal(Object.keys(JSON.parse(init.body)).length, 1);
-    return { ok: true, status: 200, json: async () => [{ [chipsField]: chips }] };
+    // The login row also carries the online party price and the ship set catalog;
+    // they are accepted but not used yet.
+    return { ok: true, status: 200, json: async () => [{ [chipsField]: chips, ...loginExtras }] };
   }
   const handler = createUsersHandler({
     supabaseUrl: configured ? 'https://supabase.example' : undefined,
