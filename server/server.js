@@ -44,7 +44,7 @@ const handleUsers = createUsersHandler({
 const TYPES = {
   '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.m4a': 'audio/mp4',
-  '.mp4': 'video/mp4', '.webm': 'video/webm', '.json': 'application/json',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.json': 'application/json', '.glb': 'model/gltf-binary',
 };
 
 // the page is one big file; it is read and compressed once (again when the file changes, for local work)

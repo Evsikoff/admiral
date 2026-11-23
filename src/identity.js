@@ -15,7 +15,7 @@
     return deviceId;
   }
 
-  const api = { get deviceId() { return deviceId; }, chips: null, ready: null };
+  const api = { get deviceId() { return deviceId; }, chips: null, onlinePartyPrice: null, shipSets: null, ready: null };
   window.AdmiralIdentity = api;
   api.ready = (async () => {
     if (!served) return false;
@@ -31,8 +31,12 @@
     });
     if (!response.ok) return false;
     const result = await response.json();
-    if (result?.ok !== true || !Number.isSafeInteger(result.chips)) return false;
+    if (result?.ok !== true || !Number.isSafeInteger(result.chips) ||
+        !Number.isSafeInteger(result.onlinePartyPrice) || result.onlinePartyPrice < 0 ||
+        !Array.isArray(result.shipSets)) return false;
     api.chips = result.chips;
+    api.onlinePartyPrice = result.onlinePartyPrice;
+    api.shipSets = result.shipSets;
     return true;
   })().catch(() => false);
 })();
