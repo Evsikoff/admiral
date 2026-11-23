@@ -7,8 +7,9 @@ const generatedId = '123e4567-e89b-42d3-a456-426614174000';
 const savedId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const correlationId = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
 const shipSets = [{ id: 1, free: true, owned: true, icon: 'classic.png', name: 'Classic', models: [], prices: [] }];
+const pendingBridge = new Promise(() => {});
 
-function setup({ vk = false, stored = null, search = '', protocol = 'https:', ok = true, chips = 125,
+function setup({ bridgeReady = Promise.resolve(), stored = null, search = '', protocol = 'https:', ok = true, chips = 125,
                  onlinePartyPrice = 10, responseBody, loginId = correlationId, requestError, jsonError } = {}) {
   const values = new Map();
   if (stored) values.set('admiral.device.id', stored);
@@ -19,7 +20,7 @@ function setup({ vk = false, stored = null, search = '', protocol = 'https:', ok
     warn: (...args) => logs.push(['warn', ...args]),
   };
   let generated = 0;
-  const window = { isVKApp: vk, AdmiralVK: { ready: Promise.resolve() } };
+  const window = { isVKApp: false, AdmiralVK: { ready: bridgeReady } };
   const location = { protocol, search };
   const localStorage = {
     getItem: (key) => values.get(key) || null,
@@ -44,14 +45,14 @@ function setup({ vk = false, stored = null, search = '', protocol = 'https:', ok
   return { window, values, requests, logs, generated: () => generated };
 }
 
-test('an external visit keeps a random device id in local storage and registers it', async () => {
-  const context = setup();
+test('an external visit registers its device even if VK Bridge is still pending', async () => {
+  const context = setup({ bridgeReady: pendingBridge });
+  assert.equal(context.requests.length, 1);
   assert.equal(await context.window.AdmiralIdentity.ready, true);
   assert.equal(context.window.AdmiralIdentity.chips, 125);
   assert.equal(context.window.AdmiralIdentity.onlinePartyPrice, 10);
   assert.deepEqual(context.window.AdmiralIdentity.shipSets, shipSets);
   assert.equal(context.values.get('admiral.device.id'), generatedId);
-  assert.equal(context.requests.length, 1);
   assert.equal(context.requests[0].url, '/api/users/register');
   assert.deepEqual(JSON.parse(context.requests[0].init.body), { vk: false, deviceId: generatedId });
   assert.deepEqual(context.logs, [
@@ -68,9 +69,10 @@ test('an existing external device id is reused and zero values are accepted', as
   assert.deepEqual(JSON.parse(context.requests[0].init.body), { vk: false, deviceId: savedId });
 });
 
-test('a VK visit sends only signed launch parameters, not a device id', async () => {
-  const search = '?vk_user_id=50001&sign=signed';
-  const context = setup({ vk: true, search });
+test('a VK visit uses signed launch parameters even if VK Bridge is still pending', async () => {
+  const search = '?vk_app_id=12345&vk_user_id=50001&vk_ts=1700000000&sign=signed';
+  const context = setup({ bridgeReady: pendingBridge, search });
+  assert.equal(context.requests.length, 1);
   assert.equal(await context.window.AdmiralIdentity.ready, true);
   assert.equal(context.window.AdmiralIdentity.chips, 125);
   assert.equal(context.generated(), 0);
