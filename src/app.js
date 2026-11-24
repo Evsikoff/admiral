@@ -2444,6 +2444,7 @@ window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && ev.target.matches('.pl-name')) { ev.preventDefault(); drawLots(); }
 });
 const newBtn = document.getElementById('t-new'), mainMenuBtn = document.getElementById('t-menu');
+mainMenuBtn.hidden = !intro;
 mainMenuBtn.addEventListener('click', leaveLocal);
 newBtn.addEventListener('click', () => {
   if (!online) { openSetup(); return; }
@@ -2457,7 +2458,6 @@ function syncNewButton() {
   newBtn.textContent = online ? 'Покинуть игру' : 'Новая игра';
   mainMenuBtn.hidden = !!online || !intro;
 }
-syncNewButton();
 
 // ------------------------------------------------------------------ sound switches: music, sound effects, the commentator's voice
 // Each is remembered between games. With the commentator off his lines are still written at the bottom.
