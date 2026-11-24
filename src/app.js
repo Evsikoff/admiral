@@ -1637,7 +1637,6 @@ function boardClick(u) {
   if (!game || !game.acts || !myControl()) return;
   const ship = u && u.ship, slot = u && u.slot;
   if (ship && actionable(ship)) {
-    game.mode = 'sail';
     select(selected === ship && game.acts.size > 1 ? null : ship);
     return;
   }
@@ -1653,7 +1652,7 @@ function boardClick(u) {
 const escHTML = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const playerName = (p, i) => p.name || `Игрок ${i + 1}`;
 // a game: who plays which side; sides nobody plays are out of the game (grey, closed, no ships)
-let game = null;                       // { players: [{ name, q, id, bot }], turn, phase, dice, allActs, acts, mode, … }
+let game = null;                       // { players: [{ name, q, id, bot }], turn, phase, dice, allActs, acts, … }
 const isBot = (i) => !!game?.players?.[i]?.bot;            // bot: the id of its style of play (src/bot-styles.js)
 function newGame(players) {
   overhead = false; overheadReturn = null; syncViewButton();
@@ -1671,7 +1670,6 @@ window.addEventListener('keydown', (ev) => {
   if (setupIsOpen() || !game || !myControl() || (ev.target.closest && ev.target.closest('button, input, textarea'))) return;
   if (ev.code !== 'Escape') return;
   if (selected && game.acts && game.acts.size > 1) select(null);
-  else if (game.mode === 'sail' && menuItems().length > 1) backToMenu();
 });
 
 // ------------------------------------------------------------------ rules: where a ship may sail
@@ -1848,12 +1846,11 @@ function autoSelect() {
   select(list.length === 1 ? list[0] : null);
 }
 
-// the menu: «Ходить» stands for every move of every ship; a six may repair a ship or buy one out of a prison
+// the menu: a six may repair a ship or buy one out of a prison; ships sail by a click on the board
 const menuEl = document.getElementById('menu');
 function menuItems() {
   if (!game || !game.allActs) return [];
   const items = [], list = [...game.allActs];
-  if (list.some(([, l]) => l[0].kind === 'move')) items.push({ label: 'Ходить', cls: 'go', fn: chooseSail });
   const rep = list.find(([, l]) => l[0].kind === 'repair');
   if (rep) items.push({ label: 'Починить корабль', cls: 'six', fn: () => userPerform(rep[0], rep[1][0]) });
   const seen = new Set();
@@ -1872,25 +1869,8 @@ function renderMenu() {
   };
   if (online && game?.phase === 'over') { add({ label: 'Вернуться за стол', cls: 'go', fn: () => net.rematch() }); return; }
   if (!game || (game.phase !== 'move' && game.phase !== 'comp') || !myControl()) return;
-  const items = game.phase === 'move' ? menuItems() : [];
-  if (game.mode === 'menu') {
-    items.forEach(add);
-    return;
-  }
+  if (game.phase === 'move') menuItems().forEach(add);
   if (selected && game.acts?.size > 1) add({ label: 'Все корабли', cls: 'back', fn: () => select(null) });
-  if (items.length > 1) add({ label: '← К действиям', cls: 'back', fn: backToMenu });
-}
-function chooseSail() {
-  if (!game || game.phase !== 'move' || !game.acts?.size || !myControl()) return;
-  game.mode = 'sail';
-  autoSelect();
-  say(game.acts.size === 1 ? 'Нажмите на отмеченную клетку, и корабль поплывёт туда.'
-    : 'Выберите корабль, затем клетку с кольцом его цвета.');
-}
-function backToMenu() {
-  if (!game || game.phase !== 'move') return;
-  game.mode = 'menu';
-  autoSelect();
 }
 
 // ------------------------------------------------------------------ camera presets
@@ -2817,10 +2797,10 @@ window.AdmiralOnline?.setVoice(!audioOff.commentator);
 
 // ------------------------------------------------------------------ turns: a throw of two dice, then the moves; the commentator reports
 // A turn: the commentator names the player, the camera comes round to that player's harbour, and the player
-// throws the dice by hand. A throw that does not count is thrown again. A counted throw is spent step by step
-// from a menu: «Ходить» (a ship sails the number of one die or of both together), and with a six «Починить
-// корабль» or «Выкупить корабль из плена». While anything can be done, the player must do something. After a
-// double the player throws once more. Whoever lines up all five ships on the parade wins.
+// throws the dice by hand. A throw that does not count is thrown again. A counted throw is spent step by step:
+// a ship sails the number of one die or of both together (picked on the board), and with a six the menu offers
+// «Починить корабль» or «Выкупить корабль из плена». While anything can be done, the player must do something.
+// After a double the player throws once more. Whoever lines up all five ships on the parade wins.
 const hudEl = document.getElementById('hud'), whoEl = document.getElementById('who'), capEl = document.getElementById('captions');
 const rollHud = document.getElementById('roll-hud');
 const rollOwner = rollHud.querySelector('.roll-name'), rollFaces = [...rollHud.querySelectorAll('.roll-die')];
@@ -2959,7 +2939,7 @@ function beginTurns() {
 function startTurn(i) {
   const before = game.turnNumber ? game.turn : -1;          // whose turn this one follows (none for the first)
   game.afterBot = before >= 0 && isBot(before);
-  Object.assign(game, { turn: i, turnNumber: (game.turnNumber || 0) + 1, phase: 'idle', again: false, dice: null, double: false, captured: new Set(), acts: null, allActs: null, mode: null, chooser: null, after: null });
+  Object.assign(game, { turn: i, turnNumber: (game.turnNumber || 0) + 1, phase: 'idle', again: false, dice: null, double: false, captured: new Set(), acts: null, allActs: null, chooser: null, after: null });
   select(null); renderTurn(); syncMusicMood();
   const introduced = (game.introduced ??= new Set()), first = !introduced.has(i);
   introduced.add(i);
@@ -3144,7 +3124,7 @@ function startMoves(a, b) {
 function nextAction(first, dicePair = null) {
   const i = game.turn, q = game.players[i].q, o = options(q, game.dice);
   const left = game.dice.filter((d) => !d.used);
-  Object.assign(game, { chooser: null, acts: null, allActs: null, mode: null, destinationMark: null });
+  Object.assign(game, { chooser: null, acts: null, allActs: null, destinationMark: null });
   syncMusicMood();
   if (!o.acts.size) {
     // why a six is needed is told once, the first time a player has none while every ship is at the shipyard
@@ -3161,7 +3141,7 @@ function nextAction(first, dicePair = null) {
     const sailing = targets.filter(t => t.kind === 'move');
     if (sailing.length) moves.set(ship, sailing);
   }
-  Object.assign(game, { phase: 'move', allActs: o.acts, acts:moves.size ? moves : null, mode: 'menu', chooser: i });
+  Object.assign(game, { phase: 'move', allActs: o.acts, acts:moves.size ? moves : null, chooser: i });
   const prompt = isBot(i) ? ''
     : !moves.size || o.repair || o.ransom ? 'Выберите действие.'
       : moves.size === 1 ? 'Нажмите на клетку назначения.' : 'Выберите корабль, затем клетку его цвета.';
@@ -3175,7 +3155,7 @@ function nextAction(first, dicePair = null) {
   }
 }
 function endMoves() {
-  Object.assign(game, { acts: null, allActs: null, mode: null }); select(null);
+  Object.assign(game, { acts: null, allActs: null }); select(null);
   if (game.double) {
     Object.assign(game, { phase: 'idle', again: 'double', chooser: null }); renderTurn();
     announcer.doubleBonus(game.players[game.turn].q);
@@ -3208,7 +3188,7 @@ function perform(s, t) {
   game.destinationMark = t.kind === 'move'
     ? { target: t, colors: [s.ring.visible ? s.ring.material.color.getHex() : ROUTE_COLORS[s.n - 1]] }
     : null;
-  Object.assign(game, { acts: null, allActs: null, mode: null, phase: 'anim' }); select(null); renderTurn();
+  Object.assign(game, { acts: null, allActs: null, phase: 'anim' }); select(null); renderTurn();
   if (t.kind === 'move') {
     const from = s.slot, enteringParade = !from.star && Boolean(t.slot.star);
     const by = bypassed(from, t.path);
@@ -3260,7 +3240,7 @@ function compensate(X) {
     nextAction(false);
     return;
   }
-  Object.assign(game, { phase: 'comp', chooser: ci, acts: o.acts, allActs: o.acts, mode: 'sail' });
+  Object.assign(game, { phase: 'comp', chooser: ci, acts: o.acts, allActs: o.acts });
   syncMusicMood();
   if (all.length === 1) {
     announcer.compAuto(X);
@@ -3273,7 +3253,7 @@ function compensate(X) {
 function checkWin(q) {
   if (!ships.every((s) => s.q !== q || s.slot.star)) return false;
   const i = game.players.findIndex((p) => p.q === q);
-  Object.assign(game, { phase: 'over', winner: i, acts: null, allActs: null, mode: null, chooser: null });
+  Object.assign(game, { phase: 'over', winner: i, acts: null, allActs: null, chooser: null });
   select(null);
   syncMusicMood();
   sound.effect('victory');
@@ -3578,7 +3558,7 @@ function skipDecision() {
     return;
   }
   say(`${swatch(p.q)}${why} — ход ${SECTOR[p.q]} пропущен.`, 'warn');
-  Object.assign(game, { acts: null, allActs: null, mode: null, double: false });
+  Object.assign(game, { acts: null, allActs: null, double: false });
   select(null, false);
   passTurn();
 }
@@ -3871,7 +3851,7 @@ Object.assign(window.__admiral, {
   recordThrow, playThrow, pump, awaiting, settle,
   cells, harbors, shipyards, prisons, nextCell, routes, options, occupancy, perform, startMoves,
   fastForward, setState, placeShipsNow, layoutShips, select, autoSelect, pairsAt, boardClick, compensate, nextAction,
-  fling, flingDice, commentary, chasePairs, cellsTo, menuItems, chooseSail, backToMenu, announceChase, showChase,
+  fling, flingDice, commentary, chasePairs, cellsTo, menuItems, announceChase, showChase,
   sound, isTenseMoment, syncMusicMood, announcer, brain, botTick, botChoice, botRank, botsHurry, botThrowPlan,
 });
 
