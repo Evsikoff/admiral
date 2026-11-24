@@ -518,13 +518,8 @@
   .menu-account-label { display: block; color: #dfbd8d; font: 11px/1.25 "Segoe UI", system-ui, sans-serif; }
   #menu-chip-balance { display: block; font-size: 19px; line-height: 1.1; white-space: nowrap; }
   .chip-icon {
-    display: inline-grid; flex: none; width: 2.15em; aspect-ratio: 1; place-items: center;
-    color: #40200b; font: 700 17px/1 Georgia, "Times New Roman", serif;
-    text-shadow: 0 1px #ffe3a4; clip-path: circle(50%);
-    background:
-      radial-gradient(circle, #ffe09b 0%, #d69a43 29%, #633511 31% 35%, transparent 36% 46%,
-        #693810 47% 51%, #efc477 52% 58%, #8a4d1f 60% 64%, transparent 65%),
-      repeating-conic-gradient(from -6deg, #c9914c 0 12deg, transparent 12deg 45deg);
+    display: inline-block; flex: none; width: 37px; aspect-ratio: 1;
+    background: var(--asset-chip, url(assets/menu/chip.png)) center / contain no-repeat;
   }
   .menu-ship-sets { flex: 1; min-width: 0; border-left: 1px solid #88623780; }
   .menu-ship-sets summary {
@@ -567,7 +562,7 @@
     display: inline-flex; align-items: center; gap: 5px; margin-top: 3px;
     color: #ffe0a2; font: 600 12px/1.1 "Segoe UI", system-ui, sans-serif;
   }
-  .menu-online-price .chip-icon { font-size: 8px; }
+  .menu-online-price .chip-icon { width: 17px; }
   .menu-logo {
     width: auto; height: min(36vh, 64vw, 400px); margin-bottom: clamp(2px, 1.4vh, 14px);
     user-select: none; -webkit-user-drag: none;
@@ -833,7 +828,7 @@
   <div class="menu-stack">
     <div id="menu-account" class="menu-account" hidden>
       <div class="menu-balance">
-        <span class="chip-icon" aria-hidden="true">А</span>
+        <span class="chip-icon" aria-hidden="true"></span>
         <span><span class="menu-account-label">Фишки</span><strong id="menu-chip-balance"></strong></span>
       </div>
       <details id="menu-ship-sets" class="menu-ship-sets" hidden>
@@ -854,7 +849,7 @@
       <button id="menu-online" class="plank" type="button" aria-describedby="menu-note">
         <span class="plank-title">Играть онлайн</span><span class="plank-sub">столы на 2–4 игрока по сети, можно с ботами</span>
         <span id="menu-online-price" class="menu-online-price" hidden>
-          <span class="chip-icon" aria-hidden="true">А</span><span></span>
+          <span class="chip-icon" aria-hidden="true"></span><span></span>
         </span>
       </button>
       <button id="menu-rules" class="plank" type="button" aria-haspopup="dialog">

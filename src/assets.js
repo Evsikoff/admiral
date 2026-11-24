@@ -106,7 +106,8 @@
   }
   function setStyle(path, url) {
     const names = { 'assets/menu/plank.webp': 'plank', 'assets/menu/tavern.webp': 'tavern',
-      'assets/menu/tavern_portrait.webp': 'tavern-portrait', 'assets/menu/parchment.webp': 'parchment' };
+      'assets/menu/tavern_portrait.webp': 'tavern-portrait', 'assets/menu/parchment.webp': 'parchment',
+      'assets/menu/chip.png': 'chip' };
     if (names[path]) document.documentElement.style.setProperty('--asset-' + names[path], `url("${url}")`);
   }
 })();

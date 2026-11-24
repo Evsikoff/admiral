@@ -97,7 +97,7 @@ rules_data = {
 }
 # Sizes drive download progress; hashes invalidate cached media after a deployment.
 media = ['assets/video/studio.mp4', 'assets/video/game_intro.mp4', 'assets/game_logo.png']
-media += ['assets/menu/' + name for name in ('plank.webp', 'tavern.webp', 'tavern_portrait.webp', 'parchment.webp')]
+media += ['assets/menu/' + name for name in ('plank.webp', 'tavern.webp', 'tavern_portrait.webp', 'parchment.webp', 'chip.png')]
 media += [url for group in data['sounds'].values() for urls in group.values() for url in urls]
 if rules_data['audio']: media.append(rules_data['audio'])
 manifest = []
