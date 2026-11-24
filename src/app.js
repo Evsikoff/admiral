@@ -137,8 +137,9 @@ const maxAniso = renderer.capabilities.getMaxAnisotropy();
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 300);
 const controls = new OrbitControls(camera, renderer.domElement);
+const CAMERA_DAMPING = 0.08;                     // per 1/60 s; frame() rescales it to the actual frame time
 controls.enableDamping = true;
-controls.dampingFactor = 0.08;
+controls.dampingFactor = CAMERA_DAMPING;
 controls.maxPolarAngle = 1.38;
 controls.minDistance = 3;
 controls.maxDistance = 70;
@@ -1597,7 +1598,26 @@ function cancelBoardPointer(ev) {
 canvas.addEventListener('pointercancel', cancelBoardPointer);
 canvas.addEventListener('lostpointercapture', cancelBoardPointer);
 window.addEventListener('blur', () => { boardPointers.clear(); cancelGrab(); });
-canvas.addEventListener('wheel', releaseCamera, {passive:true});
+// The wheel zooms here, not in OrbitControls: r160 divides a wheel step by the whole part of devicePixelRatio, so at
+// a screen scale of 200 % and more a notch zoomed two or three times less, and below 100 % (browser zoomed out) the
+// divisor is 0 and one notch threw the camera to its nearest or farthest point. Later three.js no longer divides.
+// One notch (100 px, 3 lines or a page) changes the distance 1.5 times as much as OrbitControls' 5 %.
+const WHEEL_NOTCH_ZOOM = Math.pow(0.95, 1.5);
+const wheelOffset = new THREE.Vector3();
+window.addEventListener('wheel', (ev) => {
+  if (ev.target !== canvas) return;
+  ev.stopPropagation();                                   // OrbitControls' own handler on the canvas never sees it
+  if (!controls.enabled || !controls.enableZoom) return;
+  ev.preventDefault();                                    // no page zoom on a pinch of the touchpad (ctrl + wheel)
+  releaseCamera();
+  // deltaY is read before deltaMode: Firefox then reports pixels, as the other browsers do
+  const notches = ev.deltaY * (ev.deltaMode === 1 ? 1 / 3 : ev.deltaMode === 2 ? 1 : 0.01);
+  wheelOffset.subVectors(camera.position, controls.target);
+  const distance = THREE.MathUtils.clamp(wheelOffset.length() * Math.pow(WHEEL_NOTCH_ZOOM, -notches),
+    controls.minDistance, controls.maxDistance);
+  camera.position.copy(controls.target).add(wheelOffset.setLength(distance));
+  controls.update();
+}, {capture:true, passive:false});                       // on window in the capture phase: before the canvas
 canvas.addEventListener('dblclick', (ev) => {
   if (setupIsOpen() || overhead || canThrow()) return;
   const u = pick(ev); const target = u && (u.slot ? u.slot.pos : u.ship ? u.ship.obj.position : null);
@@ -1876,7 +1896,19 @@ const broadcast = createFleetBroadcast(statRail);
 const cameraOffset = new THREE.Vector3(), orbit = new THREE.Spherical();
 const frameOffset = new THREE.Vector2();
 const CAMERA_REFIT_TIME = 0.32;
+const CAMERA_PULLBACK_TIME = 0.7;              // from a ship that has arrived back to the sea around it
+// OrbitControls keeps turning the camera for a while after a swipe. When the game takes the camera, that swing
+// is dropped: it would otherwise knock the new shot off once the flight lands (for longer on a slow screen).
+const stopInertia = (() => {
+  const position = new THREE.Vector3(), target = new THREE.Vector3();
+  return () => {
+    position.copy(camera.position); target.copy(controls.target);
+    controls.enableDamping = false; controls.update(); controls.enableDamping = true;   // zeroes the swing
+    camera.position.copy(position); controls.target.copy(target); camera.lookAt(target);
+  };
+})();
 function startFlight(target, offset, duration) {
+  stopInertia();
   const from = new THREE.Spherical().setFromVector3(cameraOffset.subVectors(camera.position,controls.target));
   const to = new THREE.Spherical().setFromVector3(offset);
   const turn = to.theta-from.theta;
@@ -1999,12 +2031,30 @@ function measureBoard(side, width, height) {
   cameraMaxDistance = Math.max(70, shotOffset.length() * 1.35);
   camera.far = Math.max(300, shotOffset.length() + 60); camera.updateProjectionMatrix();
 }
+// After a game event the shot shows the sea around what happened, not only the ships: a shot of points
+// (a ship that has arrived, the choices of a move) is held back to at least WIDE_SHARE of the whole board's
+// distance, drawn towards the board's own framing. On a small screen it stops while a marked cell is still
+// MARK_MIN_PX across, so it can be tapped. A ship under sail is followed close.
+const WIDE_SHARE = 0.72, MARK_SIZE = 1.57, MARK_MIN_PX = 44;
+const boardTarget = new THREE.Vector3(), boardOffset = new THREE.Vector3(), boardDir = new THREE.Vector3();
+function widenShot() {
+  const { H, fov } = frameArea;
+  const tight = shotOffset.length(), whole = boardOffset.length();
+  const readable = (MARK_SIZE * H) / (2 * Math.tan(THREE.MathUtils.degToRad(fov / 2)) * MARK_MIN_PX);
+  const least = Math.min(whole * WIDE_SHARE, Math.max(tight, readable));
+  if (!(tight < least) || !(whole > tight)) return;
+  const k = (least - tight) / (whole - tight);
+  shotTarget.lerp(boardTarget, k);
+  shotOffset.normalize().lerp(boardDir.copy(boardOffset).normalize(), k).setLength(least);
+  cameraMaxDistance = Math.max(70, least * 1.35);
+}
 // Fit the bounds to the unobscured part of the screen. Each corner must fit both perspective axes.
 function measureShot(shot) {
   const {W,H,top,bottom,left,right,fov} = frameArea;
-  if (!shot.ship && !shot.points) {
+  if (!shot.ship) {
     measureBoard(shot.side, Math.max(1, right-left-4), Math.max(1, bottom-top-4));
-    return;
+    if (!shot.points) return;
+    boardTarget.copy(shotTarget); boardOffset.copy(shotOffset);
   }
   shotBounds.makeEmpty();
   if (shot.ship) {
@@ -2031,6 +2081,7 @@ function measureShot(shot) {
   }
   shotOffset.multiplyScalar(distance);
   cameraMaxDistance = Math.max(70,distance*1.35);
+  if (!shot.ship) widenShot();
 }
 function setShot(shot,duration=0.65) {
   if (overhead && shot.side !== 'top' && !setupIsOpen()) {
@@ -2093,7 +2144,7 @@ function stepCamera(dt) {
       controls.target.lerp(shotTarget, blend);
       camera.position.lerp(cameraOffset.addVectors(shotTarget, shotOffset), blend);
     } else {
-      startFlight(shotTarget, shotOffset, CAMERA_REFIT_TIME);
+      startFlight(shotTarget, shotOffset, CAMERA_PULLBACK_TIME);      // arrived: back to the sea around it
     }
   }
   // Let a wide shot fly in from its current distance before enforcing the tighter zoom limit.
@@ -2746,6 +2797,7 @@ function judge(res) {
       : res.some((r) => r.out) ? 'out'
         : res.some((r) => r.cocked) ? 'cocked' : 'moving';
     announcer.foulRetry(kind, why.join('; '), game.players[i].q);
+    if (!setupIsOpen()) view(game.players[i].q);            // the thrower's view again, however it was turned
     return;
   }
   startMoves(a, b);
@@ -2895,6 +2947,7 @@ function checkWin(q) {
   announcer.victory(q, nameHTML(i));
   renderTurn();
   for (const player of game.players) broadcast.finish(player.q);
+  if (!setupIsOpen()) view(q);                                // the whole board, from the winner's side
   return true;
 }
 
@@ -3589,6 +3642,8 @@ function frame() {
 
   if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); }
   stepCamera(dt);
+  // the swing after a swipe dies away in the same time at any frame rate (a 4K television may draw 15 a second)
+  controls.dampingFactor = 1 - Math.pow(1 - CAMERA_DAMPING, Math.min(elapsed, 0.1) * 60);
   controls.update();
   updateReflections(time);
   renderer.render(scene, camera);
