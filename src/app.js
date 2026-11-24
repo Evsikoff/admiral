@@ -2968,47 +2968,60 @@ function startTurn(i) {
   if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
 }
 
-// ---- «Ваш ход!»: a call in the middle of the screen with a sound, once a turn, when the game waits for a person
-// here: online — for this player, at every turn of theirs; in a local game — for a person whose turn follows a bot's.
-// Moving the mouse or touching the screen takes it away and silences the sound.
-const turnCallEl = document.getElementById('turn-call');
-const TURN_CALL_MOVE = 4;          // px: the mouse has moved (not a jitter of the hand, nor a move the browser makes up)
-const TURN_CALL_SEEN = 500;        // ms: a mouse already moving lets the call be seen before it takes it away
-let turnCall = null;               // { game, turn, shownAt, at: where the mouse was when it came up }
+// ---- calls in the middle of the screen, when the game waits for the throw or the move of a person here
+// (online — of this player):
+//   «Ваш ход!» with a sound, once a turn: online at every turn of this player, in a local game when a person's
+//   turn follows a bot's;
+//   «Перебросьте кости!» each time their throw does not count.
+// Moving the mouse or touching the screen takes a call away and silences its sound.
+const calloutEl = document.getElementById('callout'), calloutText = calloutEl.querySelector('.callout-text');
+const CALLOUT_MOVE = 4;            // px: the mouse has moved (not a jitter of the hand, nor a move the browser makes up)
+const CALLOUT_SEEN = 500;          // ms: a mouse already moving lets the call be seen before it takes it away
+let callout = null;                // { game, turn, throws, shownAt, at: where the mouse was when it came up }
 let mouseAt = null;
-function turnCallDue() {
-  if (!game || replaying || setupIsOpen() || game.phase === 'over' || isBot(game.turn)) return false;
-  if (game.calledTurn === game.turnNumber || !myControl() || !awaiting()) return false;
-  return online ? game.players[game.turn].id === online.me : game.afterBot;
+// the call due now, if any; each is made once (its key is kept by the game)
+function dueCallout() {
+  if (!game || replaying || setupIsOpen() || game.phase === 'over' || isBot(game.turn)) return null;
+  if (!myControl() || !awaiting() || (online && game.players[game.turn].id !== online.me)) return null;
+  if (game.again === 'retry') return { kind: 'retry', key: `retry:${game.throws.length}`, text: 'Перебросьте кости!' };
+  if (online || game.afterBot) return { kind: 'turn', key: `turn:${game.turnNumber}`, text: 'Ваш ход!' };
+  return null;
 }
-function showTurnCall() {
-  game.calledTurn = game.turnNumber;
-  turnCall = { game, turn: game.turnNumber, shownAt: performance.now(), at: mouseAt };
-  turnCallEl.hidden = false;
-  sound.callTurn();
+function showCallout(due) {
+  hideCallout();
+  void calloutEl.offsetWidth;      // a call that replaces another comes up afresh
+  (game.callouts ??= new Set()).add(due.key);
+  callout = { game, turn: game.turnNumber, throws: game.throws.length, shownAt: performance.now(), at: mouseAt };
+  calloutText.textContent = due.text;
+  calloutEl.dataset.kind = due.kind;
+  calloutEl.hidden = false;
+  if (due.kind === 'turn') sound.callTurn();
 }
-function hideTurnCall() {
-  if (!turnCall) return;
-  turnCall = null; turnCallEl.hidden = true;
+function hideCallout() {
+  if (!callout) return;
+  callout = null; calloutEl.hidden = true;
   sound.stopTurnCall();
 }
-// every tick: call the player whose turn has come; a call for a turn that is over goes away by itself
-function turnCallTick() {
-  if (turnCall && (turnCall.game !== game || turnCall.turn !== game.turnNumber || game.phase === 'over')) hideTurnCall();
-  if (turnCallDue()) showTurnCall();
+// every tick: make the call that is due; a call whose moment has passed (a throw, another turn) goes away by itself
+function calloutTick() {
+  if (callout && (callout.game !== game || callout.turn !== game.turnNumber || callout.throws !== game.throws.length
+    || game.phase === 'over')) hideCallout();
+  const due = dueCallout();
+  if (due && !game.callouts?.has(due.key)) showCallout(due);
 }
-function answerTurnCall(ev) {
+function answerCallout(ev) {
   if (ev.type === 'pointermove' && ev.pointerType === 'mouse') {
     mouseAt = { x: ev.clientX, y: ev.clientY };
-    if (!turnCall) return;
-    const at = (turnCall.at ??= mouseAt);
-    if (Math.hypot(mouseAt.x - at.x, mouseAt.y - at.y) < TURN_CALL_MOVE) return;
-    if (performance.now() - turnCall.shownAt < TURN_CALL_SEEN) { turnCall.at = mouseAt; return; }
+    if (!callout) return;
+    // where the mouse was is not known before its first move here: that move tells how far it went
+    const at = (callout.at ??= { x: mouseAt.x - (ev.movementX || 0), y: mouseAt.y - (ev.movementY || 0) });
+    if (Math.hypot(mouseAt.x - at.x, mouseAt.y - at.y) < CALLOUT_MOVE) return;
+    if (performance.now() - callout.shownAt < CALLOUT_SEEN) { callout.at = mouseAt; return; }
   }
-  hideTurnCall();
+  hideCallout();
 }
 for (const type of ['pointermove', 'pointerdown', 'touchstart', 'wheel']) {
-  window.addEventListener(type, answerTurnCall, { capture: true, passive: true });
+  window.addEventListener(type, answerCallout, { capture: true, passive: true });
 }
 
 // ---- throwing by hand: press on the board, the dice appear under the pointer; swing and let go
@@ -3686,7 +3699,7 @@ function setClock(ms) {
 }
 // leaving a game: the board is cleared and, normally, the tavern comes back
 function closeGame(showMenu) {
-  cancelGrab(); clearDice(); hideTurnCall(); sound.stopVoice(); sound.stopSwimming();
+  cancelGrab(); clearDice(); hideCallout(); sound.stopVoice(); sound.stopSwimming();
   game = null; select(null, false);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';
   overhead = false; overheadReturn = null; syncViewButton(); syncControls();
@@ -3849,7 +3862,7 @@ setInterval(() => {
     stepShips(dt); tickAfter(dt); stepDice(dt);
     onlineTick(); botTick(dt);
   }
-  turnCallTick();                  // online, the sound of «Ваш ход!» reaches a player gone to another tab
+  calloutTick();                   // online, the sound of «Ваш ход!» reaches a player gone to another tab
 }, 250);
 
 Object.defineProperty(window.__admiral, 'game', { get: () => game });
@@ -3963,7 +3976,7 @@ function frame() {
     }
   }
 
-  if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); turnCallTick(); }
+  if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); calloutTick(); }
   stepCamera(dt);
   // the swing after a swipe dies away in the same time at any frame rate (a 4K television may draw 15 a second)
   controls.dampingFactor = 1 - Math.pow(1 - CAMERA_DAMPING, Math.min(elapsed, 0.1) * 60);

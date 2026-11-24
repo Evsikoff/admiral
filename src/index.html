@@ -207,38 +207,40 @@
     .stat-card td, .stat-card thead th:not(:first-child) { width: 15px; }
     .stat-flag { width: 12px; height: 8px; }
   }
-  /* «Ваш ход!» in the middle of the screen, until the player moves the mouse or touches the screen:
-     a headline-sized plaque in the colours of the game's own panels — navy, a cream edge, gold */
-  #turn-call { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
-  #turn-call .turn-call-plate {
+  /* «Ваш ход!», «Перебросьте кости!» in the middle of the screen, until the player moves the mouse or touches
+     the screen: a headline-sized plaque in the colours of the game's own panels — navy, a cream edge, gold */
+  #callout { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  #callout .callout-plate {
     position: relative; padding: .2em .7em .28em; border-radius: .12em;
     font: 600 clamp(48px, 13vmin, 128px)/1.05 Georgia, "Times New Roman", serif;
     background: linear-gradient(110deg, rgba(18, 39, 52, .95), rgba(22, 42, 56, .9));
     border: 1px solid rgba(241, 222, 182, .43);
     border-block: max(2px, .03em) solid #d9b366;
     box-shadow: 0 8px 30px rgba(8, 20, 34, .5);
-    animation: turn-call-in .35s ease-out both, turn-call-glow 2.4s ease-in-out .35s infinite;
+    animation: callout-in .35s ease-out both, callout-glow 2.4s ease-in-out .35s infinite;
   }
+  /* the longer call keeps the same size while it fits across the screen, and shrinks on a narrow one */
+  #callout[data-kind="retry"] .callout-plate { font-size: min(clamp(48px, 13vmin, 128px), 7vw); }
   /* a hairline frame inside, as on an engraved plaque */
-  #turn-call .turn-call-plate::before {
+  #callout .callout-plate::before {
     content: ''; position: absolute; inset: .08em; border: 1px solid rgba(217, 179, 102, .4); border-radius: .06em;
   }
-  #turn-call .turn-call-text {
+  #callout .callout-text {
     display: flex; align-items: center; gap: .3em; white-space: nowrap; letter-spacing: .02em;
     color: var(--accent);
     text-shadow: 0 2px 0 rgba(4, 10, 18, .7), 0 0 .35em rgba(227, 180, 86, .35);
   }
   /* the diamond of the «Вид сверху» button, on either side */
-  #turn-call .turn-call-text::before, #turn-call .turn-call-text::after {
+  #callout .callout-text::before, #callout .callout-text::after {
     content: ''; flex: none; width: .15em; height: .15em; background: #d9b366; transform: rotate(45deg);
     box-shadow: 0 0 .2em rgba(227, 180, 86, .6);
   }
-  @keyframes turn-call-in { from { opacity: 0; transform: translateY(.12em) scale(.94); } }
-  @keyframes turn-call-glow { 50% { box-shadow: 0 8px 30px rgba(8, 20, 34, .5), 0 0 .45em rgba(227, 180, 86, .55); } }
+  @keyframes callout-in { from { opacity: 0; transform: translateY(.12em) scale(.94); } }
+  @keyframes callout-glow { 50% { box-shadow: 0 8px 30px rgba(8, 20, 34, .5), 0 0 .45em rgba(227, 180, 86, .55); } }
   @media (prefers-reduced-motion: reduce) {
-    #turn-call .turn-call-plate { animation: turn-call-fade .3s ease-out both; }
+    #callout .callout-plate { animation: callout-fade .3s ease-out both; }
   }
-  @keyframes turn-call-fade { from { opacity: 0; } }
+  @keyframes callout-fade { from { opacity: 0; } }
 
   #broadcast.stat-tight { gap: 3px; }
   .stat-tight .stat-context { padding: 2px 6px; }
@@ -1000,7 +1002,7 @@
     <div id="menu" class="menu" role="group" aria-label="Что делать"></div>
     <ol id="captions" class="captions say" aria-live="polite" aria-label="Комментатор"></ol>
   </div>
-  <div id="turn-call" role="alert" hidden><div class="turn-call-plate"><span class="turn-call-text">Ваш ход!</span></div></div>
+  <div id="callout" role="alert" hidden><div class="callout-plate"><span class="callout-text"></span></div></div>
 </div>
 
 <div id="setup" hidden>
