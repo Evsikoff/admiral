@@ -1572,32 +1572,36 @@ function setHover(slot) {
 const setupIsOpen = () => document.body.classList.contains('setup-open');
 canvas.addEventListener('pointermove', (ev) => {
   if (grab) { if (ev.pointerId === grab.id) moveGrab(ev); return; }
+  if (topDown() && topPointerMove(ev)) return;                     // dragging or zooming the overhead map
   if (ev.buttons && downAt && Math.hypot(ev.clientX-downAt[0],ev.clientY-downAt[1]) > 6) releaseCamera();
   const u = setupIsOpen() || !myControl() ? null : pick(ev);
   const slot = u && u.slot, ship = u && u.ship;
   const mine = ship && actionable(ship), pairs = mine ? [] : pairsAt(ship ? (ship.q !== moverQ() ? ship.slot : null) : slot);
   setHover(pairs.length ? pairs[0][1].slot : null);                // only the marked cells light up
-  canvas.style.cursor = canThrow() ? 'grab' : mine || pairs.length ? 'pointer' : '';
+  canvas.style.cursor = canThrow() ? 'grab' : mine || pairs.length ? 'pointer' : topDown() && topMovable() ? 'grab' : '';
 });
 canvas.addEventListener('pointerdown', (ev) => {
   boardPointers.add(ev.pointerId);
   downAt = [ev.clientX, ev.clientY];
+  if (topDown() && topPointerDown(ev)) { cancelGrab(); return; }    // two fingers zoom the overhead map
   if (grab) { if (ev.pointerId !== grab.id) cancelGrab(); return; }   // a second finger: zooming, not a throw
   if (canThrow() && ev.isPrimary && ev.button === 0) startGrab(ev);
 });
 canvas.addEventListener('pointerup', (ev) => {
+  const moved = topPointerUp(ev);                                   // a drag or a zoom of the overhead map is no click
   if (grab) { if (ev.pointerId === grab.id) releaseGrab(ev); return; }
-  if (setupIsOpen() || !downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
+  if (moved || setupIsOpen() || !downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
   boardClick(pick(ev));
 });
 window.addEventListener('pointerup', (ev) => boardPointers.delete(ev.pointerId));
 function cancelBoardPointer(ev) {
   boardPointers.delete(ev.pointerId);
+  topPointerUp(ev);
   if (grab && ev.pointerId === grab.id) cancelGrab();
 }
 canvas.addEventListener('pointercancel', cancelBoardPointer);
 canvas.addEventListener('lostpointercapture', cancelBoardPointer);
-window.addEventListener('blur', () => { boardPointers.clear(); cancelGrab(); });
+window.addEventListener('blur', () => { boardPointers.clear(); endTopGesture(); cancelGrab(); });
 // The wheel zooms here, not in OrbitControls: r160 divides a wheel step by the whole part of devicePixelRatio, so at
 // a screen scale of 200 % and more a notch zoomed two or three times less, and below 100 % (browser zoomed out) the
 // divisor is 0 and one notch threw the camera to its nearest or farthest point. Later three.js no longer divides.
@@ -1607,11 +1611,16 @@ const wheelOffset = new THREE.Vector3();
 window.addEventListener('wheel', (ev) => {
   if (ev.target !== canvas) return;
   ev.stopPropagation();                                   // OrbitControls' own handler on the canvas never sees it
-  if (!controls.enabled || !controls.enableZoom) return;
+  const overheadZoom = topDown();
+  if (!overheadZoom && (!controls.enabled || !controls.enableZoom)) return;
   ev.preventDefault();                                    // no page zoom on a pinch of the touchpad (ctrl + wheel)
-  releaseCamera();
   // deltaY is read before deltaMode: Firefox then reports pixels, as the other browsers do
   const notches = ev.deltaY * (ev.deltaMode === 1 ? 1 / 3 : ev.deltaMode === 2 ? 1 : 0.01);
+  if (overheadZoom) {                                     // about the pointer, once the view has flown in
+    if (!fly) { holdTopView(); zoomTopView(topView.zoom * Math.pow(WHEEL_NOTCH_ZOOM, notches), ev); }
+    return;
+  }
+  releaseCamera();
   wheelOffset.subVectors(camera.position, controls.target);
   const distance = THREE.MathUtils.clamp(wheelOffset.length() * Math.pow(WHEEL_NOTCH_ZOOM, -notches),
     controls.minDistance, controls.maxDistance);
@@ -1940,6 +1949,7 @@ function freeArea() {
     if (W > 760) return { W, H, top: 3, bottom: H - 3, left: card.right + 5, right: W - 3 };
     return { W, H, top: 2, bottom: Math.max(4, card.top - 3), left: 2, right: W - 2 };
   }
+  if (overhead) return overheadArea(W, H);
   const bars = document.getElementById('hud-bar').getBoundingClientRect();
   const captions = document.querySelector('.hud-bottom').getBoundingClientRect();
   let top = bars.bottom + 3, right = W - 3;
@@ -1950,6 +1960,18 @@ function freeArea() {
   }
   const bottom = Math.max(top + 2, captions.height ? captions.top - 3 : H - 3);
   return { W, H, top, bottom, left: 3, right };
+}
+// The overhead view keeps one frame all game long. It follows the window, not the HUD: the map does not grow and
+// shrink while the commentator's lines, the menu and the statistics come and go over its edges. Kept free are the
+// row of buttons at the top and, at the bottom, the commentator's lines of one sentence each (3, 2 or 1 of them,
+// by the sizes in index.html), so the harbour of the side at the bottom stays in sight.
+const hudNarrow = window.matchMedia('(max-width: 640px)');
+const hudLow = window.matchMedia('(orientation: landscape) and (max-height: 480px)');
+function overheadArea(W, H) {
+  const tools = document.querySelector('.hud-tools').getBoundingClientRect();
+  const top = Math.min(H * 0.25, Math.max(3, tools.bottom + 4));
+  const bottom = H - (hudLow.matches ? 28 : hudNarrow.matches ? 56 : 88);
+  return { W, H, top, bottom: Math.max(top + 2, bottom), left: 3, right: W - 3 };
 }
 function applyFrame(instant = false) {
   const previous = frameArea;
@@ -2084,7 +2106,7 @@ function measureShot(shot) {
   if (!shot.ship) widenShot();
 }
 function setShot(shot,duration=0.65) {
-  if (overhead && shot.side !== 'top' && !setupIsOpen()) {
+  if (overhead && !setupIsOpen()) {                  // the overhead view stays put; the shot waits for the way back
     overheadReturn = {shot};
     return 0;
   }
@@ -2099,12 +2121,17 @@ function syncViewButton() {
 function toggleOverhead() {
   if (!game || setupIsOpen()) return;
   overhead = !overhead;
-  syncViewButton(); syncControls();
+  syncViewButton(); syncControls(); endTopGesture();
   if (overhead) {
     overheadReturn = {shot: cameraShot, target: controls.target.clone(), offset: camera.position.clone().sub(controls.target)};
-    view('top');
+    const side = turnSide();
+    Object.assign(topView, { side, turn: game.turnNumber, yaw: ROT[side], spin: null, reset: null, zoom: 1 });
+    topView.pan.set(0, 0);
+    Object.assign(topView.follow, { ship: null, released: false, k: 0, hold: 0 });
+    flyTopView(0.8);
     return;
   }
+  applyFrame();                                         // the frame around the HUD again
   const back = overheadReturn; overheadReturn = null;
   if (back.shot?.ship && !back.shot.ship.anim) {
     setShot({side: back.shot.side, points: [back.shot.ship.obj.position.clone()]});
@@ -2112,6 +2139,242 @@ function toggleOverhead() {
   else flyTo(back.target, back.offset);
 }
 viewButton.addEventListener('click', toggleOverhead);
+
+// ---- the overhead view: the map lies flat with the side whose turn it is at the bottom, and when the turn passes
+// the map turns about its centre. The wheel (or two fingers) zooms in and out; a map larger than the screen is
+// dragged with the left button (one finger) while no throw is awaited. The view the player set is the base: the
+// game closes in on a ship under sail and, once it has stopped, goes back to it; a new turn resets it.
+const TOP_ELEVATION = Math.PI / 2 - 0.0001, TOP_ZOOM_MAX = 4, TOP_SPIN_TIME = 0.9, TOP_HALF = 15.5;
+// following a ship: its remaining route with a cell of sea around it, at most FOLLOW_ZOOM times the whole board;
+// IN to close in (the ship waits for it), HOLD after it stops (a next move of the turn follows on), OUT to go back
+const TOP_FOLLOW_ZOOM = 2.8, TOP_FOLLOW_MARGIN = 2, TOP_FOLLOW_IN = 0.55, TOP_FOLLOW_HOLD = 0.5, TOP_FOLLOW_OUT = 0.9;
+const topView = { side: null, turn: null, yaw: 0, spin: null, reset: null, zoom: 1, pan: new THREE.Vector2(), distance: 50, tanX: 1, tanY: 1, area: null,
+  // k: how far the view has gone over to the ship (0…1, eased); released: the player took the camera from it
+  follow: { ship: null, released: false, k: 0, hold: 0, center: new THREE.Vector3(), distance: 50 } };
+const topTarget = new THREE.Vector3(), topOffset = new THREE.Vector3(), topHere = new THREE.Vector3();
+const topRight = new THREE.Vector3(), topUp = new THREE.Vector3(), followAim = new THREE.Vector3();
+const topEye = { x: 0, y: 0, d: 50 };
+const topPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const topDown = () => overhead && !!game && !setupIsOpen();
+const turnSide = () => game?.players?.[game.turn]?.q ?? 'ru';
+// The distance at which the whole board fits the frame, about the board's centre and the same from every side,
+// so the map keeps its size as it turns: a point fits while its offset across the screen is within the lens.
+function fitTopView() {
+  if (topView.area === frameArea) return;
+  const { H, fov, top, bottom, left, right } = frameArea;
+  const tan = Math.tan(THREE.MathUtils.degToRad(fov / 2));
+  topView.tanX = tan * (right - left) / H; topView.tanY = tan * (bottom - top) / H;
+  const lens = Math.min(topView.tanX, topView.tanY);
+  let distance = 0;
+  for (const p of boardProfile) distance = Math.max(distance, Math.max(Math.abs(p.x), Math.abs(p.z)) / lens + p.y);
+  Object.assign(topView, { distance, area: frameArea });
+  cameraMaxDistance = Math.max(70, distance * 1.35);
+  camera.far = Math.max(300, distance + 60); camera.updateProjectionMatrix();
+  clampTopPan();
+}
+// how far the view may move from the board's centre along the screen: as far as the board reaches past the frame
+function topRoom(d) {
+  return [Math.max(0, TOP_HALF - d * topView.tanX), Math.max(0, TOP_HALF - d * topView.tanY)];
+}
+const topPanRoom = () => topRoom(topView.distance / topView.zoom);
+function clampTopPan() {
+  const [x, y] = topPanRoom();
+  topView.pan.set(clamp(topView.pan.x, -x, x), clamp(topView.pan.y, -y, y));
+}
+const topMovable = () => topView.follow.k > 0 || topPanRoom().some((room) => room > 0.01);
+function topAxes() {
+  const yaw = topView.yaw;
+  topRight.set(Math.cos(yaw), 0, -Math.sin(yaw));
+  topUp.set(-Math.sin(yaw), 0, -Math.cos(yaw));        // up the screen: away from the side at the bottom
+}
+// What the camera shows: the player's view, gone over to the followed ship by k. pan is the centre of the view in
+// screen terms (right, up), so a turn of the map carries it round with the board; the ship's place is on the board.
+function topLook() {
+  const f = topView.follow, k = easeInOut(f.k);
+  topEye.x = topView.pan.x; topEye.y = topView.pan.y; topEye.d = topView.distance / topView.zoom;
+  if (k > 0) {
+    topEye.x = lerp(topEye.x, f.center.dot(topRight), k);
+    topEye.y = lerp(topEye.y, f.center.dot(topUp), k);
+    topEye.d = Math.exp(lerp(Math.log(topEye.d), Math.log(f.distance), k));
+  }
+  return topEye;
+}
+function topViewPose(target, offset) {
+  const yaw = topView.yaw, flat = Math.cos(TOP_ELEVATION);
+  topAxes();
+  const { x, y, d } = topLook();
+  target.copy(topRight).multiplyScalar(x).addScaledVector(topUp, y);
+  offset.set(Math.sin(yaw) * flat, Math.sin(TOP_ELEVATION), Math.cos(yaw) * flat).multiplyScalar(d);
+}
+// The player takes the camera (wheel, drag, two fingers): the view stays where it is now and becomes theirs,
+// and the ship under sail is no longer followed.
+function holdTopView() {
+  const f = topView.follow;
+  topView.reset = null;                              // a new turn's way back to the whole board stops where it is
+  if (f.ship) f.released = true;
+  if (!(f.k > 0)) return;
+  topAxes();
+  const { x, y, d } = topLook();
+  topView.pan.set(x, y); topView.zoom = clamp(topView.distance / d, 1, TOP_ZOOM_MAX);
+  Object.assign(f, { k: 0, hold: 0 });
+  clampTopPan();
+}
+// a ship sets sail: the map closes in on it; the ship waits for as long as that takes
+function followOnMap(ship) {
+  const f = topView.follow;
+  Object.assign(f, { ship, released: !!(topGesture && (topGesture.pinch || topGesture.moving)), hold: TOP_FOLLOW_HOLD });
+  return f.released ? 0 : Math.max(0.2, (1 - f.k) * TOP_FOLLOW_IN);
+}
+// the ship and the rest of its route, framed with sea around them and kept within the board
+function aimAtRoute(ship, blend) {
+  const a = ship.anim, f = topView.follow;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const add = (p) => {
+    const x = p.dot(topRight), y = p.dot(topUp);
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  };
+  add(ship.obj.position);
+  for (let i = a.segment; i < a.pts.length; i++) add(a.pts[i]);
+  const m = TOP_FOLLOW_MARGIN;
+  const d = clamp(Math.max((x1 - x0 + 2 * m) / (2 * topView.tanX), (y1 - y0 + 2 * m) / (2 * topView.tanY)),
+    topView.distance / TOP_FOLLOW_ZOOM, topView.distance);
+  const [rx, ry] = topRoom(d);
+  followAim.copy(topRight).multiplyScalar(clamp((x0 + x1) / 2, -rx, rx)).addScaledVector(topUp, clamp((y0 + y1) / 2, -ry, ry));
+  f.center.lerp(followAim, blend);
+  f.distance = lerp(f.distance, d, blend);
+}
+function stepFollow(dt) {
+  const f = topView.follow;
+  if (fly) return;                                   // flying in to the view as it is: it moves on after landing
+  if (f.ship && !f.ship.anim) f.ship = null;
+  if (f.ship && !f.released) {
+    topAxes();
+    aimAtRoute(f.ship, f.k > 0 ? 1 - Math.exp(-4 * dt) : 1);       // from afar it starts on the route itself
+    f.k = Math.min(1, f.k + dt / TOP_FOLLOW_IN);
+    f.hold = TOP_FOLLOW_HOLD;
+  } else if (f.hold > 0) f.hold -= dt;
+  else f.k = Math.max(0, f.k - dt / TOP_FOLLOW_OUT);
+}
+function applyTopView() {
+  topViewPose(controls.target, topOffset);
+  camera.position.copy(controls.target).add(topOffset);
+  camera.lookAt(controls.target); camera.updateMatrixWorld();
+}
+function flyTopView(duration) {
+  cameraShot = null;
+  applyFrame(); fitTopView();
+  topViewPose(topTarget, topOffset);
+  startFlight(topTarget, topOffset, duration);
+}
+// A new turn: the map turns to the side whose turn it is, and the player's zoom and drag go back to the whole
+// board, both at once.
+function stepTopView(dt) {
+  const side = turnSide(), turn = game.turnNumber;
+  if (side !== topView.side || turn !== topView.turn) {
+    const newTurn = turn !== topView.turn;
+    if (fly) {                                         // still flying in: land on the new turn's view
+      Object.assign(topView, { side, turn, yaw: ROT[side], spin: null, reset: null });
+      if (newTurn) { topView.zoom = 1; topView.pan.set(0, 0); }
+      flyTopView(Math.max(0.2, fly.duration - fly.elapsed));
+    } else {
+      if (side !== topView.side) {
+        let angle = ROT[side] - topView.yaw;
+        angle = Math.atan2(Math.sin(angle), Math.cos(angle));
+        if (Math.abs(angle) > Math.PI - 1e-3) angle = Math.PI;   // half a turn: always the same way round
+        topView.spin = { from: topView.yaw, to: topView.yaw + angle, elapsed: 0 };
+      }
+      if (newTurn && (topView.zoom !== 1 || topView.pan.lengthSq() > 0)) {
+        topView.reset = { zoom: topView.zoom, x: topView.pan.x, y: topView.pan.y, elapsed: 0 };
+      }
+      Object.assign(topView, { side, turn });
+    }
+  }
+  const spin = topView.spin;
+  if (spin) {
+    spin.elapsed = Math.min(TOP_SPIN_TIME, spin.elapsed + dt);
+    topView.yaw = lerp(spin.from, spin.to, easeInOut(spin.elapsed / TOP_SPIN_TIME));
+    if (spin.elapsed >= TOP_SPIN_TIME) topView.spin = null;
+  }
+  fitTopView();
+  const reset = topView.reset;
+  if (reset) {
+    reset.elapsed = Math.min(TOP_SPIN_TIME, reset.elapsed + dt);
+    const k = easeInOut(reset.elapsed / TOP_SPIN_TIME);
+    topView.zoom = Math.exp(lerp(Math.log(reset.zoom), 0, k));
+    topView.pan.set(lerp(reset.x, 0, k), lerp(reset.y, 0, k));
+    clampTopPan();
+    if (reset.elapsed >= TOP_SPIN_TIME) topView.reset = null;
+  }
+  stepFollow(dt);
+}
+function topPointAt(at, out) { aim(at); return raycaster.ray.intersectPlane(topPlane, out); }
+// move the view so that the board point `from` comes under the screen point where `to` is now
+function shiftTopView(from, to) {
+  const dx = from.x - to.x, dz = from.z - to.z;
+  topView.pan.x += dx * topRight.x + dz * topRight.z;
+  topView.pan.y += dx * topUp.x + dz * topUp.z;
+  clampTopPan(); applyTopView();
+}
+// zoom about a screen point: the board under it stays under it
+function zoomTopView(zoom, at, grabbed) {
+  applyTopView();
+  grabbed ??= topPointAt(at, new THREE.Vector3());
+  topView.zoom = clamp(zoom, 1, TOP_ZOOM_MAX);
+  clampTopPan(); applyTopView();
+  if (grabbed && topPointAt(at, topHere)) shiftTopView(grabbed, topHere);
+}
+// Pointers on the map in the overhead view. A drag holds the board point it started on under the pointer;
+// two fingers hold the point between them and zoom by how far apart they are.
+const topPointers = new Map();
+let topGesture = null;                 // { id, grab, x, y, moving } dragging, { pinch, dist, zoom, grab } zooming
+const midPoint = ([a, b]) => ({ clientX: (a.clientX + b.clientX) / 2, clientY: (a.clientY + b.clientY) / 2 });
+const spread = ([a, b]) => Math.max(1, Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY));
+// true when the press is taken for a zoom with two fingers and must not throw the dice
+function topPointerDown(ev) {
+  if (ev.pointerType === 'mouse' && ev.button !== 0) return false;
+  topPointers.set(ev.pointerId, { clientX: ev.clientX, clientY: ev.clientY });
+  if (topPointers.size === 2 && ev.pointerType === 'touch') {
+    if (fly) return true;
+    const pair = [...topPointers.values()];
+    holdTopView(); applyTopView();
+    topGesture = { pinch: true, dist: spread(pair), zoom: topView.zoom, grab: topPointAt(midPoint(pair), new THREE.Vector3()) };
+    return true;
+  }
+  if (topPointers.size !== 1 || fly || canThrow() || !topMovable()) return false;
+  applyTopView();
+  const grab = topPointAt(ev, new THREE.Vector3());
+  if (grab) topGesture = { id: ev.pointerId, grab, x: ev.clientX, y: ev.clientY, moving: false };
+  return false;                                        // a press that does not move is still a click on the board
+}
+function topPointerMove(ev) {
+  if (!topPointers.has(ev.pointerId)) return false;
+  topPointers.set(ev.pointerId, { clientX: ev.clientX, clientY: ev.clientY });
+  const g = topGesture;
+  if (g?.pinch) {
+    if (topPointers.size !== 2) return true;
+    const pair = [...topPointers.values()];
+    zoomTopView(g.zoom * spread(pair) / g.dist, midPoint(pair), g.grab);
+    return true;
+  }
+  if (!g || g.id !== ev.pointerId) return false;
+  if (!g.moving && Math.hypot(ev.clientX - g.x, ev.clientY - g.y) <= 6) return true;
+  if (!g.moving) holdTopView();
+  g.moving = true; canvas.style.cursor = 'grabbing';
+  applyTopView();
+  if (topPointAt(ev, topHere)) shiftTopView(g.grab, topHere);
+  return true;
+}
+// true when the pointer was dragging or zooming the map, so its release is no click
+function topPointerUp(ev) {
+  const g = topGesture;
+  if (!topPointers.delete(ev.pointerId) || !g) return false;
+  if (g.pinch) { if (!topPointers.size) topGesture = null; return true; }
+  if (g.id !== ev.pointerId) return false;
+  topGesture = null;
+  return g.moving;
+}
+function endTopGesture() { topPointers.clear(); topGesture = null; }
+
 function frameChoices() {
   const points = [];
   for (const [ship,targets] of game.acts) {
@@ -2124,10 +2387,16 @@ function frameChoices() {
 function followShip(ship) {
   // Let the camera reach the start of the route before a ship on the far side sets sail.
   if (setupIsOpen()) return 0;
+  if (overhead) {                                     // the overhead map closes in on it instead
+    overheadReturn = {shot: {side:ship.q, ship, motion:ship.anim}};
+    return followOnMap(ship);
+  }
   return setShot({side:ship.q, ship, motion:ship.anim},0.52);
 }
 function stepCamera(dt) {
   stepProjection(dt);
+  const flat = topDown();
+  if (flat) stepTopView(dt);
   if (fly) {
     fly.elapsed = Math.min(fly.duration,fly.elapsed+dt);
     const k = easeInOut(fly.elapsed/fly.duration);
@@ -2135,6 +2404,8 @@ function stepCamera(dt) {
     controls.target.lerpVectors(fly.start,fly.target,k);
     camera.position.copy(controls.target).add(cameraOffset.setFromSpherical(orbit));
     if (fly.elapsed >= fly.duration) fly=null;
+  } else if (flat) {
+    applyTopView();
   } else if (cameraShot?.ship) {
     const { side, ship } = cameraShot;
     if (!ship.anim) cameraShot = { side, points: [ship.obj.position.clone()] };
@@ -2465,9 +2736,13 @@ function cancelSetup() {
   syncMusicMood();
   if (setupBack.turn === game.turn && setupBack.phase === game.phase && setupBack.acts === game.acts) {
     select(setupBack.selected,false);
-    if (setupBack.shot) setShot(setupBack.shot);
+    if (overhead) flyTopView(0.65);
+    else if (setupBack.shot) setShot(setupBack.shot);
     else flyTo(setupBack.target, setupBack.pos.clone().sub(setupBack.target));
-  } else if (game.acts?.size) autoSelect(); else view(moverQ());
+  } else {
+    if (game.acts?.size) autoSelect(); else view(moverQ());
+    if (overhead) flyTopView(0.65);
+  }
 }
 let startingGame = false;
 async function startGame() {
