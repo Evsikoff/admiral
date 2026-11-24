@@ -60,6 +60,43 @@ test('stopping while decoding prevents a stale voice from starting', async () =>
   assert.equal(voice.paused, true);
 });
 
+function director(manifest) {
+  const clips = [];
+  class Audio {
+    constructor(src) { this.src = src; this.dataset = {}; this.paused = true; clips.push(this); }
+    play() { this.paused = false; return Promise.resolve(); }
+    pause() { this.paused = true; }
+    addEventListener() {}
+  }
+  const window = { addEventListener() {} };                 // no AudioContext: plain audio elements
+  const make = new Function('window', 'Audio', source + '\nreturn createSoundDirector;')(window, Audio);
+  return { sound: make(manifest), clips };
+}
+
+test('the call to a turn plays the least-played sound of the session, across games, and stops when answered', () => {
+  const { sound, clips } = director({ effects: { turn: ['a.mp3', 'b.mp3', 'c.mp3'], dice: ['d.mp3'] } });
+  const plays = () => sound.counts('turn').map((c) => c.plays);
+  const first = [sound.callTurn(), sound.callTurn(), sound.callTurn()];
+  assert.deepEqual([...first].sort(), ['a.mp3', 'b.mp3', 'c.mp3']);
+  sound.effect('dice');
+  sound.resetGame();                                         // a new game: other effects start afresh, the call does not
+  assert.deepEqual(plays(), [1, 1, 1]);
+  assert.deepEqual(sound.counts('dice').map((c) => c.plays), [0]);
+  sound.callTurn();
+  sound.callTurn();
+  assert.deepEqual(plays().sort(), [1, 2, 2]);
+  sound.callTurn();                                          // the one still played once
+  assert.deepEqual(plays(), [2, 2, 2]);
+  const playing = clips.at(-1);
+  assert.equal(playing.paused, false);
+  sound.stopTurnCall();
+  assert.equal(playing.paused, true);
+  assert.equal(playing.dataset.stopped, '1');
+  sound.setMuted('effects', true);
+  assert.equal(sound.callTurn(), null);
+  assert.deepEqual(plays(), [2, 2, 2]);
+});
+
 test('muting a playing voice stops its source without queuing a stale ended event', async () => {
   const { backend, sources } = setup();
   const voice = backend.clip('event.mp3');

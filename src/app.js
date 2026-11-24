@@ -2682,6 +2682,8 @@ function beginTurns() {
 }
 // a player's first turn in the game explains how to throw; later turns only say whose turn it is
 function startTurn(i) {
+  const before = game.turnNumber ? game.turn : -1;          // whose turn this one follows (none for the first)
+  game.afterBot = before >= 0 && isBot(before);
   Object.assign(game, { turn: i, turnNumber: (game.turnNumber || 0) + 1, phase: 'idle', again: false, dice: null, double: false, captured: new Set(), acts: null, allActs: null, mode: null, chooser: null, after: null });
   select(null); renderTurn(); syncMusicMood();
   const introduced = (game.introduced ??= new Set()), first = !introduced.has(i);
@@ -2689,6 +2691,49 @@ function startTurn(i) {
   // A bot needs no lesson in throwing. The opening turn can follow the game-start clip.
   announcer.turnStart(game.players[i].q, nameHTML(i), first && !isBot(i), { opening: game.turnNumber === 1 });
   if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
+}
+
+// ---- «Ваш ход!»: a call in the middle of the screen with a sound, once a turn, when the game waits for a person
+// here: online — for this player, at every turn of theirs; in a local game — for a person whose turn follows a bot's.
+// Moving the mouse or touching the screen takes it away and silences the sound.
+const turnCallEl = document.getElementById('turn-call');
+const TURN_CALL_MOVE = 4;          // px: the mouse has moved (not a jitter of the hand, nor a move the browser makes up)
+const TURN_CALL_SEEN = 500;        // ms: a mouse already moving lets the call be seen before it takes it away
+let turnCall = null;               // { game, turn, shownAt, at: where the mouse was when it came up }
+let mouseAt = null;
+function turnCallDue() {
+  if (!game || replaying || setupIsOpen() || game.phase === 'over' || isBot(game.turn)) return false;
+  if (game.calledTurn === game.turnNumber || !myControl() || !awaiting()) return false;
+  return online ? game.players[game.turn].id === online.me : game.afterBot;
+}
+function showTurnCall() {
+  game.calledTurn = game.turnNumber;
+  turnCall = { game, turn: game.turnNumber, shownAt: performance.now(), at: mouseAt };
+  turnCallEl.hidden = false;
+  sound.callTurn();
+}
+function hideTurnCall() {
+  if (!turnCall) return;
+  turnCall = null; turnCallEl.hidden = true;
+  sound.stopTurnCall();
+}
+// every tick: call the player whose turn has come; a call for a turn that is over goes away by itself
+function turnCallTick() {
+  if (turnCall && (turnCall.game !== game || turnCall.turn !== game.turnNumber || game.phase === 'over')) hideTurnCall();
+  if (turnCallDue()) showTurnCall();
+}
+function answerTurnCall(ev) {
+  if (ev.type === 'pointermove' && ev.pointerType === 'mouse') {
+    mouseAt = { x: ev.clientX, y: ev.clientY };
+    if (!turnCall) return;
+    const at = (turnCall.at ??= mouseAt);
+    if (Math.hypot(mouseAt.x - at.x, mouseAt.y - at.y) < TURN_CALL_MOVE) return;
+    if (performance.now() - turnCall.shownAt < TURN_CALL_SEEN) { turnCall.at = mouseAt; return; }
+  }
+  hideTurnCall();
+}
+for (const type of ['pointermove', 'pointerdown', 'touchstart', 'wheel']) {
+  window.addEventListener(type, answerTurnCall, { capture: true, passive: true });
 }
 
 // ---- throwing by hand: press on the board, the dice appear under the pointer; swing and let go
@@ -3366,7 +3411,7 @@ function setClock(ms) {
 }
 // leaving a game: the board is cleared and, normally, the tavern comes back
 function closeGame(showMenu) {
-  cancelGrab(); clearDice(); sound.stopVoice(); sound.stopSwimming();
+  cancelGrab(); clearDice(); hideTurnCall(); sound.stopVoice(); sound.stopSwimming();
   game = null; select(null, false);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';
   overhead = false; overheadReturn = null; syncViewButton(); syncControls();
@@ -3524,9 +3569,12 @@ document.addEventListener('visibilitychange', () => {
 setInterval(() => {
   const now = performance.now(), dt = (now - backgroundTickAt) / 1000;
   backgroundTickAt = now;
-  if (!document.hidden || !online?.hasBots || !game || game.phase === 'over') return;
-  stepShips(dt); tickAfter(dt); stepDice(dt);
-  onlineTick(); botTick(dt);
+  if (!document.hidden || !online || !game || game.phase === 'over') return;
+  if (online.hasBots) {
+    stepShips(dt); tickAfter(dt); stepDice(dt);
+    onlineTick(); botTick(dt);
+  }
+  turnCallTick();                  // online, the sound of «Ваш ход!» reaches a player gone to another tab
 }, 250);
 
 Object.defineProperty(window.__admiral, 'game', { get: () => game });
@@ -3640,7 +3688,7 @@ function frame() {
     }
   }
 
-  if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); }
+  if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); turnCallTick(); }
   stepCamera(dt);
   // the swing after a swipe dies away in the same time at any frame rate (a 4K television may draw 15 a second)
   controls.dampingFactor = 1 - Math.pow(1 - CAMERA_DAMPING, Math.min(elapsed, 0.1) * 60);

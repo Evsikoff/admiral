@@ -1,7 +1,9 @@
 // Sound, music, and commentator director.
-// Within a game, picks uniformly at random among the least-played files in each folder.
+// Within a game, picks uniformly at random among the least-played files in each folder;
+// the call to a player's turn counts its plays over the whole session (the page's lifetime) instead.
 // Music has three moods: 'start' — the theme of the main menu, played until a game begins — then 'calm' and 'anxious'.
 const MUSIC_MOODS = ['start', 'calm', 'anxious'];
+const SESSION_KINDS = new Set(['turn']);
 
 // One gesture-unlocked context plays short clips, including events received over WebSocket.
 // Decode on demand with a small cache, rather than retaining all voice clips as PCM audio.
@@ -125,7 +127,7 @@ function createSoundDirector(manifest = {}) {
   const history = [], voiceHistory = [];
   const pendingVoice = [];                         // only clips explicitly allowed to wait
   let mood = null, music = null, musicGain = 0, currentTrack = null, musicPaused = false;
-  let swim = null, swimmingWanted = false, voice = null, hadGame = false;
+  let swim = null, swimmingWanted = false, voice = null, hadGame = false, turnCall = null;
   // switched off by the player: nothing of that kind is played (captions still pick their variants)
   const muted = { music: false, effects: false, commentator: false };
   // quiet: a game being caught up at once (an online game rejoined) makes no sound at all; captions still pick variants
@@ -221,18 +223,35 @@ function createSoundDirector(manifest = {}) {
     else if (mood) playMusicTrack(mood, true);
   }
 
-  function effect(kind) {
+  function startEffect(kind) {
     if (muted.effects || quiet) return null;
     const entry = pick(kind);
     if (!entry) return null;
     const a = clip(entry.url);
     a.volume = volumes.effects;
     liveEffects.add(a);
-    const done = () => liveEffects.delete(a);
+    const done = () => { liveEffects.delete(a); if (turnCall === a) turnCall = null; };
     a.addEventListener('ended', done);
     a.addEventListener('error', done);
     safePlay(a);
-    return entry.url;
+    return { url: entry.url, a };
+  }
+
+  function effect(kind) { return startEffect(kind)?.url ?? null; }
+
+  // «Ваш ход!»: the sound that calls a player to their turn, cut short once the player answers
+  function callTurn() {
+    stopTurnCall();
+    const started = startEffect('turn');
+    turnCall = started?.a ?? null;
+    return started?.url ?? null;
+  }
+
+  function stopTurnCall() {
+    if (!turnCall) return;
+    liveEffects.delete(turnCall);
+    stopAudio(turnCall);
+    turnCall = null;
   }
 
   function startSwimming() {
@@ -313,6 +332,7 @@ function createSoundDirector(manifest = {}) {
       if (on) {
         for (const a of liveEffects) stopAudio(a);
         liveEffects.clear();
+        turnCall = null;
         if (swim) { stopAudio(swim); swim = null; }
       } else if (swimmingWanted && !swim) startSwimming();
     } else if (on) stopVoice();
@@ -323,7 +343,8 @@ function createSoundDirector(manifest = {}) {
   function resetGame() {
     stopSwimming();
     stopVoice();
-    for (const list of pools.values()) for (const item of list) item.plays = 0;
+    stopTurnCall();
+    for (const [kind, list] of pools) if (!SESSION_KINDS.has(kind)) for (const item of list) item.plays = 0;
     for (const list of voicePools.values()) for (const item of list) item.plays = 0;
     history.length = 0;
     voiceHistory.length = 0;
@@ -369,6 +390,8 @@ function createSoundDirector(manifest = {}) {
     setMood,
     setMusicPaused,
     effect,
+    callTurn,
+    stopTurnCall,
     startSwimming,
     stopSwimming,
     speak,

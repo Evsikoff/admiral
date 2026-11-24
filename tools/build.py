@@ -24,7 +24,7 @@ data = {
                   # the theme of the start screen's main menu (src/intro.js), until a game begins
                   'start': [u for u in sound_urls(sound_dir / 'music') if u.endswith('/start.mp3')]},
         'effects': {k: sound_urls(sound_dir / 'effects' / k)
-                    for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory')},
+                    for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
         'commentator': ({d.name: sound_urls(d) for d in sorted((sound_dir / 'commentator').iterdir()) if d.is_dir()}
                         if (sound_dir / 'commentator').is_dir() else {}),
     },
