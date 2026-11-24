@@ -812,6 +812,7 @@ const masthead = mainPennant.getWorldPosition(new THREE.Vector3());
 mainPennant.removeFromParent();                                      // the national flag flies there instead
 
 const wreckProto = kitModel(wreckKit);
+let charredHullMaterial;
 let wreckYard;                       // middle of the upper yard of the wreck's main mast: a torn sail hangs there
 {
   // the kit's wreck is overgrown with grass and moss (all from the green palette swatch) — a ship
@@ -829,8 +830,7 @@ let wreckYard;                       // middle of the upper yard of the wreck's 
   g.fillStyle = '#6e4a35'; g.fillRect(sw, sw * 4, sw, sw * 2);
   const t = new THREE.CanvasTexture(c);
   t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
-  const charred = new THREE.MeshStandardMaterial({ map: t, color: 0x7d736b, roughness: 1, side: THREE.DoubleSide });
-  hull.traverse((o) => { if (o.isMesh) o.material = charred; });
+  charredHullMaterial = new THREE.MeshStandardMaterial({ map: t, color: 0x7d736b, roughness: 1, side: THREE.DoubleSide });
   const yb = new THREE.Box3().setFromObject(kitMesh(wreckProto, 'sail'));
   wreckYard = new THREE.Vector3((yb.min.x + yb.max.x) / 2, yb.max.y - 0.012, (yb.min.z + yb.max.z) / 2);
 }
@@ -842,21 +842,26 @@ const ragGeo = (() => {               // a sail in tatters, hanging from its yar
   return geo;
 })();
 
-function buildIntact(q) {
+function buildIntact(q, accents) {
   const g = intactProto.clone();
   g.traverse((o) => {
     if (!o.isMesh) return;
-    if (o.geometry === intactHull.geometry) o.material = [intactHull.material, hullAccentMat[q]];
-    else if (/^(sail|flag)/.test(o.name)) o.material = sailMat[q];
+    let team;
+    if (o.geometry === intactHull.geometry) team = [intactHull.material, hullAccentMat[q]];
+    else if (/^(sail|flag)/.test(o.name)) team = sailMat[q];
+    if (team) accents.push({ mesh: o, original: o.material, team });
   });
   const flag = makeFlag(q, 0.17, 0.11, 6);
   flag.position.copy(masthead); flag.position.y += 0.025; flag.rotation.y = Math.PI;     // streams aft
   g.add(flag);
   return g;
 }
-function buildWreck(q) {
+function buildWreck(q, accents) {
   const g = new THREE.Group();
   const body = wreckProto.clone();
+  kitMesh(body, 'ship-wreck').traverse(o => {
+    if (o.isMesh) accents.push({ mesh: o, original: o.material, team: charredHullMaterial });
+  });
   body.rotation.x = 0.22; body.rotation.z = 0.06; body.position.y = -0.05;     // listing and settled low
   g.add(body);
   const rag = new THREE.Mesh(ragGeo, ragMat[q]); rag.castShadow = true;
@@ -868,7 +873,7 @@ function buildWreck(q) {
     const puff = new THREE.Mesh(smokeGeo, new THREE.MeshStandardMaterial({ color: 0x5d5a57, roughness: 1, transparent: true, opacity: 0.4, depthWrite: false }));
     puff.userData.noPick = true; g.add(puff); smoke.push(puff);
   }
-  return { g, body, smoke };
+  return { g, body, smoke, rag };
 }
 
 const shipSkinLoader = new GLTFLoader();
@@ -876,8 +881,7 @@ const embeddedShipFolder = new URL('kenney_pirate-kit_2.1/Models/GLB format/', l
 const embeddedShipFiles = { intact: 'ship-medium.glb', wreck: 'ship-wreck.glb' };
 
 function shipSkinUrl(shipSet, type) {
-  if (!shipSet || (!shipSet.free && !shipSet.owned)) return null;
-  const entry = shipSet.models.find((model) => model.model_type === type);
+  const entry = shipSet?.models.find((model) => model.model_type === type);
   if (!entry) return null;
   const url = new URL(entry.base_model_url, location.href);
   const embedded = new URL(embeddedShipFiles[type], embeddedShipFolder);
@@ -915,7 +919,8 @@ async function loadShipSkin(url, type) {
       if (point.y > flagAt.y) flagAt.copy(point);
     }
   });
-  return { root, flagAt };
+  const sailingShip = /\/assets\/models\/sailing-ship(?:-wreck)?\.glb$/.test(new URL(url).pathname);
+  return { root, flagAt, sailingShip };
 }
 
 function disposeShipSkins(skins) {
@@ -952,7 +957,8 @@ const PIN_PX = 30, PIN_MIN = 0.42, PIN_MAX = 1.2, PIN_SELECTED = 1.25;
 for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   const ship = new THREE.Group();
   const model = new THREE.Group(); ship.add(model);
-  const intact = new THREE.Group(), intactBody = buildIntact(q), wreck = buildWreck(q);
+  const stockAccents = [];
+  const intact = new THREE.Group(), intactBody = buildIntact(q, stockAccents), wreck = buildWreck(q, stockAccents);
   intact.add(intactBody);
   model.add(intact, wreck.g);
   const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
@@ -963,7 +969,7 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   scene.add(ship);
   const s = {
     q, n, obj: ship, model, intact, wreck: wreck.g, smoke: wreck.smoke, ring, pin, state: 'wreck', slot: shipyards[q],
-    stockBodies: [intactBody, wreck.body], skinBodies: [],
+    stockBodies: [intactBody, wreck.body], stockAccents, rag: wreck.rag, skinBodies: [],
     anim: null, heading: 0, rest: null, pulse: 1, seed: rnd() * 10, offset: new THREE.Vector3(), wake: createWake(sea, wakeMaterial),
   };
   ship.traverse((o) => { if (o.isMesh && !o.userData.noPick) { o.userData.ship = s; pickables.push(o); } });
@@ -971,10 +977,31 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   ships.push(s);
 }
 
-let shipSkinRequest = 0;
-let activeShipSkins = [null, null], activeShipUrls = [null, null];
-function showShipSkins(skins) {
+// The UV mask from tools/preview_ship_styles.py covers the sail stripes and hull trim on both models.
+let paintMaskRequest;
+function loadPaintMask() {
+  return paintMaskRequest ??= new THREE.TextureLoader().loadAsync('assets/models/sailing-ship-paint-mask.png')
+    .then(texture => { texture.flipY = false; return texture; })
+    .catch(error => { paintMaskRequest = null; throw error; });
+}
+function teamPaint(material, q, mask) {
+  const painted = material.clone();
+  painted.onBeforeCompile = shader => {
+    shader.uniforms.shipPaintMask = { value: mask };
+    shader.uniforms.shipTeamColor = { value: new THREE.Color(TEAM_COLOR[q]) };
+    shader.fragmentShader = 'uniform sampler2D shipPaintMask;\nuniform vec3 shipTeamColor;\n' +
+      shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        float paint = texture2D(shipPaintMask, vMapUv).r;
+        float shade = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb = mix(diffuseColor.rgb, shipTeamColor * (1.55 * shade), paint);`);
+  };
+  return painted;
+}
+
+function showFleet(q, skins, shared, mask, painted) {
+  const variants = new Map();
   for (const s of ships) {
+    if (s.q !== q) continue;
     for (const { body, flag } of s.skinBodies) {
       const wave = wavingFlags.findIndex((entry) => entry.mesh === flag);
       wavingFlags.splice(wave, 1);
@@ -987,12 +1014,25 @@ function showShipSkins(skins) {
       body.removeFromParent();
     }
     s.skinBodies.length = 0;
+    for (const accent of s.stockAccents) accent.mesh.material = shared ? accent.team : accent.original;
+    s.rag.visible = shared;
     const states = [s.intact, s.wreck];
     skins.forEach((skin, index) => {
       s.stockBodies[index].visible = !skin;
       if (!skin) return;
       const body = new THREE.Group();
-      body.add(skin.root.clone());
+      const art = skin.root.clone();
+      if (shared && mask && skin.sailingShip) art.traverse(obj => {
+        const material = obj.material;
+        if (!material?.map) return; // the exposed broken timbers have their own unpainted materials
+        if (!variants.has(material)) {
+          const variant = teamPaint(material, q, mask);
+          variants.set(material, variant);
+          painted.push(variant);
+        }
+        obj.material = variants.get(material);
+      });
+      body.add(art);
       const flag = makeFlag(s.q, 0.22, 0.14, 6, s.seed);
       flag.position.copy(skin.flagAt);
       flag.rotation.y = Math.PI;
@@ -1009,30 +1049,58 @@ function showShipSkins(skins) {
     s.pin.position.copy(skins[0]?.flagAt ?? masthead);
     s.pin.position.y += 0.1;
   }
-  disposeShipSkins(activeShipSkins);
-  activeShipSkins = skins;
 }
 
-async function syncShipSet() {
-  const request = ++shipSkinRequest;
-  const shipSet = intro?.shipSet;
-  try {
-    const types = ['intact', 'wreck'];
-    const urls = types.map((type) => shipSkinUrl(shipSet, type));
-    if (urls.every((url, index) => url === activeShipUrls[index])) return;
-    const results = await Promise.allSettled(types.map((type, index) => loadShipSkin(urls[index], type)));
-    const skins = results.map((result) => result.status === 'fulfilled' ? result.value : null);
-    const failure = results.find((result) => result.status === 'rejected');
-    if (request !== shipSkinRequest || failure) disposeShipSkins(skins);
-    if (request !== shipSkinRequest) return;
-    if (failure) throw failure.reason;
-    showShipSkins(skins);
-    activeShipUrls = urls;
-  } catch (error) {
-    console.warn('Ship set could not be loaded:', error);
-    showShipSkins([null, null]);
-    activeShipUrls = [null, null];
+let fleetLayout = null;
+function syncFleets(players) {
+  const catalog = window.AdmiralIdentity?.shipSets || [];
+  const basic = catalog.find(set => set.free);
+  const fleets = players.map(p => {
+    const set = catalog.find(set => set.id === p.shipSetId) || basic;
+    return { q: p.q, id: set?.id, urls: ['intact', 'wreck'].map(type => {
+      try { return shipSkinUrl(set, type); }
+      catch (error) { console.warn('Invalid ship model URL:', error); return null; }
+    }) };
+  });
+  const key = JSON.stringify(fleets);
+  if (fleetLayout?.key === key && !fleetLayout.failed) return fleetLayout.ready;
+  const previous = fleetLayout;
+  const layout = fleetLayout = { key, skins: [], painted: [] };
+  const requests = new Map();
+  function model(url, type) {
+    if (!url) return null;
+    const cacheKey = type + ':' + url;
+    if (!requests.has(cacheKey)) requests.set(cacheKey, loadShipSkin(url, type).then(skin => {
+      if (layout === fleetLayout) layout.skins.push(skin);
+      else disposeShipSkins([skin]);
+      return skin;
+    }).catch(error => {
+      layout.failed = true;
+      console.warn('Ship model could not be loaded:', url, error);
+      return null;
+    }));
+    return requests.get(cacheKey);
   }
+  for (const fleet of fleets) fleet.shared = fleets.some(other => other !== fleet && other.id === fleet.id);
+  for (const q of NATIONS) {
+    const fleet = fleets.find(entry => entry.q === q);
+    showFleet(q, [null, null], fleet?.shared ?? true);
+  }
+  if (previous) {
+    disposeShipSkins(previous.skins);
+    for (const material of previous.painted) material.dispose();
+  }
+  layout.ready = Promise.all(fleets.map(async fleet => {
+    const skins = await Promise.all([model(fleet.urls[0], 'intact'), model(fleet.urls[1], 'wreck')]);
+    if (layout !== fleetLayout || !skins.some(Boolean)) return;
+    let mask;
+    if (fleet.shared && skins.some(skin => skin?.sailingShip)) {
+      try { mask = await loadPaintMask(); }
+      catch (error) { layout.failed = true; console.warn('Ship paint mask could not be loaded:', error); }
+    }
+    if (layout === fleetLayout) showFleet(fleet.q, skins, fleet.shared, mask, layout.painted);
+  }));
+  return layout.ready;
 }
 
 function setState(s, state) {
@@ -1659,7 +1727,8 @@ function newGame(players) {
   broadcast.clear();
   sound.resetGame();
   chase = null;
-  game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null, bot: p.bot || null })) };
+  game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null, bot: p.bot || null, shipSetId: p.shipSetId ?? null })) };
+  syncFleets(game.players);
   applySides(new Set(game.players.map((p) => p.q)));
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
   placeShipsNow(); select(null);
@@ -2525,7 +2594,6 @@ function stepChase(dt) {
 const SETUP_KEY = 'admiral.setup.v2';
 // Two players always get opposite sides, so they sit facing each other across the board.
 const OPPOSITE_PAIRS = [['en', 'ru'], ['se', 'nl']];
-const SAILS = { ru: 'синие паруса', se: 'жёлтые паруса', en: 'красные паруса', nl: 'зелёные паруса' };
 const DRAW_HINT = [
   '',
   'Сторона достанется по жребию — одна из четырёх.',
@@ -2596,6 +2664,7 @@ function showSetupStep(lots) {
 }
 function renderNames(focus) {
   const n = draft.names.length;
+  const sets = intro?.availableShipSets || [];
   setupCountEl.querySelectorAll('button').forEach((b) => {
     const on = +b.dataset.n === n; b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
   });
@@ -2609,6 +2678,22 @@ function renderNames(focus) {
       + `<select class="pl-kind" aria-label="Кто играет на месте ${i + 1}">${kinds}</select></div>`
       + '<p class="pl-about"></p>';
     const input = seat.querySelector('input'), kind = seat.querySelector('select'), about = seat.querySelector('.pl-about');
+    if (sets.length) {
+      const current = sets.find(set => set.id === draft.shipSetIds[i])
+        || (i === 0 && intro.shipSet) || sets.find(set => set.free) || sets[0];
+      draft.shipSetIds[i] = current.id;
+      const label = document.createElement('label');
+      label.className = 'pl-fleet';
+      label.textContent = 'Корабли';
+      const select = document.createElement('select');
+      select.className = 'pl-kind';
+      select.setAttribute('aria-label', `Набор кораблей игрока ${i + 1}`);
+      for (const set of sets) select.add(new Option(set.name, String(set.id)));
+      select.value = String(current.id);
+      select.addEventListener('change', () => { draft.shipSetIds[i] = Number(select.value); });
+      label.append(select);
+      seat.insertBefore(label, about);
+    }
     const show = () => {
       const bot = draft.bots[i], st = bot && botStyleInfo(bot);
       seat.classList.toggle('bot', !!bot);
@@ -2633,7 +2718,7 @@ function renderNames(focus) {
 }
 function setPlayerCount(n) {
   while (draft.names.length < n) { draft.names.push(''); draft.bots.push(null); }
-  draft.names.length = draft.bots.length = n;
+  draft.names.length = draft.bots.length = draft.shipSetIds.length = n;
   renderNames(`#setup-count [data-n="${n}"]`);
 }
 // the draw: every player gets a side; the board behind shows the sides in play at once
@@ -2644,26 +2729,28 @@ function drawLots() {
     const bot = draft.bots[i] || null;
     const own = name.trim(), named = own || !bot ? own : botName(bot, taken);
     if (!own && bot) taken[i] = named;
-    return { name: named, q: qs[i], bot };
+    return { name: named, q: qs[i], bot, shipSetId: draft.shipSetIds[i] ?? null };
   });
   setupLotList.innerHTML = draft.players.map((p, i) => `<li class="lot" style="--team:${TEAM_COLOR[p.q]};--i:${i}">`
     + `<span class="pl-num" aria-hidden="true">${i + 1}</span>`
     + `<span class="lot-name">${escHTML(playerName(p, i))}`
     + `${p.bot ? `<small class="lot-bot">бот · ${escHTML(botStyleInfo(p.bot).tagline)}</small>` : ''}<span class="sr-only"> — </span></span>`
     + `<span class="lot-side"><span class="flagdot" style="background-image:url(${FLAG_URL[p.q]})" aria-hidden="true"></span>`
-    + `<span><b>${NAMES[p.q]}</b><small>${SAILS[p.q]}</small></span></span></li>`).join('');
+    + `<span><b>${NAMES[p.q]}</b></span></span></li>`).join('');
   const active = new Set(qs), out = NATIONS.filter((q) => !active.has(q));
   setupNoteEl.innerHTML = (qs.length === 2 ? 'Ваши стороны — друг напротив друга. ' : '') + (out.length
     ? `Не участвуют: <b>${out.map((q) => NAMES[q]).join(', ')}</b>. Их поля, бухта, гавань, верфь, парад и плен серые и недоступны, кораблей у них нет.`
     : 'Участвуют все четыре стороны.');
   showSetupStep(true);
   applySides(active);
+  syncFleets(draft.players);
   setupStart.focus();
 }
 function backToNames() {
   draft.players = null;
   showSetupStep(false);
   applySides(new Set(NATIONS));                         // before the draw any side may come up
+  syncFleets(game?.players || []);
   renderNames('#setup-draw');
 }
 function openSetup() {
@@ -2675,6 +2762,7 @@ function openSetup() {
     ? { names: game.players.map((p) => (p.bot && styleNamed(p) ? '' : p.name)), bots: game.players.map((p) => p.bot || null) }
     : savedSeats();
   draft.players = null;
+  draft.shipSetIds = game && !online ? game.players.map(p => p.shipSetId) : [];
   applyVKSeat();
   setupBack = game ? { pos: camera.position.clone(), target: controls.target.clone(), shot:cameraShot, selected,
     turn:game.turn, phase:game.phase, acts:game.acts } : null;
@@ -2707,6 +2795,7 @@ function closeSetup() {
   broadcast.layout(); applyFrame(); syncControls();
 }
 function cancelSetup() {
+  syncFleets(game?.players || []);
   if (!game) {                                         // before any game: back to the main menu
     if (intro) { closeSetup(); intro.showMenu(); }
     return;
@@ -2731,7 +2820,7 @@ async function startGame() {
   startingGame = true; setupStart.disabled = true;
   try {
     intro?.enterFullscreen();
-    if (intro) await intro.prepareGame();
+    await Promise.all([intro?.prepareGame(), syncFleets(players)]);
     if (!setupIsOpen() || draft.players !== players) return;
     // what was typed is kept, not the names the bots were given by the draw
     try { localStorage.setItem(SETUP_KEY, JSON.stringify({ names: draft.names.map((n) => n.trim()), bots: draft.bots })); } catch { /* no storage */ }
@@ -3681,6 +3770,7 @@ function setClock(ms) {
 function closeGame(showMenu) {
   cancelGrab(); clearDice(); hideCallout(); sound.stopVoice(); sound.stopSwimming();
   game = null; select(null, false);
+  syncFleets([]);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';
   overhead = false; overheadReturn = null; syncViewButton(); syncControls();
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
@@ -3701,6 +3791,7 @@ function closeOnline(giveUpSeat, showMenu) {
 }
 function leaveOnline() { closeOnline(true, true); }
 const onlineHandler = {
+  prepareFleets: syncFleets,
   start: startOnline,
   inGame: () => !!online,
   table: () => closeOnline(false, false),
@@ -3859,10 +3950,13 @@ Object.assign(window.__admiral, {
 // and the main menu with its own theme; «Играть локально» there opens the setup screen.
 for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
 placeShipsNow();
+syncFleets([]);
 if (!intro) openSetup();
 else {
-  window.addEventListener('admiral:ship-set', syncShipSet);
-  syncShipSet();
+  window.addEventListener('admiral:ship-set', () => {
+    if (setupIsOpen() && !draft.players) renderNames();
+    else if (game) syncFleets(game.players);
+  });
   window.addEventListener('admiral:menu', () => sound.setMood('start'));
   window.addEventListener('admiral:rules-open', () => sound.setMusicPaused(true));
   window.addEventListener('admiral:rules-close', () => sound.setMusicPaused(false));

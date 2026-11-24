@@ -19,18 +19,20 @@ function element() {
   };
 }
 
-function setup() {
+function setup(shipSetId) {
   const sent = [], entered = [];
   let socket, finishLoading;
   const loading = new Promise((resolve) => { finishLoading = resolve; });
   const intro = {
+    shipSet: shipSetId == null ? null : { id: shipSetId },
     stage: 'menu', enterFullscreen() {}, setResume() {},
     prepareGame: () => loading,
     enterGame: (stage) => entered.push(stage),
     showMenu() { this.stage = 'menu'; },
   };
   const root = element();
-  const window = { AdmiralIntro: intro, addEventListener() {} };
+  const listeners = new Map();
+  const window = { AdmiralIntro: intro, addEventListener: (type, fn) => listeners.set(type, fn) };
   const document = { getElementById: root.querySelector, createElement: element };
   const storage = { getItem: () => null, setItem() {} };
   class WebSocket {
@@ -45,8 +47,16 @@ function setup() {
   online.open(); socket.onopen();
   const receive = (message) => socket.onmessage({ data: JSON.stringify(message) });
   receive({ t: 'welcome', id: 'a', token: 'token' });
-  return { online, receive, finishLoading, sent, entered, intro, document, ready: document.getElementById('ol-ready') };
+  return { online, receive, finishLoading, sent, entered, intro, document, listeners, ready: document.getElementById('ol-ready') };
 }
+
+test('the club sends the current ship set on connect and follows a later menu selection', () => {
+  const { sent, intro, listeners } = setup(17);
+  assert.equal(sent.find(m => m.t === 'hello').shipSetId, 17);
+  intro.shipSet = { id: 21 };
+  listeners.get('admiral:ship-set')();
+  assert.deepEqual(sent.at(-1), { t: 'ship-set', id: 21 });
+});
 
 test('ready click survives table updates while the game assets are loading', async () => {
   const { receive, finishLoading, sent, ready } = setup();

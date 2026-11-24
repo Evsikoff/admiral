@@ -27,6 +27,9 @@ const BOT_ID = /^bot[0-9a-f]{5}$/;
 const isStyle = (x) => typeof x === 'string' && Object.hasOwn(BOT_STYLES, x);
 // every seat taken at a table: its players and its bots
 const seats = (table) => table.players.length + table.bots.length;
+function setShipSet(player, id) {
+  if (id === null || (Number.isSafeInteger(id) && id >= 0)) player.shipSetId = id;
+}
 
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 export function drawSides(n) {
@@ -88,6 +91,7 @@ export class Lobby {
       this.players.set(p.token, p); this.byId.set(id, p);
     }
     p.conn = conn;
+    setShipSet(p, msg.shipSetId);
     if (typeof msg.voice === 'boolean') this.setVoice(p, msg.voice);
     if (isInt(msg.assets, 0, 100)) this.setAssets(p, msg.assets);
     const name = cleanName(msg.name);
@@ -136,6 +140,7 @@ export class Lobby {
   message(p, msg) {
     if (!msg || typeof msg.t !== 'string') return;
     switch (msg.t) {
+      case 'ship-set': return setShipSet(p, msg.id);
       case 'name': {
         const name = cleanName(msg.name);
         if (!name) return;
@@ -333,7 +338,8 @@ export class Lobby {
     const sides = drawSides(seated.length);
     table.status = 'playing';
     table.game = {
-      players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i], ...(p.style ? { bot: p.style } : {}) })),
+      players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i], ...(p.shipSetId != null ? { shipSetId: p.shipSetId } : {}),
+        ...(p.style ? { bot: p.style } : {}) })),
       log: [], presence: new Map(table.players.map((p) => [p.id, p.conn ? 'online' : 'offline'])), started: this.now(),
       lastAt: this.now(), bots: new Set(table.bots.map((b) => b.id)),
     };

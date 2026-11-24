@@ -83,6 +83,23 @@ test('un-ready or leaving during the countdown stops it', () => {
   assert.equal(a.last('start'), undefined);
 });
 
+test('the draw and a rejoin keep each captain’s ship set from the menu', () => {
+  const { lobby, advance, client } = setup();
+  const a = client('A'), b = client('B');
+  lobby.hello(a.conn, { token: a.p.token, shipSetId: 7 });
+  b.say({ t: 'ship-set', id: 8 });
+  a.say({ t: 'create' }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  advance(COUNTDOWN_MS);
+  const players = a.last('start').players;
+  assert.equal(players.find(p => p.id === a.p.id).shipSetId, 7);
+  assert.equal(players.find(p => p.id === b.p.id).shipSetId, 8);
+  assert.deepEqual(b.last('start').players, players);
+  lobby.disconnect(a.p, a.conn);
+  lobby.hello(a.conn, { token: a.p.token, shipSetId: 8 });
+  assert.deepEqual(a.last('game').players, players);
+});
+
 test('asset progress is visible at the table and the countdown waits for every player', () => {
   const { lobby, advance, client } = setup();
   const a = client('Анна'), b = client('Борис'), watcher = client('Вера');

@@ -23,10 +23,10 @@
   const DRAW_MS = 3600;                          // the draw is shown this long before the board opens
   const served = location.protocol === 'http:' || location.protocol === 'https:';
   const NATION = {
-    ru: { name: 'Россия', sails: 'синие паруса', color: '#2f6fe4' },
-    se: { name: 'Швеция', sails: 'жёлтые паруса', color: '#f5c518' },
-    en: { name: 'Англия', sails: 'красные паруса', color: '#e0342b' },
-    nl: { name: 'Голландия', sails: 'зелёные паруса', color: '#2fae4e' },
+    ru: { name: 'Россия', color: '#2f6fe4' },
+    se: { name: 'Швеция', color: '#f5c518' },
+    en: { name: 'Англия', color: '#e0342b' },
+    nl: { name: 'Голландия', color: '#2fae4e' },
   };
   const FLAG = {
     ru: '<rect width="30" height="20" fill="#fbfbf8"/><path d="M0 0L30 20M30 0L0 20" stroke="#1f4e9c" stroke-width="3.2"/>',
@@ -102,7 +102,8 @@
     ws = socket;
     socket.onopen = () => {
       connected = true; retry = 0;
-      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn, assets: assetPercent }));
+      socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn, assets: assetPercent,
+        shipSetId: intro.shipSet?.id }));
       if (open && !table && !game) send({ t: 'watch', on: true });
       netStatus();
     };
@@ -124,6 +125,7 @@
     ws.send(JSON.stringify(msg));
     return true;
   }
+  window.addEventListener('admiral:ship-set', () => send({ t: 'ship-set', id: intro.shipSet?.id ?? null }));
   function netStatus() {
     let text = '';
     if (!served) text = 'Онлайн-игра работает, когда игра открыта с сервера (npm start), а не из файла.';
@@ -404,7 +406,7 @@
     drawList.innerHTML = players.map((p, i) => `<li class="lot" style="--team:${NATION[p.q].color};--i:${i}">`
       + `<span class="pl-num" aria-hidden="true">${i + 1}</span>`
       + `<span class="lot-name"></span>`
-      + `<span class="lot-side">${flagSVG(p.q)}<span><b>${NATION[p.q].name}</b><small>${NATION[p.q].sails}</small></span></span></li>`).join('');
+      + `<span class="lot-side">${flagSVG(p.q)}<b>${NATION[p.q].name}</b></span></li>`).join('');
     drawList.querySelectorAll('.lot-name').forEach((el, i) => {
       const p = players[i];
       el.textContent = p.name + (p.id === game.me ? ' (вы)' : '');
@@ -428,6 +430,8 @@
     intro.enterFullscreen();
     try {
       await intro.prepareGame();
+      if (game?.no !== gameNo) return;
+      await handler?.prepareFleets?.(game.players);
       if (game?.no !== gameNo) return;
       closeClub();
       intro.enterGame('online-game');

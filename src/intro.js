@@ -31,6 +31,7 @@
   const api = {
     stage: 'start', showMenu, enterGame, enterFullscreen, backFromClub, setResume, openClubFromStart, prepareGame,
     get shipSet() { return selectedShipSet; },
+    get availableShipSets() { return [...shipButtons.keys()].filter(set => set.free || set.owned); },
   };
   window.AdmiralIntro = api;
   function enterFullscreen() {
