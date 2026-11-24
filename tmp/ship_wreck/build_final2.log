@@ -1,0 +1,206 @@
+15:24:23 | INFO: Data are loaded, start creating Blender stuff
+15:24:23 | INFO: Blender create Mesh node mesh_ded4ddd2-a935-47e9-b168-6db8ae71f6be
+15:24:23 | INFO: glTF import finished in 0.05s
+Building Wreck hull - breached planking records 18115
+  Attributes done
+  Removed detached fragment triangles 19
+  Weld done
+  Thickness done
+Building Broken mizzen and torn sail records 3946
+  Attributes done
+  Removed detached fragment triangles 149
+  Weld done
+Building Fallen main mast and shredded canvas records 2844
+  Attributes done
+  Removed detached fragment triangles 619
+  Weld done
+Building Foremast stump records 1166
+  Attributes done
+  Removed detached fragment triangles 0
+  Weld done
+Building Main mast stump records 1195
+  Attributes done
+  Removed detached fragment triangles 5
+  Weld done
+Building Snapped bowsprit and rigging scraps records 260
+  Attributes done
+  Removed detached fragment triangles 63
+  Weld done
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 4.4\4.4\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:24:25 | INFO: Starting glTF 2.0 export
+15:24:25 | INFO: Extracting primitive: Broken mizzen and torn sail
+15:24:25 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+15:24:25 | INFO: Primitives created: 1
+15:24:25 | INFO: Extracting primitive: Fallen main mast and shredded canvas
+15:24:25 | INFO: Primitives created: 1
+15:24:25 | INFO: Extracting primitive: Foremast stump
+15:24:25 | INFO: Primitives created: 1
+15:24:25 | INFO: Extracting primitive: Main mast stump
+15:24:25 | INFO: Primitives created: 1
+15:24:25 | INFO: Extracting primitive: Snapped bowsprit and rigging scraps
+15:24:25 | INFO: Primitives created: 1
+15:24:25 | INFO: Extracting primitive: Куб
+15:24:25 | INFO: Primitives created: 3
+15:24:25 | INFO: Extracting primitive: Wreck hull - breached planking
+15:24:25 | INFO: Primitives created: 3
+15:24:25 | INFO: Finished glTF 2.0 export in 0.2142958641052246 s
+
+15:24:25 | INFO: Data are loaded, start creating Blender stuff
+15:24:25 | INFO: Blender create Mesh node Broken mizzen and torn sail
+15:24:25 | INFO: Blender create Mesh node Fallen main mast and shredded canvas
+15:24:26 | INFO: Blender create Mesh node Foremast stump
+15:24:26 | INFO: Blender create Mesh node Main mast stump
+15:24:26 | INFO: Blender create Mesh node Snapped bowsprit and rigging scraps
+15:24:26 | INFO: Blender create Mesh node Куб
+15:24:26 | INFO: Blender create Mesh node Wreck hull - breached planking
+15:24:26 | INFO: glTF import finished in 0.07s
+Blender 4.4.3 (hash 802179c51ccc built 2025-04-29 15:39:58)
+Fra:1 Mem:93.46M (Peak 93.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Broken mizzen and torn sail
+Fra:1 Mem:93.46M (Peak 93.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:95.47M (Peak 95.47M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Wreck hull - breached planking
+Fra:1 Mem:105.52M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading Color_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:153.66M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.06 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.06 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.06 | Mem:53.80M, Peak:53.80M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.06 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.06 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.66M, Peak:57.74M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:269.90M (Peak 269.90M) | Time:00:00.29 | Remaining:00:10.81 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:14.71 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:14.71 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\assets\models\sailing-ship-wreck-preview.png'
+Time: 00:14.94 (Saving: 00:00.21)
+
+Fra:1 Mem:98.39M (Peak 98.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Broken mizzen and torn sail
+Fra:1 Mem:98.39M (Peak 98.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:98.51M (Peak 98.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Wreck hull - breached planking
+Fra:1 Mem:105.52M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading NormalGL_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading Color_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:152.83M (Peak 201.52M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:152.92M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:153.66M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:53.80M, Peak:53.80M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:157.98M (Peak 201.52M) | Time:00:00.05 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.66M, Peak:57.74M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:160.22M (Peak 201.52M) | Time:00:00.05 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:269.91M (Peak 269.91M) | Time:00:00.24 | Remaining:00:08.79 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:14.06 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:14.06 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\tmp\ship_wreck\wreck_reverse.png'
+Time: 00:14.20 (Saving: 00:00.13)
+
+Fra:1 Mem:98.39M (Peak 98.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Broken mizzen and torn sail
+Fra:1 Mem:98.39M (Peak 98.39M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:98.40M (Peak 98.40M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Wreck hull - breached planking
+Fra:1 Mem:105.52M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:105.49M (Peak 106.42M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading NormalGL_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:121.49M (Peak 121.49M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:152.83M (Peak 185.51M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:152.83M (Peak 185.51M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:152.83M (Peak 185.51M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:152.83M (Peak 185.51M) | Time:00:00.05 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:152.92M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:153.66M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:52.32M, Peak:52.32M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:53.80M, Peak:53.80M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:157.98M (Peak 185.51M) | Time:00:00.05 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:55.41M, Peak:56.89M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.66M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.66M, Peak:57.74M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:160.22M (Peak 185.51M) | Time:00:00.06 | Mem:57.74M, Peak:57.74M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:269.91M (Peak 269.91M) | Time:00:00.24 | Remaining:00:08.64 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:13.98 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:316.05M (Peak 385.27M) | Time:00:13.98 | Mem:167.34M, Peak:167.34M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\tmp\ship_wreck\wreck_side.png'
+Time: 00:14.12 (Saving: 00:00.13)
+
+Информация: «sailing-ship-wreck.blend» сохранено
+WRECK_BUILD {"source": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship.glb", "output": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship-wreck.glb", "sourceSha256": "8907267dd232da1f67918ba8ed49725221dece478d004e9e77b14d4ab6a16df2", "outputSha256": "872d4c77f218011f9c66dd6f3dffb60da2fce4ed979ee36b1478491ff841e1cc", "meshes": 7, "vertices": 42716, "triangles": 48465, "boundsBlender": [[-0.5, -0.1460263580083847, -0.33417797088623047], [0.36194658279418945, 0.14124545454978943, 0.12541624903678894]]}
+
+Blender quit

@@ -37,24 +37,27 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { configured = true, chips = 125, upstreamError = null } = {}) {
+async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory } = {}) {
   const calls = [], logs = [];
   const captureLog = (...args) => logs.push(args);
   const logger = { info: captureLog, warn: captureLog, error: captureLog };
   async function fetchImpl(url, init = {}) {
     calls.push({ url, init });
     const parsed = new URL(url);
-    assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_login');
     assert.equal(init.method, 'POST');
     assert.equal(init.headers.apikey, serverSecret);
     assert.equal(init.headers.Authorization, `Bearer ${serverSecret}`);
     assert.equal(init.headers['content-type'], 'application/json');
+    if (parsed.pathname === '/rest/v1/rpc/admiral_inventory_acquisition') {
+      return { ok: true, status: 200, json: async () => inventory };
+    }
+    assert.equal(parsed.pathname, '/rest/v1/rpc/admiral_user_login');
     assert.equal(Object.keys(JSON.parse(init.body)).length, 1);
     if (upstreamError) return { ok: false, status: upstreamError.status, json: async () => upstreamError.body };
     return { ok: true, status: 200, json: async () => [{
-      chips_balance: chips,
+      user_id: '20', chips_balance: chips,
       online_party_price: '10',
-      ship_sets: shipSets,
+      ship_sets: catalog,
     }] };
   }
   const handler = createUsersHandler({
@@ -73,8 +76,8 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null }
   });
   return {
     calls, logs,
-    async post(body) {
-      const response = await fetch(`${origin}/api/users/register`, {
+    async post(body, path = '/api/users/register') {
+      const response = await fetch(`${origin}${path}`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
       });
       return { status: response.status, body: await response.json(), loginId: response.headers.get('x-admiral-login-id') };
@@ -89,6 +92,32 @@ function events(logs) {
     return JSON.parse(entry.slice(logPrefix.length));
   });
 }
+
+const acquirePath = '/api/users/ship-sets/acquire';
+
+test('a device acquires one paid set for its login user and receives the full inventory', async t => {
+  const server = await setup(t, { inventory: { user_ship_sets: [
+    { ship_set_id: 2, quantity: 1 }, { ship_set_id: 3, quantity: 2 },
+  ] } });
+  const response = await server.post({ deviceId, shipSetId: 2, userId: 42, quantity: 9 }, acquirePath);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.ownedShipSetIds, [2, 3]);
+  assert.deepEqual(server.calls.map(({ init }) => JSON.parse(init.body)), [
+    { p_device_id: deviceId },
+    { p_user_id: 20, p_type_inventory: 'ship_set', p_change_type: 'purchase',
+      p_inventory_id: 2, p_quantity: 1, p_details: null },
+  ]);
+});
+
+test('already owned sets, free sets, unknown IDs and VK logins cannot add inventory', async t => {
+  const server = await setup(t, { catalog: shipSets.map(set => ({ ...set, owned: true })) });
+  const retry = await server.post({ deviceId, shipSetId: 2 }, acquirePath);
+  assert.deepEqual(retry.body, { ownedShipSetIds: [2] });
+  for (const body of [{ deviceId, shipSetId: 1 }, { deviceId, shipSetId: 99 }, { launchParams: signedLaunch(), shipSetId: 2 }]) {
+    assert.equal((await server.post(body, acquirePath)).status, 400);
+  }
+  assert.ok(server.calls.every(({ url }) => url.endsWith('/admiral_user_login')));
+});
 
 function loginEvents(server, { loginId }) {
   assert.ok(loginId);
@@ -107,7 +136,7 @@ test('an external device receives the numeric balance, online price and ship set
   const second = await server.post({ vk: false, deviceId });
   for (const response of [first, second]) {
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, chips: 125, onlinePartyPrice: 10, shipSets });
+    assert.deepEqual(response.body, { ok: true, userId: 20, chips: 125, onlinePartyPrice: 10, shipSets });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'device');
@@ -130,7 +159,7 @@ test('a VK visit enters by vk_id without sending a device identifier', async (t)
   for (let count = 0; count < 2; count++) {
     const response = await server.post(body);
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, chips: 80, onlinePartyPrice: 10, shipSets });
+    assert.deepEqual(response.body, { ok: true, userId: 20, chips: 80, onlinePartyPrice: 10, shipSets });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'vk');

@@ -6,6 +6,12 @@ The approved script with the original lines side by side is commentator_rework.m
 
 Buckets are named <event>_<nation>, clips are <bucket>/<NN>.mp3 with NN = variant number.
 """
+import hashlib
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+EDITS_PATH = Path("src/commentator-edits.json")
 
 NATIONS = ("ru", "en", "se", "nl")
 
@@ -489,30 +495,69 @@ LINES = {
 }
 
 
-def style_for(nation: str, event: str) -> str:
-    style = PERSONAS[nation]["style"]
-    mood = EVENT_MOOD.get(event)
-    return f"{style} {MOODS[mood]}" if mood else style
+def read_edits(root=ROOT):
+    try:
+        return json.loads((root / EDITS_PATH).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {"nations": {}, "lines": {}}
 
 
-def build_catalog() -> dict[str, list[dict[str, str]]]:
-    """{bucket: [{'id', 'nation', 'event', 'voice', 'model', 'style', 'voice_text'}, ...]}"""
-    cat: dict[str, list[dict[str, str]]] = {}
+def original_settings(nation):
+    return {"model": NATION_MODEL[nation], "voice": VOICES[nation],
+            **{k: v for k, v in PERSONAS[nation].items() if k != "name"}}
+
+
+def event_mood(event):
+    return MOODS.get(EVENT_MOOD.get(event), "")
+
+
+def generation_item(event, nation, number, text, settings):
+    mood = settings.get("mood", event_mood(event))
+    return {**settings, "style": " ".join(filter(None, (settings["style"], mood))),
+            "mood": mood, "id": f"{number:02d}", "event": event, "nation": nation, "voice_text": text}
+
+
+def recipe_hash(item):
+    """Only fields actually heard by the selected model affect a recording."""
+    directions = ("style",) if item["model"] == MODEL_38 else ("profile", "scene", "performance", "context", "mood")
+    values = [item[k] for k in ("voice_text", "voice", "model", *directions)]
+    return hashlib.sha256(json.dumps(values, ensure_ascii=False).encode()).hexdigest()
+
+
+def recording_matches(item, receipt):
+    if not receipt or any(receipt.get(k) != item[v] for k, v in
+                          (("text", "voice_text"), ("voice", "voice"), ("model", "model"))):
+        return False
+    signature = receipt.get("recipe")
+    if not signature:  # Older receipts predate the editor and used the original acting directions.
+        original = generation_item(item["event"], item["nation"], int(item["id"]), receipt["text"],
+                                   {**original_settings(item["nation"]), "voice": receipt["voice"], "model": receipt["model"]})
+        signature = recipe_hash(original)
+    return signature == recipe_hash(item)
+
+
+def build_catalog(edits=None):
+    """Apply per-nation settings and independent variants to the original script."""
+    if edits is None:
+        edits = read_edits()
+    catalog = {}
     for event, variants in LINES.items():
-        for k, q in enumerate(NATIONS):
-            cat[f"{event}_{q}"] = [
-                {
-                    "id": f"{i + 1:02d}",
-                    "nation": q,
-                    "event": event,
-                    "voice": VOICES[q],
-                    "model": NATION_MODEL[q],
-                    "style": style_for(q, event),
-                    "voice_text": v[k],
-                }
-                for i, v in enumerate(variants)
-            ]
-    return cat
+        for column, nation in enumerate(NATIONS):
+            settings = {**original_settings(nation), **edits["nations"].get(nation, {})}
+            bucket = f"{event}_{nation}"
+            items = catalog[bucket] = []
+            number = 1
+            while number <= len(variants) or f"{bucket}/{number:02d}" in edits["lines"]:
+                edit = edits["lines"].get(f"{bucket}/{number:02d}", {})
+                original = variants[number - 1][column] if number <= len(variants) else None
+                text = edit.get("text", original)
+                item = generation_item(event, nation, number, text, {**settings, **edit.get("overrides", {})})
+                # The build runs without private authoring ledgers in Docker. Untouched
+                # recordings use the original approved script; new takes record their text.
+                item["recorded_text"] = edit.get("recordedText", original)
+                items.append(item)
+                number += 1
+    return catalog
 
 
 def caption_lines() -> dict[str, list[str]]:

@@ -1,19 +1,21 @@
 """Inlines data + app code into a single self-contained admiral-3d.html."""
-import base64, hashlib, io, json, mimetypes, pathlib, sys, zipfile
+import base64, hashlib, io, json, mimetypes, pathlib, sys, tempfile, zipfile
 from urllib.parse import quote, unquote
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(root / 'tools'))
-from commentator_data import caption_lines
+from commentator_data import build_catalog
 a = root / 'assets'
 def uri(data, mime): return f'data:{mime};base64,' + base64.b64encode(data).decode()
 AUDIO_EXT = {'.mp3', '.ogg', '.wav', '.m4a', '.webm'}
-def sound_urls(folder):
+def sound_urls(folder, stems=None):
     if not folder.is_dir(): return []
     return ['/'.join(quote(part) for part in p.relative_to(root).parts)
-            for p in sorted(folder.iterdir()) if p.is_file() and p.suffix.lower() in AUDIO_EXT]
+            for p in sorted(folder.iterdir()) if p.is_file() and p.suffix.lower() in AUDIO_EXT
+            and (stems is None or p.stem in stems)]
 buf = io.BytesIO(); Image.open(a / 'board.jpg').convert('RGB').save(buf, 'JPEG', quality=82, optimize=True)
 sound_dir = a / 'sound'
+commentator = build_catalog()
 data = {
     'fields': json.loads((a / 'fields.json').read_text(encoding='utf8')),
     'zones': json.loads((a / 'zones.json').read_text(encoding='utf8')),
@@ -25,11 +27,14 @@ data = {
                   'start': [u for u in sound_urls(sound_dir / 'music') if u.endswith('/start.mp3')]},
         'effects': {k: sound_urls(sound_dir / 'effects' / k)
                     for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
-        'commentator': ({d.name: sound_urls(d) for d in sorted((sound_dir / 'commentator').iterdir()) if d.is_dir()}
-                        if (sound_dir / 'commentator').is_dir() else {}),
+        'commentator': {
+            bucket: sound_urls(sound_dir / 'commentator' / bucket,
+                               {it['id'] for it in items if it['voice_text'] == it['recorded_text']})
+            for bucket, items in commentator.items()
+        },
     },
     # the commentator writes exactly what the clips say (tools/commentator_data.py)
-    'commentatorLines': caption_lines(),
+    'commentatorLines': {bucket: [it['voice_text'] for it in items] for bucket, items in commentator.items()},
 }
 # ship models from Kenney's Pirate Kit (CC0): intact = ship-medium, destroyed = ship-wreck.
 # The GLBs point at Textures/colormap.png; the page swaps that path for the embedded copy.
@@ -60,7 +65,6 @@ html = html.replace('/*__IMPORTS__*/', json.dumps({'imports': imports}, separato
 html = html.replace('<!--__ENGINE_LICENSES__-->', '<!--\n' + licenses + '\n-->')
 app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
                 for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'bot.js', 'app.js'))
-html = html.replace('/*__DATA__*/', 'window.ADMIRAL = ' + json.dumps(data, ensure_ascii=False) + ';')
 html = html.replace('/*__APP__*/', app)
 html = html.replace('/*__RULES_CSS__*/', (root / 'src' / 'rules.css').read_text(encoding='utf8'))
 rules_text = (root / 'src' / 'rules-script.json').read_text(encoding='utf8')
@@ -109,5 +113,13 @@ intro = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
                   for name in ('assets.js', 'vk.js', 'identity.js', 'bot-styles.js', 'rules-chart.js', 'rules.js', 'intro.js', 'online.js'))
 intro = intro.replace('/*__RULES_DATA__*/ null', json.dumps(rules_data, ensure_ascii=False).replace('<', '\\u003c'))
 html = html.replace('/*__INTRO__*/', intro)
-(root / 'admiral-3d.html').write_text(html, encoding='utf8')
+html = html.replace('/*__DATA__*/', 'window.ADMIRAL = ' + json.dumps(data, ensure_ascii=False).replace('<', '\\u003c') + ';', 1)
+with tempfile.NamedTemporaryFile(dir=root, suffix='.html.tmp', delete=False) as output:
+    page_tmp = pathlib.Path(output.name)
+try:
+    page_tmp.write_text(html, encoding='utf8')
+    page_tmp.chmod(0o644)  # The server runs as a different user in the image.
+    page_tmp.replace(root / 'admiral-3d.html')
+finally:
+    page_tmp.unlink(missing_ok=True)
 print('admiral-3d.html', round(len(html.encode()) / 1024), 'KB')

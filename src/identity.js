@@ -27,7 +27,28 @@
     console[level](label, details);
   }
 
-  const api = { get deviceId() { return deviceId; }, chips: null, onlinePartyPrice: null, shipSets: null, ready: null };
+  async function acquireShipSet(shipSetId) {
+    if (!deviceId || !api.shipSets) throw new Error('Device login required');
+    const response = await fetch('/api/users/ship-sets/acquire', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceId, shipSetId }),
+    });
+    if (!response.ok) throw new Error('Ship set acquisition failed');
+    const { ownedShipSetIds } = await response.json();
+    if (!Array.isArray(ownedShipSetIds) || !ownedShipSetIds.every(Number.isSafeInteger)) {
+      throw new Error('Invalid inventory');
+    }
+    const owned = new Set(ownedShipSetIds);
+    for (const set of api.shipSets) {
+      if (!set.free) set.owned = owned.has(set.id);
+    }
+  }
+
+  const api = {
+    get deviceId() { return deviceId; },
+    userId: null, chips: null, onlinePartyPrice: null, shipSets: null, ready: null, acquireShipSet,
+  };
   window.AdmiralIdentity = api;
   api.ready = (async () => {
     if (!served) {
@@ -56,12 +77,13 @@
         return false;
       }
       const result = await response.json();
-      if (result?.ok !== true || !Number.isSafeInteger(result.chips) ||
+      if (result?.ok !== true || !Number.isSafeInteger(result.userId) || result.userId < 1 || !Number.isSafeInteger(result.chips) ||
           !Number.isSafeInteger(result.onlinePartyPrice) || result.onlinePartyPrice < 0 ||
           !Array.isArray(result.shipSets)) {
         logLogin('warn', 'Login response did not match the expected format', response);
         return false;
       }
+      api.userId = result.userId;
       api.chips = result.chips;
       api.onlinePartyPrice = result.onlinePartyPrice;
       api.shipSets = result.shipSets;

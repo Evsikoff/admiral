@@ -1,7 +1,7 @@
 """Voices the commentator lines (tools/commentator_data.py) with Gemini TTS.
 
-Each fleet has its own voice and is voiced by one model only (NATION_MODEL), so its narrator sounds
-the same in every clip. Each model may make DAILY_LIMIT clips a day: the count is kept in
+Each fleet has its own default voice and model; editor overrides apply to batch runs too.
+Each model may make DAILY_LIMIT clips a day: the count is kept in
 tools/tts_usage.json by the Pacific date (Gemini quotas reset at midnight Pacific time).
 Clips are made variant by variant (every bucket's 01 first, then 02 ...), so a partial run still
 gives every event a voice. Run it again the next day to finish; finished clips are kept.
@@ -20,24 +20,23 @@ import argparse
 import base64
 import concurrent.futures
 import datetime
-import io
 import json
 import os
 import pathlib
 import re
-import subprocess
 import sys
+import tempfile
 import threading
 import time
-import wave
 from zoneinfo import ZoneInfo
 
 import httpx
 
-from commentator_data import MODEL_31, MODEL_38, MODELS, PERSONAS, build_catalog
+from commentator_data import MODELS, build_catalog, recording_matches
+from commentator_store import CommentatorStore, ConflictError
+from commentator_tts import BASE_URL, audio_seconds, build_payload, encode_mp3
 
 DAILY_LIMIT = 100
-BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT_ROOT = ROOT / "assets" / "sound" / "commentator"
 USAGE_FILE = ROOT / "tools" / "tts_usage.json"
@@ -86,48 +85,6 @@ def parse_retry_delay(err_text: str) -> float:
     return min(65.0, max(3.0, float(m.group(1)) + 1.5)) if m else 12.0
 
 
-def prompt_31(item: dict[str, str]) -> str:
-    """Gemini 3.1 takes its direction in the text: short labels, transcript last."""
-    p = PERSONAS[item["nation"]]
-    mood = item["style"][len(p["style"]):].strip()
-    performance = p["performance"] + (f"\n{mood}" if mood else "")
-    return (
-        "Synthesize speech for the performance defined below. The profile, scene, performance and context "
-        "are direction only and must not be spoken. Speak only the Russian lines under TRANSCRIPT, word for word.\n\n"
-        f"# AUDIO PROFILE\n{p['profile']}\n\n"
-        f"## SCENE\n{p['scene']}\n\n"
-        f"### PERFORMANCE\n{performance}\n\n"
-        f"### CONTEXT\n{p['context']}\n\n"
-        f"#### TRANSCRIPT\n{item['voice_text']}"
-    )
-
-
-def build_payload(model: str, item: dict[str, str]) -> dict:
-    if model == MODEL_38:
-        part = {"text": item["voice_text"], "speech_metadata": {"style": item["style"]}}
-    else:
-        part = {"text": prompt_31(item)}
-    return {
-        "contents": [{"role": "user", "parts": [part]}],
-        "generationConfig": {
-            "responseModalities": ["AUDIO"],
-            "speechConfig": {
-                "languageCode": "ru-RU",
-                "voiceConfig": {"prebuiltVoiceConfig": {"voiceName": item["voice"]}},
-            },
-        },
-    }
-
-
-def audio_seconds(raw: bytes, mime: str) -> float:
-    if raw[:4] == b"RIFF":
-        with wave.open(io.BytesIO(raw)) as w:
-            return w.getnframes() / float(w.getframerate())
-    m = re.search(r"rate=(\d+)", mime or "")
-    rate = int(m.group(1)) if m else 24000
-    return len(raw) / 2 / rate
-
-
 def plausible(seconds: float, text: str) -> bool:
     """Russian speech runs at roughly 12-16 characters a second; much longer means the
     direction was read aloud, much shorter means the line was cut."""
@@ -153,7 +110,6 @@ class Ledger:
 
     def _save(self) -> None:
         USAGE_FILE.write_text(json.dumps(self.usage, indent=1, sort_keys=True), encoding="utf-8")
-        CLIPS_FILE.write_text(json.dumps(self.clips, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
 
     def used(self, model: str) -> int:
         return self.usage.get(pacific_today(), {}).get(model, 0)
@@ -183,21 +139,15 @@ class Ledger:
             day[model] = max(day.get(model, 0), self.limit)
             self._save()
 
-    def record(self, key: str, info: dict) -> None:
-        with self.lock:
-            self.clips[key] = info
-            self._save()
-
     def is_current(self, key: str, item: dict, path: pathlib.Path) -> bool:
-        info = self.clips.get(key)
-        return (path.exists() and path.stat().st_size > 1024 and info is not None
-                and info.get("text") == item["voice_text"] and info.get("voice") == item["voice"])
+        return path.is_file() and path.stat().st_size > 1024 and recording_matches(item, self.clips.get(key))
 
 
 class Generator:
     def __init__(self, api_key: str, ledger: Ledger) -> None:
         self.api_key = api_key
         self.ledger = ledger
+        self.store = CommentatorStore(ROOT, rebuild=False)
         self.client = httpx.Client(transport=httpx.HTTPTransport(retries=4),
                                    timeout=httpx.Timeout(60.0, connect=18.0))
         self.lock = threading.Lock()
@@ -215,23 +165,14 @@ class Generator:
                 return
             time.sleep(min(wait, 1.0))
 
-    def encode_mp3(self, raw: bytes, mime: str, out_mp3: pathlib.Path) -> None:
-        out_mp3.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out_mp3.with_suffix(f".{threading.get_ident()}.tmp.mp3")
-        m = re.search(r"rate=(\d+)", mime or "")
-        rate = m.group(1) if m else "24000"
-        input_args = ["-i", "pipe:0"] if raw[:4] == b"RIFF" else ["-f", "s16le", "-ar", rate, "-ac", "1", "-i", "pipe:0"]
-        cmd = ["ffmpeg", "-y", "-loglevel", "error", *input_args,
-               "-af", "loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "24000", "-ac", "1", "-b:a", "80k", str(tmp)]
-        proc = subprocess.run(cmd, input=raw, capture_output=True)
-        if proc.returncode != 0 or not tmp.exists() or tmp.stat().st_size < 512:
-            raise RuntimeError(f"ffmpeg failed ({proc.returncode}): {proc.stderr.decode('utf-8', 'ignore')[-300:]}")
-        os.replace(tmp, out_mp3)
-
     def make(self, bucket: str, item: dict[str, str]) -> str:
         model = item["model"]
         key = f"{bucket}/{item['id']}"
-        out_mp3 = OUT_ROOT / bucket / f"{item['id']}.mp3"
+        try:
+            fingerprint = self.store.batch_generation(key, item)
+        except ConflictError as err:
+            self.problems.append(f"{key}: {err}")
+            return "skipped"
         attempts = 0
         while True:
             if model in self.dead:
@@ -279,12 +220,19 @@ class Generator:
                     if attempts > 1:
                         return "failed"
                     continue
+                try:
+                    with tempfile.TemporaryDirectory() as temp:
+                        take = pathlib.Path(temp) / "take.mp3"
+                        encode_mp3(raw, mime, take)
+                        receipt = self.store.install_audio(key, fingerprint, take.read_bytes(), seconds,
+                                                           made=pacific_today(), return_state=False)
+                except (RuntimeError, ValueError, OSError) as err:
+                    self.problems.append(f"{key}: {err}")
+                    return "failed"
                 with self.lock:
                     self.suspect_streak[model] = 0
                     self.made[model] += 1
-                self.encode_mp3(raw, mime, out_mp3)
-                self.ledger.record(key, {"text": item["voice_text"], "voice": item["voice"], "model": model,
-                                         "seconds": round(seconds, 2), "made": pacific_today()})
+                    self.ledger.clips[key] = receipt
                 print(f"OK {key} {seconds:.1f}s via {model} (left today: {self.ledger.left(model)})", flush=True)
                 return "made"
 

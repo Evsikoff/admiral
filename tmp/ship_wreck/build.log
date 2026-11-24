@@ -1,0 +1,9 @@
+15:19:53 | INFO: Data are loaded, start creating Blender stuff
+15:19:53 | INFO: Blender create Mesh node mesh_ded4ddd2-a935-47e9-b168-6db8ae71f6be
+15:19:53 | INFO: glTF import finished in 0.05s
+Blender 4.4.3 (hash 802179c51ccc built 2025-04-29 15:39:58)
+Writing: C:\Users\user\AppData\Local\Temp\blender.crash.txt
+Error   : EXCEPTION_ACCESS_VIOLATION
+Address : 0x00007FFECB0CA570
+Module  : tbbmalloc.dll
+Thread  : 00005074

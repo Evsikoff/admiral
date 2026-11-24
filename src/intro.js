@@ -256,6 +256,7 @@
   const shipSetsEl = $('menu-ship-sets'), shipSummary = shipSetsEl.querySelector('summary');
   const shipName = $('menu-ship-name'), shipIcon = $('menu-ship-icon'), shipOptions = $('menu-ship-options');
   const shipButtons = new Map();
+  let acquiringShipSet = null;
   const SHIP_SET_KEY = 'admiral.ship-set.v1';
   const chipNumber = new Intl.NumberFormat('ru');
   const chipPlural = new Intl.PluralRules('ru');
@@ -274,7 +275,10 @@
       const available = sets.filter((set) => set.free || set.owned);
       const initial = available.find((set) => String(set.id) === saved) || available.find((set) => set.free) || available[0];
       if (initial) selectShipSet(initial);
-      else shipName.textContent = 'Посмотреть наборы';
+      else {
+        shipName.textContent = 'Посмотреть наборы';
+        refreshShipOptions();
+      }
       shipSetsEl.hidden = false;
     }
     $('menu-account').hidden = false;
@@ -296,45 +300,63 @@
     label.className = 'menu-ship-option-name';
     label.textContent = set.name;
     button.append(icon, label);
-    if (set.free || set.owned) {
-      const check = document.createElement('span');
-      check.className = 'menu-ship-selected';
-      check.setAttribute('aria-hidden', 'true');
-      check.textContent = '✓';
-      check.hidden = true;
-      button.append(check);
-      button.setAttribute('aria-pressed', 'false');
-      shipButtons.set(set, button);
-      button.addEventListener('click', () => {
+    button.append(document.createElement('span'));
+    shipButtons.set(set, button);
+    button.addEventListener('click', async () => {
+      if (set.free || set.owned) {
         selectShipSet(set);
         try { localStorage.setItem(SHIP_SET_KEY, String(set.id)); } catch { /* no storage */ }
         closeShipSets(true);
-      });
-    } else {
-      button.disabled = true;
-      const price = document.createElement('span');
-      price.className = 'menu-ship-option-price';
-      const amount = set.prices.find((tier) => tier.number_defeated_opponents === 0).price;
-      price.textContent = chipAmount(amount);
-      button.append(price);
-    }
+        return;
+      }
+      if (!identity.deviceId || acquiringShipSet) return;
+      clearNote();
+      acquiringShipSet = set;
+      refreshShipOptions();
+      try {
+        await identity.acquireShipSet(set.id);
+        if (!selectedShipSet || !(selectedShipSet.free || selectedShipSet.owned)) {
+          const available = [...shipButtons.keys()].filter(option => option.free || option.owned);
+          selectShipSet(available.find(option => option.free) || available[0] || null);
+        }
+        if (!set.owned) showNote('Сервер не подтвердил получение набора.');
+      } catch {
+        showNote('Не удалось получить набор кораблей. Попробуйте ещё раз.');
+      } finally {
+        acquiringShipSet = null;
+        refreshShipOptions();
+      }
+    });
     row.append(button);
     return row;
   }
+  function refreshShipOptions() {
+    for (const [set, button] of shipButtons) {
+      const available = set.free || set.owned;
+      const badge = button.lastElementChild;
+      button.disabled = !available && (!identity.deviceId || !!acquiringShipSet);
+      badge.hidden = available && set !== selectedShipSet;
+      if (available) {
+        button.setAttribute('aria-pressed', String(set === selectedShipSet));
+        badge.className = 'menu-ship-selected';
+        badge.setAttribute('aria-hidden', 'true');
+        badge.textContent = '✓';
+      } else {
+        button.removeAttribute('aria-pressed');
+        badge.className = 'menu-ship-option-price';
+        badge.removeAttribute('aria-hidden');
+        badge.textContent = identity.deviceId ? (set === acquiringShipSet ? 'Получение…' : '0')
+          : chipAmount(set.prices.find(tier => tier.number_defeated_opponents === 0).price);
+      }
+    }
+  }
   function selectShipSet(set) {
     if (set === selectedShipSet) return;
-    const previous = shipButtons.get(selectedShipSet);
-    if (previous) {
-      previous.setAttribute('aria-pressed', 'false');
-      previous.lastElementChild.hidden = true;
-    }
     selectedShipSet = set;
-    const button = shipButtons.get(set);
-    button.setAttribute('aria-pressed', 'true');
-    button.lastElementChild.hidden = false;
-    shipName.textContent = set.name;
-    shipIcon.src = set.icon;
-    shipIcon.hidden = false;
+    refreshShipOptions();
+    shipName.textContent = set?.name || 'Посмотреть наборы';
+    if (set) shipIcon.src = set.icon;
+    shipIcon.hidden = !set;
     emit('admiral:ship-set');
   }
   function closeShipSets(restoreFocus = false) {

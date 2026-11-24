@@ -1,0 +1,63 @@
+{
+  "sourceHashesUnchanged": {
+    "intact": "8907267dd232da1f67918ba8ed49725221dece478d004e9e77b14d4ab6a16df2",
+    "wreck": "872d4c77f218011f9c66dd6f3dffb60da2fce4ed979ee36b1478491ff841e1cc"
+  },
+  "outputs": [
+    {
+      "name": "intact-original.jpg",
+      "bytes": 41244
+    },
+    {
+      "name": "intact-ru.jpg",
+      "bytes": 44165
+    },
+    {
+      "name": "intact-se.jpg",
+      "bytes": 43416
+    },
+    {
+      "name": "intact-en.jpg",
+      "bytes": 44503
+    },
+    {
+      "name": "intact-nl.jpg",
+      "bytes": 43295
+    },
+    {
+      "name": "wreck-original.jpg",
+      "bytes": 30719
+    },
+    {
+      "name": "wreck-ru.jpg",
+      "bytes": 32098
+    },
+    {
+      "name": "wreck-se.jpg",
+      "bytes": 31790
+    },
+    {
+      "name": "wreck-en.jpg",
+      "bytes": 32313
+    },
+    {
+      "name": "wreck-nl.jpg",
+      "bytes": 31673
+    }
+  ],
+  "jpegTotalBytes": 375216,
+  "camera": {
+    "directionBlender": [
+      2,
+      -3.5,
+      2
+    ],
+    "center": [
+      -0.015,
+      0,
+      -0.015
+    ],
+    "orthoScale": 1.04
+  },
+  "noGameOrSourceGLBChanges": true
+}

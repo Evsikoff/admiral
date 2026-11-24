@@ -7,7 +7,8 @@ function createCommentator({ sound, say, lines, swatch, NAMES, DIE_NOM, DIE_TWO 
   function pick(q, event, queueIfBusy = false) {
     const bucket = `${event}_${q}`, list = lines[bucket] || [];
     const idx = sound.speak(bucket, list.length, { queueIfBusy });
-    return list.length ? list[idx % list.length] : '';
+    const text = list[idx % list.length] || '';
+    return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   }
   const detail = (t) => (t ? ` <span class="cap-detail">${t}</span>` : '');
   // the caption starts with the colour of the fleet whose narrator speaks

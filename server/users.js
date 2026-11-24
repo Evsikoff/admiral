@@ -92,6 +92,7 @@ function readLogin(rows) {
   const [row] = rows;
   if (!Array.isArray(row?.ship_sets)) throw new LoginPayloadError('Invalid ship_sets');
   return {
+    userId: readInteger(row.user_id, 'user_id', 1),
     chips: readInteger(row.chips_balance, 'chips_balance', Number.MIN_SAFE_INTEGER),
     onlinePartyPrice: readInteger(row.online_party_price, 'online_party_price'),
     shipSets: row.ship_sets.map(readShipSet),
@@ -111,12 +112,13 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
   if (!secretKey) missingEnv.push('SUPABASE_SECRET_KEY');
   const enabled = missingEnv.length === 0;
   const vkConfigured = Boolean(appId && appSecret);
-  const loginUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/admiral_user_login` : '';
+  const rpcUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc` : '';
+  const acquiringDevices = new Set();
   const log = (level, event, fields) => logger[level](`[admiral:user-login] ${JSON.stringify({ event, ...fields })}`);
   log(enabled ? 'info' : 'warn', 'configuration', { missingEnv, vkConfigured });
 
-  async function login(params) {
-    return fetchImpl(loginUrl, {
+  async function rpc(name, params) {
+    return fetchImpl(`${rpcUrl}/${name}`, {
       method: 'POST',
       headers: {
         apikey: secretKey,
@@ -128,8 +130,49 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
     });
   }
 
+  async function acquireShipSet(req, res) {
+    if (!enabled) return sendJson(res, 503, { error: 'Inventory is unavailable' });
+    const body = await readJson(req).catch(() => null);
+    const deviceId = typeof body?.deviceId === 'string' ? body.deviceId.toLowerCase() : '';
+    if (!DEVICE_ID.test(deviceId) || !Number.isSafeInteger(body.shipSetId)) {
+      return sendJson(res, 400, { error: 'Invalid ship set request' });
+    }
+    if (acquiringDevices.has(deviceId)) return sendJson(res, 409, { error: 'Acquisition in progress' });
+    acquiringDevices.add(deviceId);
+    try {
+      // Resolve the account and current ownership server-side, including on retries.
+      const login = await rpc('admiral_user_login', { p_device_id: deviceId });
+      if (!login.ok) throw new Error('Login failed');
+      const user = readLogin(await login.json());
+      const set = user.shipSets.find(set => set.id === body.shipSetId);
+      if (!set || set.free) return sendJson(res, 400, { error: 'Expected a paid ship set' });
+      let ownedShipSetIds;
+      if (set.owned) {
+        ownedShipSetIds = user.shipSets.filter(set => !set.free && set.owned).map(set => set.id);
+      } else {
+        const response = await rpc('admiral_inventory_acquisition', {
+          p_user_id: user.userId, p_change_type: 'purchase', p_type_inventory: 'ship_set',
+          p_inventory_id: set.id, p_quantity: 1, p_details: null,
+        });
+        if (!response.ok) throw new Error('Acquisition failed');
+        const inventory = await response.json();
+        if (!Array.isArray(inventory?.user_ship_sets)) throw new Error('Invalid inventory');
+        ownedShipSetIds = inventory.user_ship_sets.map(entry => {
+          readInteger(entry?.quantity, 'quantity', 1);
+          return readInteger(entry.ship_set_id, 'ship_set_id');
+        });
+      }
+      return sendJson(res, 200, { ownedShipSetIds });
+    } catch {
+      return sendJson(res, 503, { error: 'Inventory is temporarily unavailable' });
+    } finally {
+      acquiringDevices.delete(deviceId);
+    }
+  }
+
   return async function handleUsers(req, res) {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST' }, { allow: 'POST' });
+    if (req.url.split('?')[0] === '/api/users/ship-sets/acquire') return acquireShipSet(req, res);
     const loginId = randomUUID();
     const startedAt = performance.now();
     let mode, supabaseStatus;
@@ -164,7 +207,7 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
       }
       stage = 'rpc_fetch';
       trace('info', 'rpc_started', { rpc: 'public.admiral_user_login' });
-      const response = await login(params);
+      const response = await rpc('admiral_user_login', params);
       supabaseStatus = response.status;
       if (!response.ok) {
         const supabaseCode = await readSupabaseErrorCode(response);

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#122b36">
+  <title>Студия комментатора · Адмирал</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/editor.css">
+  <script defer src="/editor.js"></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">Перейти к редактору</a>
+  <button id="shade" hidden aria-label="Закрыть список событий"></button>
+  <aside class="sidebar" id="sidebar" aria-label="Каталог событий">
+    <div class="brand">
+      <div class="brand-symbol" data-icon="anchor"></div>
+      <div><div class="brand-title">Адмирал</div><div class="brand-sub">Студия комментатора</div></div>
+      <button id="close-sidebar" class="icon-button mobile-only" aria-label="Закрыть каталог" data-icon="close"></button>
+    </div>
+    <div class="catalog-head"><h2>Игровые события</h2><span class="count-dark" id="event-count">…</span></div>
+    <label class="search"><span data-icon="search"></span><input id="search" type="search" autocomplete="off" placeholder="Событие или реплика" aria-label="Поиск по событиям, кодам и текстам реплик"><kbd>/</kbd></label>
+    <nav id="event-list" aria-label="Игровые события"></nav>
+    <div id="library-info" class="library-info"><span data-icon="library"></span><span>Загрузка каталога…</span></div>
+  </aside>
+  <main id="workspace" tabindex="-1">
+    <header class="topbar">
+      <button id="open-sidebar" class="icon-button mobile-only" aria-label="Открыть каталог событий" aria-controls="sidebar" data-icon="menu"></button>
+      <div class="breadcrumbs"><span data-icon="stack"></span><span id="crumb-root">Каталог реплик</span><span class="crumb-sep">/</span><strong id="crumb-current">События</strong></div>
+      <button id="mode" class="button button-outline" disabled><span data-icon="sliders"></span><span>Голоса наций</span></button>
+    </header>
+    <div id="content" class="content" aria-busy="true"><p class="loading">Загрузка реплик…</p></div>
+  </main>
+  <div id="notice" role="status" aria-live="polite" hidden></div>
+  <audio id="audio" preload="none"></audio>
+</body>
+</html>

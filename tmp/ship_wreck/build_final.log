@@ -1,0 +1,62 @@
+15:23:54 | INFO: Data are loaded, start creating Blender stuff
+15:23:54 | INFO: Blender create Mesh node mesh_ded4ddd2-a935-47e9-b168-6db8ae71f6be
+15:23:54 | INFO: glTF import finished in 0.05s
+Building Wreck hull - breached planking records 18115
+  Attributes done
+  Removed detached fragment triangles 19
+  Weld done
+  Thickness done
+Building Broken mizzen and torn sail records 3946
+  Attributes done
+  Removed detached fragment triangles 149
+  Weld done
+Building Fallen main mast and shredded canvas records 2844
+  Attributes done
+  Removed detached fragment triangles 619
+  Weld done
+Building Foremast stump records 1166
+  Attributes done
+  Removed detached fragment triangles 0
+  Weld done
+Building Main mast stump records 1195
+  Attributes done
+  Removed detached fragment triangles 5
+  Weld done
+Building Snapped bowsprit and rigging scraps records 260
+  Attributes done
+  Removed detached fragment triangles 63
+  Weld done
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 4.4\4.4\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:23:57 | INFO: Starting glTF 2.0 export
+15:23:57 | INFO: Extracting primitive: Broken mizzen and torn sail
+15:23:57 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+15:23:57 | INFO: Primitives created: 1
+15:23:57 | INFO: Extracting primitive: Fallen main mast and shredded canvas
+15:23:57 | INFO: Primitives created: 1
+15:23:57 | INFO: Extracting primitive: Foremast stump
+15:23:57 | INFO: Primitives created: 1
+15:23:57 | INFO: Extracting primitive: Main mast stump
+15:23:57 | INFO: Primitives created: 1
+15:23:57 | INFO: Extracting primitive: Snapped bowsprit and rigging scraps
+15:23:57 | INFO: Primitives created: 1
+15:23:57 | INFO: Extracting primitive: Куб
+15:23:57 | INFO: Primitives created: 3
+15:23:57 | INFO: Extracting primitive: Wreck hull - breached planking
+15:23:57 | INFO: Primitives created: 3
+15:23:57 | INFO: Finished glTF 2.0 export in 0.2989799976348877 s
+Blender 4.4.3 (hash 802179c51ccc built 2025-04-29 15:39:58)
+Traceback (most recent call last):
+  File "C:\Users\user\Documents\admiral\tools\create_ship_wreck.py", line 420, in <module>
+    write_metadata(args.output,source_doc)
+  File "C:\Users\user\Documents\admiral\tools\create_ship_wreck.py", line 52, in write_metadata
+    path.write_bytes(struct.pack('<4sII', b'glTF', 2, 20+len(raw)+len(rest))
+  File "C:\Program Files\Blender Foundation\Blender 4.4\4.4\python\Lib\pathlib.py", line 1067, in write_bytes
+    with self.open(mode='wb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Blender Foundation\Blender 4.4\4.4\python\Lib\pathlib.py", line 1044, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: [Errno 22] Invalid argument: 'C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship-wreck.glb'
+
+
+Blender quit

@@ -35,7 +35,7 @@ function setup({ bridgeReady = Promise.resolve(), stored = null, search = '', pr
       ok, status: ok ? 200 : 503, headers,
       async json() {
         if (jsonError) throw jsonError;
-        return responseBody === undefined ? { ok, chips, onlinePartyPrice, shipSets } : responseBody;
+        return responseBody === undefined ? { ok, userId: 20, chips, onlinePartyPrice, shipSets } : responseBody;
       },
     };
   }
@@ -49,6 +49,7 @@ test('an external visit registers its device even if VK Bridge is still pending'
   const context = setup({ bridgeReady: pendingBridge });
   assert.equal(context.requests.length, 1);
   assert.equal(await context.window.AdmiralIdentity.ready, true);
+  assert.equal(context.window.AdmiralIdentity.userId, 20);
   assert.equal(context.window.AdmiralIdentity.chips, 125);
   assert.equal(context.window.AdmiralIdentity.onlinePartyPrice, 10);
   assert.deepEqual(context.window.AdmiralIdentity.shipSets, shipSets);

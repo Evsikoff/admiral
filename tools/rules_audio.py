@@ -57,19 +57,19 @@ def stage_narration(directory, pcm, ends, models, script):
 
 
 @contextmanager
-def publication_lock(root):
+def publication_lock(root, wait=False):
     # Closing the descriptor also releases the lock after a forced process exit.
     with (root / "tools" / "__pycache__" / "rules-write.lock").open("a+b") as handle:
         handle.seek(0)
         try:
             if sys.platform == "win32":
                 import msvcrt
-                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK if wait else msvcrt.LK_NBLCK, 1)
             else:
                 import fcntl
-                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
-            raise RuntimeError("Обучение уже сохраняется в другом процессе. Повторите через несколько секунд.") from None
+            raise RuntimeError("Файлы игры уже сохраняются в другом процессе. Повторите через несколько секунд.") from None
         yield
 
 

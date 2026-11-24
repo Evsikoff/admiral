@@ -1,0 +1,523 @@
+15:21:22 | INFO: Data are loaded, start creating Blender stuff
+15:21:22 | INFO: Blender create Mesh node mesh_ded4ddd2-a935-47e9-b168-6db8ae71f6be
+15:21:22 | INFO: glTF import finished in 0.04s
+Building Wreck hull - breached planking records 18115
+  Attributes done
+  Weld done
+  Thickness done
+Building Broken mizzen and torn sail records 3946
+  Attributes done
+  Weld done
+Building Fallen main mast and shredded canvas records 2844
+  Attributes done
+  Weld done
+Building Foremast stump records 1166
+  Attributes done
+  Weld done
+Building Main mast stump records 1195
+  Attributes done
+  Weld done
+Building Snapped bowsprit and rigging scraps records 260
+  Attributes done
+  Weld done
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 4.4\4.4\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:21:24 | INFO: Starting glTF 2.0 export
+15:21:24 | INFO: Extracting primitive: Bowsprit fibers 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Bowsprit fibers 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Bowsprit fibers 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Broken mizzen and torn sail
+15:21:24 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Deck debris 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 05
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 06
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 07
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 08
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 09
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Deck debris 10
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Куб
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.001
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.002
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.003
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.004
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Fallen main mast and shredded canvas
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Fore mast fibers 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Fore mast fibers 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Fore mast fibers 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Fore mast fibers 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Fore mast fibers 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Foremast stump
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.005
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.007
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.009
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.006
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.008
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.010
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Куб.011
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Main mast fibers 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Main mast fibers 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Main mast fibers 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Main mast fibers 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Main mast fibers 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Main mast stump
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Mizzen mast fibers 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Mizzen mast fibers 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Mizzen mast fibers 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Mizzen mast fibers 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Mizzen mast fibers 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture aft 05
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Port fracture forward 05
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Shattered deck edge 00
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Shattered deck edge 01
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Shattered deck edge 02
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Shattered deck edge 03
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Shattered deck edge 04
+15:21:24 | INFO: Primitives created: 2
+15:21:24 | INFO: Extracting primitive: Snapped bowsprit and rigging scraps
+15:21:24 | INFO: Primitives created: 1
+15:21:24 | INFO: Extracting primitive: Wreck hull - breached planking
+15:21:24 | INFO: Primitives created: 3
+15:21:24 | INFO: Finished glTF 2.0 export in 0.2930581569671631 s
+
+15:21:24 | INFO: Data are loaded, start creating Blender stuff
+15:21:24 | INFO: Blender create Mesh node Bowsprit fibers 00
+15:21:24 | INFO: Blender create Mesh node Bowsprit fibers 01
+15:21:24 | INFO: Blender create Mesh node Bowsprit fibers 02
+15:21:24 | INFO: Blender create Mesh node Broken mizzen and torn sail
+15:21:24 | INFO: Blender create Mesh node Deck debris 00
+15:21:24 | INFO: Blender create Mesh node Deck debris 01
+15:21:24 | INFO: Blender create Mesh node Deck debris 02
+15:21:24 | INFO: Blender create Mesh node Deck debris 03
+15:21:24 | INFO: Blender create Mesh node Deck debris 04
+15:21:24 | INFO: Blender create Mesh node Deck debris 05
+15:21:24 | INFO: Blender create Mesh node Deck debris 06
+15:21:24 | INFO: Blender create Mesh node Deck debris 07
+15:21:24 | INFO: Blender create Mesh node Deck debris 08
+15:21:24 | INFO: Blender create Mesh node Deck debris 09
+15:21:24 | INFO: Blender create Mesh node Deck debris 10
+15:21:24 | INFO: Blender create Mesh node Куб
+15:21:24 | INFO: Blender create Mesh node Куб.001
+15:21:24 | INFO: Blender create Mesh node Куб.002
+15:21:24 | INFO: Blender create Mesh node Куб.003
+15:21:24 | INFO: Blender create Mesh node Куб.004
+15:21:24 | INFO: Blender create Mesh node Fallen main mast and shredded canvas
+15:21:24 | INFO: Blender create Mesh node Fore mast fibers 00
+15:21:24 | INFO: Blender create Mesh node Fore mast fibers 01
+15:21:24 | INFO: Blender create Mesh node Fore mast fibers 02
+15:21:24 | INFO: Blender create Mesh node Fore mast fibers 03
+15:21:24 | INFO: Blender create Mesh node Fore mast fibers 04
+15:21:24 | INFO: Blender create Mesh node Foremast stump
+15:21:24 | INFO: Blender create Mesh node Куб.005
+15:21:24 | INFO: Blender create Mesh node Куб.007
+15:21:24 | INFO: Blender create Mesh node Куб.009
+15:21:24 | INFO: Blender create Mesh node Куб.006
+15:21:24 | INFO: Blender create Mesh node Куб.008
+15:21:24 | INFO: Blender create Mesh node Куб.010
+15:21:24 | INFO: Blender create Mesh node Куб.011
+15:21:24 | INFO: Blender create Mesh node Main mast fibers 00
+15:21:24 | INFO: Blender create Mesh node Main mast fibers 01
+15:21:24 | INFO: Blender create Mesh node Main mast fibers 02
+15:21:24 | INFO: Blender create Mesh node Main mast fibers 03
+15:21:24 | INFO: Blender create Mesh node Main mast fibers 04
+15:21:24 | INFO: Blender create Mesh node Main mast stump
+15:21:24 | INFO: Blender create Mesh node Mizzen mast fibers 00
+15:21:24 | INFO: Blender create Mesh node Mizzen mast fibers 01
+15:21:24 | INFO: Blender create Mesh node Mizzen mast fibers 02
+15:21:24 | INFO: Blender create Mesh node Mizzen mast fibers 03
+15:21:24 | INFO: Blender create Mesh node Mizzen mast fibers 04
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 00
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 01
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 02
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 03
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 04
+15:21:24 | INFO: Blender create Mesh node Port fracture aft 05
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 00
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 01
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 02
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 03
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 04
+15:21:24 | INFO: Blender create Mesh node Port fracture forward 05
+15:21:24 | INFO: Blender create Mesh node Shattered deck edge 00
+15:21:24 | INFO: Blender create Mesh node Shattered deck edge 01
+15:21:24 | INFO: Blender create Mesh node Shattered deck edge 02
+15:21:24 | INFO: Blender create Mesh node Shattered deck edge 03
+15:21:24 | INFO: Blender create Mesh node Shattered deck edge 04
+15:21:24 | INFO: Blender create Mesh node Snapped bowsprit and rigging scraps
+15:21:24 | INFO: Blender create Mesh node Wreck hull - breached planking
+15:21:24 | INFO: glTF import finished in 0.11s
+Blender 4.4.3 (hash 802179c51ccc built 2025-04-29 15:39:58)
+Fra:1 Mem:97.63M (Peak 97.63M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Bowsprit fibers 00
+Fra:1 Mem:97.63M (Peak 97.63M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Broken mizzen and torn sail
+Fra:1 Mem:99.64M (Peak 99.64M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 02
+Fra:1 Mem:99.74M (Peak 99.74M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Wreck hull - breached planking
+Fra:1 Mem:99.91M (Peak 99.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 03
+Fra:1 Mem:100.02M (Peak 100.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 04
+Fra:1 Mem:100.02M (Peak 100.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 08
+Fra:1 Mem:100.03M (Peak 100.03M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 09
+Fra:1 Mem:100.04M (Peak 100.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 10
+Fra:1 Mem:100.42M (Peak 100.42M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 00
+Fra:1 Mem:100.42M (Peak 100.42M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 02
+Fra:1 Mem:100.44M (Peak 100.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 03
+Fra:1 Mem:100.45M (Peak 100.45M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fallen main mast and shredded canvas
+Fra:1 Mem:100.45M (Peak 100.45M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 00
+Fra:1 Mem:100.65M (Peak 100.65M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 01
+Fra:1 Mem:100.83M (Peak 100.83M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 02
+Fra:1 Mem:100.85M (Peak 100.85M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 03
+Fra:1 Mem:100.85M (Peak 100.85M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 04
+Fra:1 Mem:100.86M (Peak 100.86M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Foremast stump
+Fra:1 Mem:102.65M (Peak 102.65M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 00
+Fra:1 Mem:102.74M (Peak 102.74M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 01
+Fra:1 Mem:102.90M (Peak 102.90M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 02
+Fra:1 Mem:102.96M (Peak 102.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 00
+Fra:1 Mem:102.81M (Peak 102.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 01
+Fra:1 Mem:102.92M (Peak 102.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 02
+Fra:1 Mem:102.93M (Peak 102.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Loose fore yard
+Fra:1 Mem:102.98M (Peak 102.98M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 00
+Fra:1 Mem:102.99M (Peak 102.99M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 01
+Fra:1 Mem:102.99M (Peak 102.99M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 02
+Fra:1 Mem:102.99M (Peak 102.99M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 03
+Fra:1 Mem:102.88M (Peak 102.99M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 04
+Fra:1 Mem:102.96M (Peak 102.99M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast stump
+Fra:1 Mem:103.07M (Peak 103.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 00
+Fra:1 Mem:103.14M (Peak 103.14M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 01
+Fra:1 Mem:103.44M (Peak 103.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 02
+Fra:1 Mem:103.50M (Peak 103.50M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 03
+Fra:1 Mem:103.59M (Peak 103.59M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 04
+Fra:1 Mem:103.71M (Peak 103.71M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 00
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 01
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 02
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 03
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 04
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 05
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 00
+Fra:1 Mem:104.36M (Peak 104.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 01
+Fra:1 Mem:104.37M (Peak 104.37M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 03
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 04
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 05
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 00
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 01
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 02
+Fra:1 Mem:104.37M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 03
+Fra:1 Mem:104.37M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 04
+Fra:1 Mem:104.38M (Peak 104.38M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:109.89M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading NormalGL_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:155.37M (Peak 189.67M) | Time:00:00.08 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:155.37M (Peak 189.67M) | Time:00:00.08 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:155.37M (Peak 189.67M) | Time:00:00.08 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:155.37M (Peak 189.67M) | Time:00:00.08 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:155.46M (Peak 189.67M) | Time:00:00.08 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:155.47M (Peak 189.67M) | Time:00:00.08 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:155.47M (Peak 189.67M) | Time:00:00.08 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:155.47M (Peak 189.67M) | Time:00:00.08 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:155.47M (Peak 189.67M) | Time:00:00.08 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:156.22M (Peak 189.67M) | Time:00:00.08 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:160.64M (Peak 189.67M) | Time:00:00.08 | Mem:48.03M, Peak:48.03M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:160.63M (Peak 189.67M) | Time:00:00.08 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:160.63M (Peak 189.67M) | Time:00:00.08 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:160.63M (Peak 189.67M) | Time:00:00.08 | Mem:53.93M, Peak:53.93M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:160.63M (Peak 189.67M) | Time:00:00.09 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:160.63M (Peak 189.67M) | Time:00:00.09 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.85M, Peak:57.93M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:162.91M (Peak 189.67M) | Time:00:00.09 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:162.92M (Peak 189.67M) | Time:00:00.09 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:162.92M (Peak 189.67M) | Time:00:00.09 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:272.60M (Peak 272.60M) | Time:00:00.36 | Remaining:00:12.55 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.80 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.80 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\assets\models\sailing-ship-wreck-preview.png'
+Time: 00:16.04 (Saving: 00:00.23)
+
+Fra:1 Mem:102.61M (Peak 102.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Bowsprit fibers 00
+Fra:1 Mem:102.61M (Peak 102.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 00
+Fra:1 Mem:102.62M (Peak 102.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 01
+Fra:1 Mem:102.64M (Peak 102.64M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 02
+Fra:1 Mem:102.76M (Peak 102.76M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 03
+Fra:1 Mem:102.87M (Peak 102.87M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 05
+Fra:1 Mem:102.88M (Peak 102.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 06
+Fra:1 Mem:102.91M (Peak 102.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 09
+Fra:1 Mem:102.92M (Peak 102.92M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 00
+Fra:1 Mem:103.02M (Peak 103.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 01
+Fra:1 Mem:103.26M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 03
+Fra:1 Mem:103.25M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 01
+Fra:1 Mem:103.26M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 02
+Fra:1 Mem:103.26M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 03
+Fra:1 Mem:103.42M (Peak 103.42M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 04
+Fra:1 Mem:103.43M (Peak 103.43M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Foremast stump
+Fra:1 Mem:103.48M (Peak 103.48M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Wreck hull - breached planking
+Fra:1 Mem:103.54M (Peak 103.54M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 00
+Fra:1 Mem:103.62M (Peak 103.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 01
+Fra:1 Mem:103.79M (Peak 103.79M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 02
+Fra:1 Mem:103.92M (Peak 103.92M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 00
+Fra:1 Mem:103.94M (Peak 103.94M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 01
+Fra:1 Mem:103.89M (Peak 103.94M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 02
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Loose fore yard
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 00
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 01
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 02
+Fra:1 Mem:105.56M (Peak 105.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 03
+Fra:1 Mem:106.08M (Peak 106.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 04
+Fra:1 Mem:106.08M (Peak 106.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast stump
+Fra:1 Mem:106.07M (Peak 106.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 00
+Fra:1 Mem:106.07M (Peak 106.08M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 01
+Fra:1 Mem:106.11M (Peak 106.11M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 02
+Fra:1 Mem:106.17M (Peak 106.17M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 03
+Fra:1 Mem:106.19M (Peak 106.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 04
+Fra:1 Mem:106.24M (Peak 106.24M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 00
+Fra:1 Mem:106.27M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 01
+Fra:1 Mem:106.26M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 02
+Fra:1 Mem:106.27M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 03
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 04
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 05
+Fra:1 Mem:106.27M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 00
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 01
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 02
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 03
+Fra:1 Mem:106.27M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 04
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 05
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 00
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 01
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 02
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 03
+Fra:1 Mem:106.28M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 04
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:109.89M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading NormalGL_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading Color_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:155.37M (Peak 205.67M) | Time:00:00.06 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:155.37M (Peak 205.67M) | Time:00:00.06 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:155.37M (Peak 205.67M) | Time:00:00.06 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:155.37M (Peak 205.67M) | Time:00:00.06 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:155.46M (Peak 205.67M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:155.47M (Peak 205.67M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:155.47M (Peak 205.67M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:155.47M (Peak 205.67M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:155.47M (Peak 205.67M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:156.22M (Peak 205.67M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:160.64M (Peak 205.67M) | Time:00:00.07 | Mem:48.03M, Peak:48.03M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:160.63M (Peak 205.67M) | Time:00:00.07 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:160.63M (Peak 205.67M) | Time:00:00.07 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:160.63M (Peak 205.67M) | Time:00:00.07 | Mem:53.93M, Peak:53.93M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:160.63M (Peak 205.67M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:160.63M (Peak 205.67M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.85M, Peak:57.93M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:162.91M (Peak 205.67M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:162.92M (Peak 205.67M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:162.92M (Peak 205.67M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:272.60M (Peak 272.60M) | Time:00:00.32 | Remaining:00:11.52 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.97 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.97 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\tmp\ship_wreck\wreck_reverse.png'
+Time: 00:16.12 (Saving: 00:00.14)
+
+Fra:1 Mem:102.61M (Peak 102.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Bowsprit fibers 00
+Fra:1 Mem:102.62M (Peak 102.62M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 02
+Fra:1 Mem:102.88M (Peak 102.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 03
+Fra:1 Mem:102.88M (Peak 102.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 05
+Fra:1 Mem:102.87M (Peak 102.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 06
+Fra:1 Mem:102.91M (Peak 102.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 08
+Fra:1 Mem:102.93M (Peak 102.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 09
+Fra:1 Mem:102.92M (Peak 102.93M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Deck debris 10
+Fra:1 Mem:103.02M (Peak 103.02M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 01
+Fra:1 Mem:103.21M (Peak 103.21M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 02
+Fra:1 Mem:103.26M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 03
+Fra:1 Mem:103.26M (Peak 103.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Exposed deck joist 04
+Fra:1 Mem:103.27M (Peak 103.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fallen main mast and shredded canvas
+Fra:1 Mem:103.27M (Peak 103.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 01
+Fra:1 Mem:103.27M (Peak 103.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 02
+Fra:1 Mem:103.36M (Peak 103.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 03
+Fra:1 Mem:103.44M (Peak 103.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Fore mast fibers 04
+Fra:1 Mem:103.43M (Peak 103.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Foremast stump
+Fra:1 Mem:103.44M (Peak 103.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 00
+Fra:1 Mem:103.50M (Peak 103.50M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib lower 02
+Fra:1 Mem:103.55M (Peak 103.55M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 00
+Fra:1 Mem:103.91M (Peak 103.91M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 01
+Fra:1 Mem:103.96M (Peak 103.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Hull rib upper 02
+Fra:1 Mem:103.97M (Peak 103.97M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Loose fore yard
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 00
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 01
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 02
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 03
+Fra:1 Mem:105.04M (Peak 105.04M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast fibers 04
+Fra:1 Mem:105.05M (Peak 105.05M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Main mast stump
+Fra:1 Mem:105.56M (Peak 105.56M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 00
+Fra:1 Mem:105.60M (Peak 105.60M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 01
+Fra:1 Mem:106.15M (Peak 106.15M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 02
+Fra:1 Mem:106.17M (Peak 106.17M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 03
+Fra:1 Mem:106.19M (Peak 106.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Mizzen mast fibers 04
+Fra:1 Mem:106.26M (Peak 106.26M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 00
+Fra:1 Mem:106.27M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 01
+Fra:1 Mem:106.27M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 02
+Fra:1 Mem:106.26M (Peak 106.27M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 03
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 04
+Fra:1 Mem:106.27M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture aft 05
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 00
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 01
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 02
+Fra:1 Mem:106.28M (Peak 106.28M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 03
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 04
+Fra:1 Mem:106.28M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Port fracture forward 05
+Fra:1 Mem:106.28M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 00
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 01
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 02
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 03
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Shattered deck edge 04
+Fra:1 Mem:106.29M (Peak 106.29M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Snapped bowsprit and rigging scraps
+Fra:1 Mem:109.89M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading NormalGL_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading Color_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:109.64M (Peak 110.79M) | Time:00:00.02 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading ORM_ded4ddd2-a935-47e9-b168-6db8ae71f6be.001
+Fra:1 Mem:155.37M (Peak 189.66M) | Time:00:00.07 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:155.37M (Peak 189.66M) | Time:00:00.07 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:155.37M (Peak 189.66M) | Time:00:00.07 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:155.37M (Peak 189.66M) | Time:00:00.07 | Mem:48.00M, Peak:48.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:155.46M (Peak 189.66M) | Time:00:00.07 | Mem:48.01M, Peak:48.01M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:155.47M (Peak 189.66M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:155.47M (Peak 189.66M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:155.47M (Peak 189.66M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:155.47M (Peak 189.66M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:156.22M (Peak 189.66M) | Time:00:00.07 | Mem:48.02M, Peak:48.02M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:160.64M (Peak 189.66M) | Time:00:00.07 | Mem:48.03M, Peak:48.03M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:160.63M (Peak 189.66M) | Time:00:00.07 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:160.63M (Peak 189.66M) | Time:00:00.07 | Mem:52.42M, Peak:52.42M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:160.63M (Peak 189.66M) | Time:00:00.07 | Mem:53.93M, Peak:53.93M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:160.63M (Peak 189.66M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:160.63M (Peak 189.66M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:55.57M, Peak:57.07M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.85M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.93M, Peak:57.93M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.85M, Peak:57.93M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:162.91M (Peak 189.66M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:162.92M (Peak 189.66M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:162.92M (Peak 189.66M) | Time:00:00.07 | Mem:57.94M, Peak:57.94M | Scene, ViewLayer | Sample 0/48
+Fra:1 Mem:272.60M (Peak 272.60M) | Time:00:00.30 | Remaining:00:10.58 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 1/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.86 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Sample 48/48
+Fra:1 Mem:318.74M (Peak 387.96M) | Time:00:15.86 | Mem:167.54M, Peak:167.54M | Scene, ViewLayer | Finished
+Saved: 'C:\Users\user\Documents\admiral\tmp\ship_wreck\wreck_side.png'
+Time: 00:16.00 (Saving: 00:00.13)
+
+Информация: «sailing-ship-wreck.blend» сохранено
+WRECK_BUILD {"source": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship.glb", "output": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship-wreck.glb", "sourceSha256": "8907267dd232da1f67918ba8ed49725221dece478d004e9e77b14d4ab6a16df2", "outputSha256": "a640a88019ea37b3ff70fcdbebd7f5d984644bddeee737644b9d518b239e6e9e", "meshes": 64, "vertices": 43538, "triangles": 49301, "boundsBlender": [[-0.5, -0.1460263580083847, -0.33417797088623047], [0.36194854974746704, 0.14124545454978943, 0.1253359317779541]]}
+
+Blender quit

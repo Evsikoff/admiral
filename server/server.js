@@ -109,7 +109,7 @@ function notFound(res) { res.writeHead(404, { 'content-type': 'text/plain; chars
 const lobby = new Lobby({ turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
 const server = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
-  if (urlPath === '/api/users/register') return handleUsers(req, res);
+  if (urlPath === '/api/users/register' || urlPath === '/api/users/ship-sets/acquire') return handleUsers(req, res);
   if (urlPath === '/vk/payments' || urlPath === '/vk/purchases') return handlePayments(req, res);
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return; }
   if (urlPath === '/' || urlPath === '/index.html' || urlPath === '/admiral-3d.html') return sendPage(req, res);

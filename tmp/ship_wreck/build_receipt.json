@@ -1,0 +1,21 @@
+{
+  "source": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship.glb",
+  "output": "C:\\Users\\user\\Documents\\admiral\\assets\\models\\sailing-ship-wreck.glb",
+  "sourceSha256": "8907267dd232da1f67918ba8ed49725221dece478d004e9e77b14d4ab6a16df2",
+  "outputSha256": "872d4c77f218011f9c66dd6f3dffb60da2fce4ed979ee36b1478491ff841e1cc",
+  "meshes": 7,
+  "vertices": 42716,
+  "triangles": 48465,
+  "boundsBlender": [
+    [
+      -0.5,
+      -0.1460263580083847,
+      -0.33417797088623047
+    ],
+    [
+      0.36194658279418945,
+      0.14124545454978943,
+      0.12541624903678894
+    ]
+  ]
+}

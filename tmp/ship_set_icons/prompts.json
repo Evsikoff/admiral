@@ -1,0 +1,16 @@
+{
+  "generator": "built-in image_gen",
+  "transparentBackground": true,
+  "icons": [
+    {
+      "id": "basic",
+      "prompt": "Use case: stylized-concept. Asset type: square inventory/shop icon for a ship set in the nautical board game Admiral. Create exactly ONE isolated intact sailing ship, a polished 3D game-asset illustration with clean sculpted forms, warm natural wood, ivory canvas, crisp readable silhouette, restrained surface detail and soft studio lighting. Composition: square 1:1, three-quarter side view from slightly above, bow pointing RIGHT and stern LEFT, show the whole ship including all mast tips and bowsprit, centered with about 10 percent transparent breathing room. The ship should fill most of the square and remain readable as a small UI icon. True transparent background with clean alpha; no sea, water, ground, backdrop, badge, border, cast shadow on a floor, text, letters, watermark, skull, national flags, coins, stars, crowns or surrounding objects. Keep original natural ship colors, not a player or nation color. Subject: the BASIC SHIPS set. A compact friendly low-poly wooden sailing vessel inspired by the clean Kenney Pirate Kit style: a simple warm medium-brown hull with a modest raised stern deck, plain wooden rail, ONE central main mast carrying TWO broad cream square sails on two yards, a short forward bowsprit and one small cream triangular fore sail. Simple broad faceted surfaces, uncluttered rigging, modest details. Emphasize an approachable small board-game miniature with a clear simple shape. Do not make a large warship or add a third mast.",
+      "output": "assets/ship-sets/basic.png"
+    },
+    {
+      "id": "super",
+      "prompt": "Use case: stylized-concept. Asset type: square inventory/shop icon for a ship set in the nautical board game Admiral. Create exactly ONE isolated intact sailing ship, a polished 3D game-asset illustration with clean sculpted forms, warm natural wood, ivory canvas, crisp readable silhouette, restrained surface detail and soft studio lighting. Composition: square 1:1, three-quarter side view from slightly above, bow pointing RIGHT and stern LEFT, show the whole ship including all mast tips and bowsprit, centered with about 10 percent transparent breathing room. The ship should fill most of the square and remain readable as a small UI icon. True transparent background with clean alpha; no sea, water, ground, backdrop, badge, border, cast shadow on a floor, text, letters, watermark, skull, national flags, coins, stars, crowns or surrounding objects. Keep original natural ship colors, not a player or nation color. Subject: the SUPER SHIPS set. A majestic detailed three-masted age-of-sail warship matching a finely modeled wooden ship miniature: elongated dark walnut hull, a warm teak deck, elegant gold/brass trim along stern and rail and a row of small cannon ports. THREE tall masts, each with several tiers of billowing ivory square sails, a long forward bowsprit and cream triangular fore sails, visible tidy rigging. Richer and more sophisticated than a simple low-poly starter ship, but use the same cohesive softly sculpted 3D game-icon style, camera and natural palette. Carefully organize all sails into a strong readable silhouette; keep it a sailing ship, not a fantasy vessel.",
+      "output": "assets/ship-sets/super.png"
+    }
+  ]
+}
