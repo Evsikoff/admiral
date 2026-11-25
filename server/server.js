@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 import { Lobby } from './lobby.js';
 import { createPaymentsHandler } from './payments.js';
-import { createUsersHandler } from './users.js';
+import { createUserService } from './users.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: path.join(ROOT, 'secrets.txt'), quiet: true });
@@ -34,7 +34,7 @@ if (appId && appSecret && databasePath) {
   }
 }
 handlePayments ??= await createPaymentsHandler();
-const handleUsers = createUsersHandler({
+const { handleUsers, onlineAccount, startOnlineParty } = createUserService({
   supabaseUrl: process.env.SUPABASE_URL,
   secretKey: process.env.SUPABASE_SECRET_KEY,
   appId, appSecret,
@@ -106,7 +106,7 @@ function sendAsset(req, res, urlPath) {
 function notFound(res) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('Not found\n'); }
 
 // the time for a decision in a game, in seconds (TURN_SECONDS, at least 15; 60 by default)
-const lobby = new Lobby({ turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
+const lobby = new Lobby({ startOnlineParty, turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
 const server = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
   if (urlPath === '/api/users/register' || urlPath === '/api/users/ship-sets/acquire') return handleUsers(req, res);
@@ -137,8 +137,8 @@ wss.on('connection', (ws) => {
     let msg;
     try { msg = JSON.parse(data); } catch { return; }
     try {
-      if (msg?.t === 'hello') { if (player) lobby.disconnect(player, conn); player = lobby.hello(conn, msg); }
-      else if (player) lobby.message(player, msg);
+      if (msg?.t === 'hello' && !player) player = lobby.hello(conn, msg, onlineAccount(msg.onlineTicket));
+      else if (player?.conn === conn) lobby.message(player, msg);
     } catch (err) { console.error('message failed', msg?.t, err); }
   });
   ws.on('close', () => { if (player) lobby.disconnect(player, conn); });

@@ -4,34 +4,39 @@ import assert from 'node:assert/strict';
 import { Lobby, COUNTDOWN_MS, GAME_GRACE_MS, WAIT_GRACE_MS, TURN_MS, BOT_STYLES, checkAction, drawSides, cleanName } from './lobby.js';
 
 // a lobby with a clock and timers under the test's control
-function setup() {
-  let now = 0, seq = 0;
+function setup(startOnlineParty = async participants => ({
+  success: true, partyId: '123', balances: new Map(participants.filter(p => p.user_id).map(p => [p.user_id, 0])),
+})) {
+  let now = 0, seq = 0, nextUserId = 0;
   const pending = new Map();
   const timers = {
     set: (fn, ms) => { const id = ++seq; pending.set(id, { fn, at: now + ms }); return id; },
     clear: (id) => { pending.delete(id); },
   };
-  const lobby = new Lobby({ now: () => now, timers });
+  const lobby = new Lobby({ now: () => now, timers, startOnlineParty });
   const advance = (ms) => {
+    const running = [];
     const until = now + ms;
     for (;;) {
       const next = [...pending.entries()].filter(([, t]) => t.at <= until).sort((a, b) => a[1].at - b[1].at)[0];
       if (!next) break;
-      pending.delete(next[0]); now = next[1].at; next[1].fn();
+      pending.delete(next[0]); now = next[1].at; running.push(next[1].fn());
     }
     now = until;
+    return Promise.all(running);
   };
   const client = (name, token) => {
     const inbox = [];
     const conn = { send: (m) => inbox.push(m) };
-    const p = lobby.hello(conn, { name, token });
+    const account = { userId: ++nextUserId, loginAt: now };
+    const p = lobby.hello(conn, { name, token }, account);
     const last = (t) => [...inbox].reverse().find((m) => m.t === t);
-    return { p, conn, inbox, last, say: (msg) => lobby.message(p, msg) };
+    return { p, account, conn, inbox, last, say: (msg) => lobby.message(p, msg) };
   };
   return { lobby, advance, client };
 }
 
-test('a table: create, join, ready, countdown, start with sides by lot', () => {
+test('a table: create, join, ready, countdown, start with sides by lot', async () => {
   const { lobby, advance, client } = setup();
   const a = client('Анна'), b = client('Борис'), w = client('Зритель');
   w.say({ t: 'watch', on: true });
@@ -52,7 +57,7 @@ test('a table: create, join, ready, countdown, start with sides by lot', () => {
   c.say({ t: 'join', no: 1 });
   assert.equal(c.last('table').table.status, 'countdown');
   assert.equal(c.last('table').table.players.length, 3);
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   const start = a.last('start');
   assert.ok(start, 'the game has started');
   assert.equal(start.players.length, 3);
@@ -66,7 +71,80 @@ test('a table: create, join, ready, countdown, start with sides by lot', () => {
   assert.match(d.last('error').text, /уже идёт игра/);
 });
 
-test('un-ready or leaving during the countdown stops it', () => {
+test('one RPC starts a fixed roster and delivers private balances, including on reconnect', async () => {
+  const calls = [];
+  let finish;
+  const { lobby, client, advance } = setup(participants => {
+    calls.push(participants);
+    return new Promise(resolve => { finish = resolve; });
+  });
+  const a = client('A'), b = client('B'), other = client('C');
+  a.say({ t: 'create' }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'bot-add', style: 'corsair' });
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  const started = advance(COUNTDOWN_MS);
+  const table = a.p.table;
+  assert.deepEqual(calls, [[{ user_id: a.p.userId }, { user_id: b.p.userId }, { bot_name: 'Корсар' }]]);
+  a.say({ t: 'leave' }); a.say({ t: 'bot-remove', id: table.bots[0].id });
+  other.say({ t: 'join', no: 1 });
+  a.say({ t: 'ready', on: true });
+  assert.equal(table.status, 'starting');
+  assert.equal(table.bots.length, 1);
+  assert.equal(other.p.table, null);
+  assert.equal(a.last('start'), undefined);
+  lobby.disconnect(b.p, b.conn);
+  finish({ success: true, partyId: '9007199254740993', balances: new Map([[a.p.userId, 0], [b.p.userId, 15]]) });
+  await started;
+  assert.equal(table.game.partyId, '9007199254740993');
+  assert.equal(a.last('start').players.length, 3);
+  assert.deepEqual(a.last('balance'), { t: 'balance', chips: 0 });
+  assert.equal(other.last('balance'), undefined);
+  assert.equal(b.last('balance'), undefined);
+  lobby.hello(b.conn, { token: b.p.token }, b.account);
+  assert.deepEqual(b.last('balance'), { t: 'balance', chips: 15 });
+  assert.ok(b.last('game'));
+  b.say({ t: 'sync' });
+  assert.equal(calls.length, 1);
+});
+
+test('insufficient chips updates the affected account and cancels the start for everyone', async () => {
+  let calls = 0;
+  const { client, advance } = setup(async () => {
+    calls++;
+    return { success: false, balances: new Map([[a.p.userId, 4]]), price: 10 };
+  });
+  const a = client('A'), b = client('B');
+  a.say({ t: 'create' }); b.say({ t: 'join', no: 1 });
+  a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
+  await advance(COUNTDOWN_MS);
+  assert.equal(a.p.table.game, null);
+  assert.equal(b.last('table').table.status, 'waiting');
+  assert.ok(b.last('table').table.players.every(p => !p.ready));
+  assert.deepEqual(a.last('balance'), { t: 'balance', chips: 4, onlinePartyPrice: 10 });
+  assert.equal(b.last('balance'), undefined);
+  assert.match(a.last('error').text, /Приобретите/);
+  assert.ok(b.last('error'));
+  await advance(COUNTDOWN_MS);
+  assert.equal(calls, 1);
+});
+
+test('a lost RPC response closes the table without replaying a possible charge', async () => {
+  let calls = 0;
+  const { lobby, client, advance } = setup(async () => { calls++; throw new Error('RPC timed out'); });
+  const a = client('A');
+  a.say({ t: 'create' }); a.say({ t: 'bot-add', style: 'corsair' });
+  a.say({ t: 'ready', on: true });
+  await advance(COUNTDOWN_MS);
+  assert.equal(lobby.tables.size, 0);
+  assert.equal(a.last('table').table, null);
+  assert.equal(a.last('start'), undefined);
+  assert.match(a.last('error').text, /баланс/);
+  a.say({ t: 'ready', on: true });
+  await advance(COUNTDOWN_MS);
+  assert.equal(calls, 1);
+});
+
+test('un-ready or leaving during the countdown stops it', async () => {
   const { advance, client } = setup();
   const a = client('A'), b = client('B');
   a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
@@ -79,28 +157,28 @@ test('un-ready or leaving during the countdown stops it', () => {
   assert.equal(a.last('table').table.status, 'waiting');
   assert.equal(a.last('table').table.players.length, 1);
   assert.equal(a.last('table').table.players[0].ready, false);
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   assert.equal(a.last('start'), undefined);
 });
 
-test('the draw and a rejoin keep each captain’s ship set from the menu', () => {
+test('the draw and a rejoin keep each captain’s ship set from the menu', async () => {
   const { lobby, advance, client } = setup();
   const a = client('A'), b = client('B');
-  lobby.hello(a.conn, { token: a.p.token, shipSetId: 7 });
+  lobby.hello(a.conn, { token: a.p.token, shipSetId: 7 }, a.account);
   b.say({ t: 'ship-set', id: 8 });
   a.say({ t: 'create' }); b.say({ t: 'join', no: 1 });
   a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   const players = a.last('start').players;
   assert.equal(players.find(p => p.id === a.p.id).shipSetId, 7);
   assert.equal(players.find(p => p.id === b.p.id).shipSetId, 8);
   assert.deepEqual(b.last('start').players, players);
   lobby.disconnect(a.p, a.conn);
-  lobby.hello(a.conn, { token: a.p.token, shipSetId: 8 });
+  lobby.hello(a.conn, { token: a.p.token, shipSetId: 8 }, a.account);
   assert.deepEqual(a.last('game').players, players);
 });
 
-test('asset progress is visible at the table and the countdown waits for every player', () => {
+test('asset progress is visible at the table and the countdown waits for every player', async () => {
   const { lobby, advance, client } = setup();
   const a = client('Анна'), b = client('Борис'), watcher = client('Вера');
   watcher.say({ t: 'watch', on: true });
@@ -109,7 +187,7 @@ test('asset progress is visible at the table and the countdown waits for every p
   assert.equal(b.last('table').table.players[0].assets, 42);
   a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
   assert.equal(a.last('table').table.status, 'waiting');
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   assert.equal(a.last('start'), undefined);
   a.say({ t: 'assets', progress: 100 });
   assert.equal(a.last('table').table.status, 'countdown');
@@ -122,13 +200,13 @@ test('asset progress is visible at the table and the countdown waits for every p
   b.say({ t: 'assets', progress: 101 });
   assert.equal(a.last('table').table.players[1].assets, 99, 'invalid progress is ignored');
   b.say({ t: 'assets', progress: 100 });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   assert.deepEqual(a.last('start').assets, { [a.p.id]: 100, [b.p.id]: 100 });
   a.say({ t: 'assets', progress: 80 });
   assert.deepEqual(b.last('assets'), { t: 'assets', id: a.p.id, progress: 80 });
   lobby.disconnect(b.p, b.conn);
   const inbox = [];
-  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token, assets: 100 });
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token, assets: 100 }, b.account);
   assert.equal(inbox.find((m) => m.t === 'game').assets[a.p.id], 80, 'a rejoined player gets the latest progress');
 });
 
@@ -184,19 +262,19 @@ test('table numbers are reused, the lowest free first', () => {
   assert.equal(c.last('table').table.no, 1);
 });
 
-function startedGame(n = 2) {
+async function startedGame(n = 2) {
   const s = setup();
   const cs = Array.from({ length: n }, (_, i) => s.client(`P${i}`));
   cs[0].say({ t: 'create', private: false });
   for (const c of cs.slice(1)) c.say({ t: 'join', no: 1 });
   for (const c of cs) c.say({ t: 'ready', on: true });
-  s.advance(COUNTDOWN_MS);
+  await s.advance(COUNTDOWN_MS);
   return { ...s, cs };
 }
 const act = (k = 0) => ({ kind: 'act', ship: 'ru1', k });
 
-test('actions are numbered, passed on to everyone and kept for a player who comes back', () => {
-  const { lobby, cs } = startedGame(2);
+test('actions are numbered, passed on to everyone and kept for a player who comes back', async () => {
+  const { lobby, cs } = await startedGame(2);
   const [a, b] = cs;
   a.say({ t: 'act', n: 0, a: act(0) });
   assert.deepEqual(b.last('act'), { t: 'act', n: 0, a: act(0), from: a.p.id });
@@ -212,7 +290,7 @@ test('actions are numbered, passed on to everyone and kept for a player who come
   lobby.disconnect(b.p, b.conn);
   assert.equal(a.last('presence').state, 'offline');
   const inbox = [];
-  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token });
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token }, b.account);
   const state = inbox.find((m) => m.t === 'game');
   assert.equal(state.log.length, 2);
   assert.equal(state.log[1].frames, null);
@@ -223,8 +301,8 @@ test('actions are numbered, passed on to everyone and kept for a player who come
   assert.equal(a.last('presence').state, 'online');
 });
 
-test('a decision not taken in time may be skipped by anyone at the table', () => {
-  const { advance, cs } = startedGame(2);
+test('a decision not taken in time may be skipped by anyone at the table', async () => {
+  const { advance, cs } = await startedGame(2);
   const [a, b] = cs;
   assert.equal(b.last('start').turnMs, TURN_MS, 'the players know the time for a turn');
   a.say({ t: 'act', n: 0, a: act(0) });
@@ -238,8 +316,8 @@ test('a decision not taken in time may be skipped by anyone at the table', () =>
   assert.equal(a.last('reject').have, 2, 'the clock starts again with every action');
 });
 
-test('a player who is gone too long has left; only their turns may be skipped', () => {
-  const { lobby, advance, cs } = startedGame(3);
+test('a player who is gone too long has left; only their turns may be skipped', async () => {
+  const { lobby, advance, cs } = await startedGame(3);
   const [a, b, c] = cs;
   a.say({ t: 'act', n: 0, a: { kind: 'skip', id: b.p.id } });
   assert.equal(a.last('reject').kind, 'skip', 'a player who is here cannot be skipped');
@@ -267,7 +345,7 @@ test('a player who loses the connection at a waiting table keeps the seat for a 
   lobby.disconnect(b.p, b.conn);
   assert.equal(a.last('table').table.players[1].online, false);
   advance(WAIT_GRACE_MS - 10);
-  lobby.hello({ send: () => {} }, { token: b.p.token });
+  lobby.hello({ send: () => {} }, { token: b.p.token }, b.account);
   assert.equal(a.last('table').table.players[1].online, true);
   lobby.disconnect(b.p, lobby.players.get(b.p.token).conn);
   advance(WAIT_GRACE_MS);
@@ -320,7 +398,7 @@ test('bots: seated in free seats, named by style, counted as players; their tabl
   assert.equal(lobby.tables.size, 0);
 });
 
-test('bots: one person and a bot play; a change of bots restarts the countdown', () => {
+test('bots: one person and a bot play; a change of bots restarts the countdown', async () => {
   const { advance, client } = setup();
   const a = client('A');
   a.say({ t: 'create', private: false });
@@ -337,7 +415,7 @@ test('bots: one person and a bot play; a change of bots restarts the countdown',
   assert.equal(a.last('start'), undefined);
   const removing = a.last('table').table.bots[1].id;
   a.say({ t: 'bot-remove', id: removing });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   const start = a.last('start');
   assert.ok(start, 'the game has begun');
   assert.equal(start.players.length, 2);
@@ -347,13 +425,13 @@ test('bots: one person and a bot play; a change of bots restarts the countdown',
   assert.deepEqual(start.players.find((p) => !p.bot), { id: a.p.id, name: 'A', q: start.players.find((p) => !p.bot).q });
 });
 
-test('bots: a player\'s screen sends the bot\'s decisions; the log says they were the bot\'s', () => {
+test('bots: a player\'s screen sends the bot\'s decisions; the log says they were the bot\'s', async () => {
   const { lobby, advance, client } = setup();
   const a = client('A'), b = client('B');
   a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
   a.say({ t: 'bot-add', style: 'novice' });
   a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   const botId = a.last('start').players.find((p) => p.bot).id;
   a.say({ t: 'act', n: 0, a: { ...act(0), bot: botId } });
   assert.deepEqual(b.last('act'), { t: 'act', n: 0, a: { ...act(0), bot: botId }, from: a.p.id });
@@ -363,7 +441,7 @@ test('bots: a player\'s screen sends the bot\'s decisions; the log says they wer
   assert.deepEqual(b.last('act').a, act(1), 'a malformed bot id is dropped: the action is the player\'s own');
   const inbox = [];
   lobby.disconnect(b.p, b.conn);
-  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token });
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: b.p.token }, b.account);
   const state = inbox.find((m) => m.t === 'game');
   assert.equal(state.log[0].by, botId);
   assert.equal(state.log[1].by, b.p.id);
@@ -373,7 +451,7 @@ test('bots: a player\'s screen sends the bot\'s decisions; the log says they wer
   assert.equal(lobby.tables.size, 0);
 });
 
-test('rematch: a fresh table gathers the remaining players and bots, with nobody ready yet', () => {
+test('rematch: a fresh table gathers the remaining players and bots, with nobody ready yet', async () => {
   const { lobby, advance, client } = setup();
   const a = client('A'), b = client('B'), c = client('C');
   a.say({ t: 'create', private: true });
@@ -382,7 +460,7 @@ test('rematch: a fresh table gathers the remaining players and bots, with nobody
   a.say({ t: 'bot-add', style: 'corsair' });
   const botId = a.last('table').table.bots[0].id;
   for (const p of [a, b, c]) p.say({ t: 'ready', on: true });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   c.say({ t: 'leave' });
   a.say({ t: 'rematch' });
   const view = a.last('table').table;
@@ -398,7 +476,7 @@ test('rematch: a fresh table gathers the remaining players and bots, with nobody
   const starts = a.inbox.filter((m) => m.t === 'start').length;
   b.say({ t: 'rematch' });
   assert.equal(lobby.tables.size, 1, 'another request at the waiting table does not create a third table');
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   assert.equal(a.inbox.filter((m) => m.t === 'start').length, starts, 'everybody confirms the next game again');
 });
 
@@ -410,14 +488,14 @@ test('bots: the styles of the server are those of the game', async () => {
   assert.deepEqual(Object.fromEntries(window.AdmiralBotStyles.map((s) => [s.id, s.title])), BOT_STYLES);
 });
 
-test('bots: the table learns who hears the commentator (bots wait for him only if somebody does)', () => {
+test('bots: the table learns who hears the commentator (bots wait for him only if somebody does)', async () => {
   const { lobby, advance, client } = setup();
   const a = client('A'), b = client('B');
   lobby.message(b.p, { t: 'voice', on: false });             // switched off before the game: it is remembered
   a.say({ t: 'create', private: false }); b.say({ t: 'join', no: 1 });
   a.say({ t: 'bot-add', style: 'racer' });
   a.say({ t: 'ready', on: true }); b.say({ t: 'ready', on: true });
-  advance(COUNTDOWN_MS);
+  await advance(COUNTDOWN_MS);
   assert.deepEqual(a.last('start').voice, { [a.p.id]: true, [b.p.id]: false }, 'the people only');
   a.say({ t: 'voice', on: false });
   assert.deepEqual(b.last('voice'), { t: 'voice', id: a.p.id, on: false });
@@ -426,7 +504,7 @@ test('bots: the table learns who hears the commentator (bots wait for him only i
   // a player back after a reload says it again in the greeting; the game state has it
   lobby.disconnect(a.p, a.conn);
   const inbox = [];
-  lobby.hello({ send: (m) => inbox.push(m) }, { token: a.p.token, voice: true });
+  lobby.hello({ send: (m) => inbox.push(m) }, { token: a.p.token, voice: true }, a.account);
   assert.deepEqual(inbox.find((m) => m.t === 'game').voice, { [a.p.id]: true, [b.p.id]: true });
   assert.deepEqual(b.last('voice'), { t: 'voice', id: a.p.id, on: true });
 });

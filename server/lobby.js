@@ -27,6 +27,7 @@ const BOT_ID = /^bot[0-9a-f]{5}$/;
 const isStyle = (x) => typeof x === 'string' && Object.hasOwn(BOT_STYLES, x);
 // every seat taken at a table: its players and its bots
 const seats = (table) => table.players.length + table.bots.length;
+const acceptsSeats = table => table.status === 'waiting' || table.status === 'countdown';
 function setShipSet(player, id) {
   if (id === null || (Number.isSafeInteger(id) && id >= 0)) player.shipSetId = id;
 }
@@ -69,8 +70,9 @@ export function checkAction(a) {
 }
 
 export class Lobby {
-  constructor({ now = () => Date.now(), timers = { set: setTimeout, clear: clearTimeout }, turnMs = TURN_MS } = {}) {
+  constructor({ now = () => Date.now(), timers = { set: setTimeout, clear: clearTimeout }, turnMs = TURN_MS, startOnlineParty } = {}) {
     this.now = now; this.timers = timers; this.turnMs = turnMs;
+    this.startOnlineParty = startOnlineParty;
     this.players = new Map();       // token → player
     this.byId = new Map();          // id → player
     this.tables = new Map();        // number → table
@@ -79,14 +81,20 @@ export class Lobby {
 
   // ---- connections
   // conn: { send(object) }. The token comes back from the browser tab: the same player, at the same table.
-  hello(conn, msg = {}) {
+  hello(conn, msg = {}, account = null) {
+    const userId = account?.userId ?? null;
     let p = typeof msg.token === 'string' ? this.players.get(msg.token) : null;
+    if (p?.userId && !account) {
+      conn.send({ t: 'error', text: 'Не удалось подтвердить вход. Обновите страницу, чтобы вернуться за свой стол.' });
+      return null;
+    }
+    if (p && p.userId !== userId) p = null;
     if (p) {
       if (p.conn && p.conn !== conn) p.conn.send({ t: 'replaced' });
       this.timers.clear(p.forget); p.forget = null;
     } else {
       let id; do id = randomBytes(4).toString('hex'); while (this.byId.has(id));
-      p = { id, token: randomBytes(16).toString('hex'), name: '', conn: null, table: null, ready: false, watching: false, forget: null,
+      p = { id, userId, token: randomBytes(16).toString('hex'), name: '', conn: null, table: null, ready: false, watching: false, forget: null,
         voice: true, assets: 100 };
       this.players.set(p.token, p); this.byId.set(id, p);
     }
@@ -98,6 +106,7 @@ export class Lobby {
     if (name && !(p.table && p.table.status === 'playing')) p.name = name;
     if (!p.name) p.name = `Капитан ${p.id.slice(0, 3).toUpperCase()}`;
     conn.send({ t: 'welcome', id: p.id, token: p.token, name: p.name });
+    if (p.balanceUpdate && p.balanceUpdatedAt >= account.loginAt) conn.send(p.balanceUpdate);
     const table = p.table;
     if (table) {
       this.timers.clear(p.away); p.away = null;
@@ -116,17 +125,21 @@ export class Lobby {
   disconnect(p, conn) {
     if (!p || p.conn !== conn) return;
     p.conn = null; p.watching = false;
+    this.scheduleAway(p);
+    this.scheduleForget(p);
+  }
+  scheduleAway(p) {
     const table = p.table;
-    if (table && table.status === 'playing') {
+    if (!table || table.status === 'starting') return;
+    if (table.status === 'playing') {
       this.setPresence(table, p, 'offline');
       p.away = this.timers.set(() => { p.away = null; if (p.table === table && !p.conn) this.setPresence(table, p, 'left'); }, GAME_GRACE_MS);
-    } else if (table) {
+    } else {
       p.online = false; p.ready = false;
       this.cancelCountdown(table);
       this.sendTable(table); this.listChanged();
       p.away = this.timers.set(() => { p.away = null; if (p.table === table && !p.conn) this.leaveTable(p); }, WAIT_GRACE_MS);
     }
-    this.scheduleForget(p);
   }
   scheduleForget(p) {
     this.timers.clear(p.forget);
@@ -170,7 +183,7 @@ export class Lobby {
   // ---- the list of tables waiting for players: a table is in it until it is full or its game has begun
   listMessage() {
     const list = [...this.tables.values()]
-      .filter((t) => t.status !== 'playing' && seats(t) < SEATS)
+      .filter((t) => acceptsSeats(t) && seats(t) < SEATS)
       .sort((a, b) => a.no - b.no)
       .map((t) => ({ no: t.no, count: seats(t), bots: t.bots.length, private: t.private, status: t.status }));
     return { t: 'tables', list };
@@ -200,6 +213,7 @@ export class Lobby {
   }
   // a player at a waiting table may move to another; a player in a game has to leave it first
   canMove(p) {
+    if (p.table?.status === 'starting') return false;
     if (p.table && p.table.status === 'playing') { p.conn?.send({ t: 'error', text: 'Сначала покиньте текущую игру.' }); return false; }
     return true;
   }
@@ -208,6 +222,7 @@ export class Lobby {
     if (!table) { p.conn?.send({ t: 'error', text: 'Такого стола нет. Возможно, за ним уже начали игру.' }); return; }
     if (p.table === table) { this.sendTable(table); return; }
     if (!this.canMove(p)) return;
+    if (table.status === 'starting') { p.conn?.send({ t: 'error', text: 'Партия уже запускается.' }); return; }
     if (table.status === 'playing') { p.conn?.send({ t: 'error', text: `За столом № ${table.no} уже идёт игра.` }); return; }
     if (seats(table) >= SEATS) { p.conn?.send({ t: 'error', text: `За столом № ${table.no} все четыре места заняты.` }); return; }
     if (table.private && String(code ?? '') !== table.code) {
@@ -234,14 +249,15 @@ export class Lobby {
     if (p.table && p.table !== table) this.leaveTable(p);
     p.table = table; p.online = !!p.conn;
     // a player who sits down during the countdown plays too, once their assets are ready
-    p.ready = table.status === 'countdown' && p.assets === 100;
-    if (table.status === 'countdown' && p.assets < 100) this.cancelCountdown(table);
+    p.ready = table.status === 'countdown' && p.assets === 100 && !!p.userId;
+    if (!p.ready) this.cancelCountdown(table);
     if (!table.players.includes(p)) table.players.push(p);
     this.sendTable(table); this.listChanged();
   }
   ready(p, on) {
     const table = p.table;
-    if (!table || table.status === 'playing') return;
+    if (!table || !acceptsSeats(table)) return;
+    if (on && !p.userId) { p.conn?.send({ t: 'error', text: 'Для онлайн-партии нужен вход в игру. Обновите страницу.' }); return; }
     p.ready = on && seats(table) > 1;
     if (!p.ready) this.cancelCountdown(table);
     this.checkStart(table);
@@ -252,7 +268,7 @@ export class Lobby {
     if (!table.players.every((p) => p.ready && p.conn && p.assets === 100)) return;
     table.status = 'countdown';
     table.startsAt = this.now() + COUNTDOWN_MS;
-    table.timer = this.timers.set(() => { table.timer = null; this.begin(table); }, COUNTDOWN_MS);
+    table.timer = this.timers.set(() => { table.timer = null; return this.begin(table); }, COUNTDOWN_MS);
   }
   cancelCountdown(table) {
     if (table.status !== 'countdown') return;
@@ -261,6 +277,7 @@ export class Lobby {
   }
   leaveTable(p, asked = false) {
     const table = p.table;
+    if (table?.status === 'starting') return;
     if (!table) { if (asked) p.conn?.send({ t: 'table', table: null }); return; }
     this.timers.clear(p.away); p.away = null;
     p.table = null; p.ready = false;
@@ -289,7 +306,7 @@ export class Lobby {
   // A change of the table starts the countdown again (if everyone is still ready), so nobody is surprised by it
   botTable(p) {
     const table = p.table;
-    return table && table.status !== 'playing' ? table : null;
+    return table && acceptsSeats(table) ? table : null;
   }
   addBot(p, style) {
     const table = this.botTable(p);
@@ -331,21 +348,64 @@ export class Lobby {
   }
 
   // ---- the game: sides by lot, turn order by lot, then the actions in the order they came
-  begin(table) {
+  async begin(table) {
     if (table.status !== 'countdown') return;
+    table.status = 'starting';
+    this.sendTable(table); this.listChanged();
+    const participants = [
+      ...table.players.map(p => ({ user_id: p.userId })),
+      ...table.bots.map(b => ({ bot_name: b.name })),
+    ];
+    let result;
+    try {
+      result = await this.startOnlineParty(participants);
+    } catch (error) {
+      console.error('Online party start failed:', error.message);
+      // The charge may have committed even if the response was lost. Retire this attempt.
+      table.status = 'waiting';
+      for (const p of [...table.players]) {
+        this.leaveTable(p);
+        p.conn?.send({ t: 'error', text: 'Не удалось подтвердить старт партии. Обновите страницу, чтобы проверить баланс фишек.' });
+      }
+      return;
+    }
+    for (const p of this.players.values()) {
+      const chips = result.balances.get(p.userId);
+      if (chips === undefined) continue;
+      p.balanceUpdate = { t: 'balance', chips, ...(result.price != null ? { onlinePartyPrice: result.price } : {}) };
+      p.balanceUpdatedAt = this.now();
+      p.conn?.send(p.balanceUpdate);
+    }
+    if (!result.success) {
+      table.status = 'waiting';
+      for (const p of table.players) {
+        p.ready = false;
+        const text = result.balances.has(p.userId) ? 'Для старта партии недостаточно фишек. Приобретите фишки.'
+          : 'Партия не началась. У одного из участников недостаточно фишек.';
+        p.conn?.send({ t: 'error', text });
+        if (!p.conn) this.scheduleAway(p);
+      }
+      this.sendTable(table); this.listChanged();
+      return;
+    }
     // the players and the bots take their places by lot; a bot is known in the game by its style
     const seated = shuffle([...table.players, ...table.bots]);
     const sides = drawSides(seated.length);
     table.status = 'playing';
     table.game = {
+      partyId: result.partyId,
       players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i], ...(p.shipSetId != null ? { shipSetId: p.shipSetId } : {}),
         ...(p.style ? { bot: p.style } : {}) })),
       log: [], presence: new Map(table.players.map((p) => [p.id, p.conn ? 'online' : 'offline'])), started: this.now(),
       lastAt: this.now(), bots: new Set(table.bots.map((b) => b.id)),
     };
-    for (const p of table.players) p.ready = false;
+    for (const p of table.players) {
+      p.ready = false;
+      if (!p.conn) this.scheduleAway(p);
+    }
     const voice = this.voiceOf(table), assets = this.assetsOf(table);
-    for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice, assets });
+    const presence = Object.fromEntries(table.game.presence);
+    for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice, assets, presence });
     this.listChanged();
   }
   // The clients detect victory. The first player returning to the table moves the whole company to a fresh one;

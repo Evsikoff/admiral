@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { parse as parseLossless } from 'lossless-json';
 import { verifyVkLaunch } from './vk-launch.js';
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -106,7 +107,7 @@ async function readSupabaseErrorCode(response) {
   } catch { /* a non-JSON error still has an HTTP status */ }
 }
 
-export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, fetchImpl = fetch, now, logger = console } = {}) {
+export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fetchImpl = fetch, now, logger = console } = {}) {
   const missingEnv = [];
   if (!supabaseUrl) missingEnv.push('SUPABASE_URL');
   if (!secretKey) missingEnv.push('SUPABASE_SECRET_KEY');
@@ -114,6 +115,15 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
   const vkConfigured = Boolean(appId && appSecret);
   const rpcUrl = enabled ? `${supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc` : '';
   const acquiringDevices = new Set();
+  const pendingParties = new Map();
+  const ticketKey = randomBytes(32);
+  const sign = claims => createHmac('sha256', ticketKey).update(claims).digest('base64url');
+  function onlineAccount(ticket) {
+    if (typeof ticket !== 'string') return null;
+    const match = /^([1-9]\d{0,15})\.(\d{1,16})\.([\w-]{43})$/.exec(ticket);
+    if (!match || !timingSafeEqual(Buffer.from(match[3]), Buffer.from(sign(`${match[1]}.${match[2]}`)))) return null;
+    return { userId: Number(match[1]), loginAt: Number(match[2]) };
+  }
   const log = (level, event, fields) => logger[level](`[admiral:user-login] ${JSON.stringify({ event, ...fields })}`);
   log(enabled ? 'info' : 'warn', 'configuration', { missingEnv, vkConfigured });
 
@@ -128,6 +138,42 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
       signal: AbortSignal.timeout(10000),
       body: JSON.stringify(params),
     });
+  }
+
+  async function registerParty(participants, users) {
+    if (!enabled) throw new Error('Online parties are not configured');
+    const response = await rpc('admiral_online_party_start', { p_participants: participants });
+    if (!response.ok) throw new Error(`Party RPC returned HTTP ${response.status}`);
+    // PostgreSQL bigint party IDs can exceed the precision of a JavaScript number.
+    const result = parseLossless(await response.text(), null, { parseNumber: digits => digits });
+    const success = result?.success === true;
+    if (!success && !(result?.success === false && result.error === 'insufficient_chips')) {
+      throw new Error('Invalid party result');
+    }
+    const balances = new Map();
+    for (const row of success ? result.user_balances : result.insufficient_balance_users) {
+      const id = readInteger(row.user_id, 'user_id', 1);
+      if (!users.has(id)) throw new Error('Unexpected account in party result');
+      balances.set(id, readInteger(row.chip_balance, 'chip_balance', Number.MIN_SAFE_INTEGER));
+    }
+    if (!success && balances.size) return { success, balances, price: readInteger(result.party_price, 'party_price') };
+    if (!success || balances.size !== users.size || typeof result.party_id !== 'string' || !/^[1-9]\d*$/.test(result.party_id)) {
+      throw new Error('Incomplete party result');
+    }
+    return { success, partyId: result.party_id, balances };
+  }
+
+  async function startOnlineParty(participants) {
+    // Two tables can contain the same account. Deliver its balances in charge order.
+    const users = new Set(participants.filter(p => p.user_id != null).map(p => p.user_id));
+    const previous = [...users].map(id => pendingParties.get(id)).filter(Boolean);
+    const started = Promise.allSettled(previous).then(() => registerParty(participants, users));
+    for (const id of users) pendingParties.set(id, started);
+    try {
+      return await started;
+    } finally {
+      for (const id of users) if (pendingParties.get(id) === started) pendingParties.delete(id);
+    }
   }
 
   async function acquireShipSet(req, res) {
@@ -170,7 +216,7 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
     }
   }
 
-  return async function handleUsers(req, res) {
+  async function handleUsers(req, res) {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST' }, { allow: 'POST' });
     if (req.url.split('?')[0] === '/api/users/ship-sets/acquire') return acquireShipSet(req, res);
     const loginId = randomUUID();
@@ -206,6 +252,7 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
         params = { p_device_id: deviceId };
       }
       stage = 'rpc_fetch';
+      const loginAt = Date.now();
       trace('info', 'rpc_started', { rpc: 'public.admiral_user_login' });
       const response = await rpc('admiral_user_login', params);
       supabaseStatus = response.status;
@@ -218,11 +265,13 @@ export function createUsersHandler({ supabaseUrl, secretKey, appId, appSecret, f
       stage = 'rpc_validation';
       const user = readLogin(rows);
       trace('info', 'succeeded', { status: 200, shipSetCount: user.shipSets.length });
-      return sendJson(res, 200, { ok: true, ...user });
+      const claims = `${user.userId}.${loginAt}`;
+      return sendJson(res, 200, { ok: true, ...user, onlineTicket: `${claims}.${sign(claims)}` });
     } catch (error) {
       const reason = error?.name === 'TimeoutError' ? 'rpc_timeout' : `${stage}_failed`;
       const validationError = error instanceof LoginPayloadError ? error.message : undefined;
       return fail(503, reason, 'User registration is temporarily unavailable', { validationError });
     }
-  };
+  }
+  return { handleUsers, onlineAccount, startOnlineParty };
 }

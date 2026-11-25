@@ -3,7 +3,7 @@ import { createHmac } from 'node:crypto';
 import { once } from 'node:events';
 import http from 'node:http';
 import test from 'node:test';
-import { createUsersHandler } from './users.js';
+import { createUserService } from './users.js';
 
 const appId = '12345';
 const appSecret = 'example-secret';
@@ -37,7 +37,7 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory } = {}) {
+async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory, partyResult } = {}) {
   const calls = [], logs = [];
   const captureLog = (...args) => logs.push(args);
   const logger = { info: captureLog, warn: captureLog, error: captureLog };
@@ -48,6 +48,7 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null, 
     assert.equal(init.headers.apikey, serverSecret);
     assert.equal(init.headers.Authorization, `Bearer ${serverSecret}`);
     assert.equal(init.headers['content-type'], 'application/json');
+    if (parsed.pathname === '/rest/v1/rpc/admiral_online_party_start') return new Response(await partyResult);
     if (parsed.pathname === '/rest/v1/rpc/admiral_inventory_acquisition') {
       return { ok: true, status: 200, json: async () => inventory };
     }
@@ -60,12 +61,12 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null, 
       ship_sets: catalog,
     }] };
   }
-  const handler = createUsersHandler({
+  const service = createUserService({
     supabaseUrl: configured ? 'https://supabase.example' : undefined,
     secretKey: configured ? serverSecret : undefined,
     appId, appSecret, fetchImpl, logger,
   });
-  const server = http.createServer(handler);
+  const server = http.createServer(service.handleUsers);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -75,7 +76,7 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null, 
     await closed;
   });
   return {
-    calls, logs,
+    calls, logs, ...service,
     async post(body, path = '/api/users/register') {
       const response = await fetch(`${origin}${path}`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
@@ -94,6 +95,33 @@ function events(logs) {
 }
 
 const acquirePath = '/api/users/ship-sets/acquire';
+
+test('party RPC sends one entry per seat and preserves a bigint party ID and zero balances', async t => {
+  const service = await setup(t, { partyResult: '{"success":true,"party_id":9007199254740993,"user_balances":[{"user_id":20,"chip_balance":0},{"user_id":20,"chip_balance":0}]}' });
+  const participants = [{ user_id: 20 }, { user_id: 20 }, { bot_name: 'Корсар' }];
+  const result = await service.startOnlineParty(participants);
+  assert.deepEqual(JSON.parse(service.calls[0].init.body), { p_participants: participants });
+  assert.deepEqual(result, { success: true, partyId: '9007199254740993', balances: new Map([[20, 0]]) });
+});
+
+test('party rejection reads the current price and only the insufficient balances', async t => {
+  const service = await setup(t, { partyResult: JSON.stringify({ success: false, error: 'insufficient_chips',
+    party_price: 10, insufficient_balance_users: [{ user_id: 20, chip_balance: 0, required_balance: 10 }] }) });
+  assert.deepEqual(await service.startOnlineParty([{ user_id: 21 }, { user_id: 20 }]),
+    { success: false, price: 10, balances: new Map([[20, 0]]) });
+});
+
+test('overlapping starts wait for the preceding charge on a shared account', async t => {
+  let release;
+  const service = await setup(t, { partyResult: new Promise(resolve => { release = resolve; }) });
+  const start = () => service.startOnlineParty([{ user_id: 20 }, { bot_name: 'Корсар' }]);
+  const first = start(), second = start();
+  await new Promise(setImmediate);
+  assert.equal(service.calls.length, 1);
+  release('{"success":true,"party_id":1,"user_balances":[{"user_id":20,"chip_balance":15}]}');
+  await Promise.all([first, second]);
+  assert.equal(service.calls.length, 2);
+});
 
 test('a device acquires one paid set for its login user and receives the full inventory', async t => {
   const server = await setup(t, { inventory: { user_ship_sets: [
@@ -136,7 +164,10 @@ test('an external device receives the numeric balance, online price and ship set
   const second = await server.post({ vk: false, deviceId });
   for (const response of [first, second]) {
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, userId: 20, chips: 125, onlinePartyPrice: 10, shipSets });
+    const { onlineTicket, ...profile } = response.body;
+    assert.equal(server.onlineAccount(onlineTicket).userId, 20);
+    assert.equal(server.onlineAccount(onlineTicket.replace(/^20\./, '21.')), null);
+    assert.deepEqual(profile, { ok: true, userId: 20, chips: 125, onlinePartyPrice: 10, shipSets });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'device');
@@ -159,7 +190,9 @@ test('a VK visit enters by vk_id without sending a device identifier', async (t)
   for (let count = 0; count < 2; count++) {
     const response = await server.post(body);
     assert.equal(response.status, 200);
-    assert.deepEqual(response.body, { ok: true, userId: 20, chips: 80, onlinePartyPrice: 10, shipSets });
+    const { onlineTicket, ...profile } = response.body;
+    assert.equal(server.onlineAccount(onlineTicket).userId, 20);
+    assert.deepEqual(profile, { ok: true, userId: 20, chips: 80, onlinePartyPrice: 10, shipSets });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'vk');

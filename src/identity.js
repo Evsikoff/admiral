@@ -47,7 +47,13 @@
 
   const api = {
     get deviceId() { return deviceId; },
-    userId: null, chips: null, onlinePartyPrice: null, shipSets: null, ready: null, acquireShipSet,
+    userId: null, onlineTicket: null, chips: null, onlinePartyPrice: null, shipSets: null, ready: null, acquireShipSet,
+    updateBalance(chips, price = api.onlinePartyPrice) {
+      if (!Number.isSafeInteger(chips) || !Number.isSafeInteger(price) || price < 0) return;
+      api.chips = chips;
+      api.onlinePartyPrice = price;
+      window.dispatchEvent(new CustomEvent('admiral:balance'));
+    },
   };
   window.AdmiralIdentity = api;
   api.ready = (async () => {
@@ -84,6 +90,7 @@
         return false;
       }
       api.userId = result.userId;
+      api.onlineTicket = result.onlineTicket;
       api.chips = result.chips;
       api.onlinePartyPrice = result.onlinePartyPrice;
       api.shipSets = result.shipSets;

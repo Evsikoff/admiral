@@ -100,10 +100,13 @@
     try { socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); }
     catch { scheduleRetry(); return; }
     ws = socket;
-    socket.onopen = () => {
+    socket.onopen = async () => {
+      const identity = window.AdmiralIdentity;
+      if (identity) await identity.ready;
+      if (ws !== socket || socket.readyState !== WebSocket.OPEN) return;
       connected = true; retry = 0;
       socket.send(JSON.stringify({ t: 'hello', token, name: nameInput.value.trim(), voice: commentatorOn, assets: assetPercent,
-        shipSetId: intro.shipSet?.id }));
+        onlineTicket: identity?.onlineTicket, shipSetId: intro.shipSet?.id }));
       if (open && !table && !game) send({ t: 'watch', on: true });
       netStatus();
     };
@@ -163,10 +166,11 @@
       }
       case 'need-code': askCode(m.no, m.wrong); return;
       case 'error': note(m.text); return;
+      case 'balance': window.AdmiralIdentity?.updateBalance(m.chips, m.onlinePartyPrice); return;
       case 'start':
         table = null;
         game = { no: m.no, players: m.players, me: m.me, log: [], turnMs: m.turnMs, voice: m.voice || {}, assets: m.assets || {},
-          presence: Object.fromEntries(m.players.filter((p) => !p.bot).map((p) => [p.id, 'online'])) };
+          presence: m.presence || Object.fromEntries(m.players.filter((p) => !p.bot).map((p) => [p.id, 'online'])) };
         showDraw();
         return;
       case 'game': {
@@ -308,6 +312,8 @@
     if (table.private) tableCode.querySelector('b').textContent = table.code || '····';
     // the people first, then the bots; the first free seat offers a bot
     const bots = table.bots || [], n = table.players.length + bots.length;
+    const starting = table.status === 'starting';
+    leaveBtn.disabled = starting;
     const seated = [...table.players, ...bots.map((b) => ({ ...b, bot: true }))];
     const focused = document.activeElement?.dataset?.key;          // the control in use keeps the focus
     seatsEl.replaceChildren(...Array.from({ length: 4 }, (_, i) => {
@@ -315,7 +321,7 @@
       if (!p) {
         li.className = 'free';
         li.innerHTML = `<span class="ol-seat">${i + 1}</span><span class="ol-pname">свободное место</span>`;
-        if (i === n && STYLES.length) {
+        if (!starting && i === n && STYLES.length) {
           const add = document.createElement('button');
           add.type = 'button'; add.className = 'ol-addbot'; add.dataset.key = 'addbot'; add.textContent = '+ Бот';
           add.title = 'Посадить за стол бота. Его стиль игры можно будет выбрать.';
@@ -335,6 +341,7 @@
         li.querySelector('.ol-botname').textContent = p.name;
         li.querySelector('.ol-bottag').textContent = `бот · ${st.tagline}`;
         const sel = li.querySelector('select'), del = li.querySelector('button');
+        sel.disabled = del.disabled = starting;
         for (const o of STYLES) sel.add(new Option(o.title, o.id, false, o.id === p.style));
         sel.dataset.key = `style:${p.id}`;
         sel.setAttribute('aria-label', `Стиль игры бота «${p.name}»`);
@@ -354,12 +361,14 @@
     }));
     if (focused) seatsEl.querySelector(`[data-key="${focused}"]`)?.focus({ preventScroll: true });
     const mine = table.players.find((p) => p.id === me);
-    readyBtn.disabled = n < 2 || preparingReady;
+    readyBtn.disabled = starting || n < 2 || preparingReady;
     readyBtn.setAttribute('aria-pressed', String(!!mine?.ready));
     readyBtn.textContent = mine?.ready ? 'Готов ✓' : 'Готов';
     readyBtn.classList.toggle('on', !!mine?.ready);
     stopCountdown();
-    if (table.status === 'countdown') {
+    if (starting) {
+      tableStatus.textContent = 'Регистрируем партию…';
+    } else if (table.status === 'countdown') {
       const end = performance.now() + table.startsIn;
       const tick = () => {
         const s = Math.max(0, Math.ceil((end - performance.now()) / 1000));

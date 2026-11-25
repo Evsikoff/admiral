@@ -262,12 +262,21 @@
   const chipNumber = new Intl.NumberFormat('ru');
   const chipPlural = new Intl.PluralRules('ru');
   const identity = window.AdmiralIdentity;
-  identity?.ready.then((valid) => {
-    if (!valid) return;
+  const onlineHint = onlineBtn.querySelector('.plank-sub');
+  const onlineDescription = onlineHint.textContent;
+  onlineBtn.disabled = !!identity;
+  function renderBalance() {
+    onlineBtn.disabled = identity.onlinePartyPrice > identity.chips;
+    onlineHint.textContent = onlineBtn.disabled ? 'Недостаточно фишек. Приобретите фишки для игры онлайн.' : onlineDescription;
     $('menu-chip-balance').textContent = chipNumber.format(identity.chips);
     const price = $('menu-online-price');
     price.lastElementChild.textContent = `${chipAmount(identity.onlinePartyPrice)} за партию`;
     price.hidden = false;
+  }
+  window.addEventListener('admiral:balance', renderBalance);
+  identity?.ready.then((valid) => {
+    if (!valid) { onlineBtn.disabled = false; return; }
+    renderBalance();
     const sets = identity.shipSets.filter((set) => !/^мой\s+флот$/iu.test(set.name.trim()));
     if (sets.length) {
       shipOptions.replaceChildren(...sets.map(shipOption));

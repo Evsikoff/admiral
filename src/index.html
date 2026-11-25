@@ -392,11 +392,12 @@
     box-shadow: 0 10px 22px rgba(0, 0, 0, .55), 0 2px 0 rgba(0, 0, 0, .35);
     transition: transform .18s ease, filter .18s ease, box-shadow .18s ease, color .18s ease;
   }
-  button.plank:hover {
+  button.plank:where(:enabled):hover {
     transform: translateY(-2px); filter: brightness(1.13) saturate(1.06); color: #ffe6a6;
     box-shadow: 0 14px 28px rgba(0, 0, 0, .6), 0 0 28px rgba(255, 168, 70, .32);
   }
-  button.plank:active { transform: translateY(1px); filter: brightness(.98); }
+  button.plank:where(:enabled):active { transform: translateY(1px); filter: brightness(.98); }
+  button.plank:disabled { cursor: not-allowed; filter: grayscale(.85); opacity: 1; }
   button.plank:focus-visible { outline: 2px solid #ffd27a; outline-offset: 4px; }
   .plank-title { font-size: max(16px, 7.2cqw); font-weight: 600; line-height: 1.1; letter-spacing: .02em; }
   .plank-sub { margin-top: .35em; font: max(11px, 3.4cqw)/1.2 "Segoe UI", system-ui, sans-serif; color: #e6cf9f; opacity: .9; }
