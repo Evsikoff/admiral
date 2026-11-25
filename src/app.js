@@ -3813,8 +3813,8 @@ const onlineHandler = {
   },
 };
 // ------------------------------------------------------------------ bots
-// A bot's seat plays itself: it throws the dice the way the game throws them for a player (a toss from its own side
-// of the board) and chooses its moves with the brain of src/bot.js, in its style. A local game plays its bots here.
+// A bot's seat plays itself: it throws the dice with a swipe facing into the board from its side
+// and chooses its moves with the brain of src/bot.js, in its style. A local game plays its bots here.
 // Online, the first connected player with the commentator on leads the bots, followed by the other listeners
 // and then the muted players in game order. Each backup waits longer for the server to relay a bot's decision.
 // A bot pauses before each throw and choice, sometimes waiting for the whole line, sometimes acting while it plays.
@@ -3882,14 +3882,36 @@ function botTick(dt) {
   // Apply bots' decisions on the server echo, including when two clients briefly disagree on who leads.
   if (k >= 0) b.done = net.act(online.applied, { kind: 'act', ship: shipId(s), k, bot: controllerId() });
 }
-// Simulate a swipe from the bot's side towards the open water, varying its release point, aim and length.
+// Check the stretch of water both dice may cross, including their first bounces.
 const rand = (a, b) => a + Math.random() * (b - a);
 function botThrowPlan(q) {
   const R = ROT[q];
   const toward = new THREE.Vector3(-Math.sin(R), 0, -Math.cos(R)), right = new THREE.Vector3(Math.cos(R), 0, -Math.sin(R));
-  const at = toward.multiplyScalar(-rand(2.8, 4.4)).addScaledVector(right, rand(-1.2, 1.2)).setY(HOLD_Y);
-  const swipe = right.clone().multiplyScalar(rand(-1.5, 1.5)).sub(at).setY(0).setLength(rand(4, 26));
-  return swipeThrowPlan(at, swipe, right, dice.map(randomTurn));
+  const obstacles = pucks.map(p => ({ pos: p.pos, radius: 0.6 }));
+  // Leave extra room around hulls: even a glancing hit on a sideways bounce spoils the throw.
+  for (const s of ships) if (s.obj.visible) obstacles.push({ pos: s.obj.position, radius: 2 });
+  if (decor.visible) obstacles.push({ pos: { x: wx(Z.center[0]), z: wz(Z.center[1]) }, radius: 1.7 });
+  if (game?.again === 'retry') {
+    for (const d of dice) if (d.obj.visible) obstacles.push({ pos: d.obj.position, radius: 3 });
+  }
+
+  let best, bestClearance = -Infinity;
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const dir = toward.clone().addScaledVector(right, rand(-0.65, 0.65)).normalize();
+    const at = new THREE.Vector3(rand(-10, 10), HOLD_Y, rand(-10, 10)).addScaledVector(dir, -2.5);
+    let clearance = Infinity;
+    for (let step = 0; step <= 5; step++) {
+      const x = at.x + dir.x * step, z = at.z + dir.z * step;
+      const shore = -sample(SD, (x + 15) * PX, (z + 15) * PX) / PX;
+      clearance = Math.min(clearance, shore);
+      for (const { pos, radius } of obstacles) {
+        clearance = Math.min(clearance, Math.hypot(x - pos.x, z - pos.z) - radius);
+      }
+    }
+    if (clearance > bestClearance) { best = { at, dir }; bestClearance = clearance; }
+    if (clearance >= 1.2) break;   // room for the two dice side by side
+  }
+  return swipeThrowPlan(best.at, best.dir.multiplyScalar(rand(4, 26)), right, dice.map(randomTurn));
 }
 function botThrow() {
   const plan = botThrowPlan(game.players[game.turn].q);
