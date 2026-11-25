@@ -84,25 +84,28 @@ def make_mask():
         tx=np.minimum(iw-1,np.maximum(0,(xx/MASK_SIZE*iw).astype(int)))
         ty=np.minimum(ih-1,np.maximum(0,(yy/MASK_SIZE*ih).astype(int)))
         rgb=px[ty,tx,:3]
-        # Classify ivory cloth from the original ALBEDO, excluding warm timber,
-        # gold fittings, and the dark narrow masts within the center stripe.
+        # Use the ivory canvas across the sail, preserving spars and rigging.
         r,g,b=rgb[...,0],rgb[...,1],rgb[...,2]
         sat=(np.max(rgb,axis=-1)-np.min(rgb,axis=-1))/np.maximum(np.max(rgb,axis=-1),.001)
         fabric=smooth(.29,.42,b)*smooth(.38,.51,g)*(1-smooth(.39,.51,sat))
         fabric*=1-smooth(1.25,1.36,r/np.maximum(g,.001))
         fabric*=smooth(-.157,-.142,xyz[...,2])
-        sail_band=(1-smooth(.031,.036,np.abs(xyz[...,1])))*fabric
-        # Hull band sits under the gold/deck edge, intentionally narrow.
-        hull_band=(smooth(-.221,-.218,xyz[...,2])
-                   *(1-smooth(-.205,-.202,xyz[...,2]))
-                   *smooth(.074,.079,np.abs(xyz[...,1])))
-        sail_band*=inside
-        hull_band*=inside
+        beam=np.abs(xyz[...,1])
+        height=xyz[...,2]
+        # Extend the broadside livery down the planking, below the deck edge.
+        broadside=(smooth(-.270,-.264,height)*(1-smooth(-.205,-.202,height))
+                   *smooth(.055,.061,beam))
+        # A painted run of deck planks stays visible from above after the sails tear.
+        normal=np.cross(tp[1]-tp[0],tp[2]-tp[0])
+        deck=(smooth(-.220,-.216,height)*(1-smooth(-.175,-.169,height))
+              *(1-smooth(.045,.050,beam)) if normal[2]>.75*np.linalg.norm(normal) else 0)
+        hull_paint=np.maximum(broadside,deck)*inside
+        sail_paint=fabric*inside
         ys=slice(ymin,ymax+1);xs=slice(xmin,xmax+1)
-        cloth[ys,xs]=np.maximum(cloth[ys,xs],sail_band)
-        hull[ys,xs]=np.maximum(hull[ys,xs],hull_band)
+        cloth[ys,xs]=np.maximum(cloth[ys,xs],sail_paint)
+        hull[ys,xs]=np.maximum(hull[ys,xs],hull_paint)
         coverage[ys,xs]|=inside
-        pick=inside&(sail_band>.7)
+        pick=sail_paint>.7
         if pick.any():paint_rgb.append(rgb[pick])
     mask=np.maximum(cloth,hull)
     # A one-pixel gutter expansion reduces bright seams at oblique views,
@@ -122,8 +125,9 @@ def make_mask():
               'sailPaintAlbedoMinRGB':[float(x) for x in paint_rgb.min(axis=0)],
               'method':'Original UV triangle rasterization with barycentric original 3D position and albedo fabric classification',
               'gutterPixels':1,'sharedIntactWreckMask':True,
-              'coordinatesBlender':{'canvasBand':'abs(y) < .035; z > -.15; ivory albedo only',
-                                    'hullBand':'z -.219..-.204; abs(y) > .075'}}
+              'coordinatesBlender':{'canvas':'ivory albedo above the deck across the full beam',
+                                    'broadside':'z -.270..-.202; abs(y) > .055',
+                                    'deck':'upward faces; z -.220..-.169; abs(y) < .050'}}
     (OUT/'mask-evidence.json').write_text(json.dumps(evidence,indent=2))
     print('MASK_EVIDENCE',json.dumps(evidence),flush=True)
 

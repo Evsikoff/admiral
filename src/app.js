@@ -977,7 +977,7 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   ships.push(s);
 }
 
-// The UV mask from tools/preview_ship_styles.py covers the sail stripes and hull trim on both models.
+// Both sailing-ship models share the sail, broadside and deck mask from tools/preview_ship_styles.py.
 let paintMaskRequest;
 function loadPaintMask() {
   return paintMaskRequest ??= new THREE.TextureLoader().loadAsync('assets/models/sailing-ship-paint-mask.png')
