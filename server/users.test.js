@@ -38,7 +38,7 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory, partyResult, finishResult } = {}) {
+async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory, chipResult, partyResult, finishResult } = {}) {
   const calls = [], logs = [];
   const captureLog = (...args) => logs.push(args);
   const logger = { info: captureLog, warn: captureLog, error: captureLog };
@@ -51,6 +51,7 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null, 
     assert.equal(init.headers['content-type'], 'application/json');
     if (parsed.pathname === '/rest/v1/rpc/admiral_online_party_start') return new Response(await partyResult);
     if (parsed.pathname === '/rest/v1/rpc/admiral_online_party_results') return Response.json(finishResult);
+    if (parsed.pathname === '/rest/v1/rpc/admiral_chips_acquisition') return Response.json(chipResult);
     if (parsed.pathname === '/rest/v1/rpc/admiral_inventory_acquisition') {
       return { ok: true, status: 200, json: async () => inventory };
     }
@@ -97,6 +98,23 @@ function events(logs) {
 }
 
 const acquirePath = '/api/users/ship-sets/acquire';
+
+test('chip purchases credit the device login account and reject VK or altered tickets', async t => {
+  const service = await setup(t, { chipResult: [{ balance: '325' }] });
+  const device = await service.post({ vk: false, deviceId });
+  const vk = await service.post({ vk: true, launchParams: signedLaunch() });
+  const path = '/api/users/chips/acquire';
+  const purchase = { onlineTicket: device.body.onlineTicket, purchasingChipsId: 1, userId: 999 };
+  for (const ticket of [undefined, vk.body.onlineTicket, vk.body.onlineTicket.replace('.vk.', '.device.')]) {
+    assert.equal((await service.post({ ...purchase, onlineTicket: ticket }, path)).status, 403);
+  }
+  assert.equal((await service.post({ ...purchase, purchasingChipsId: null }, path)).status, 400);
+  const result = await service.post(purchase, path);
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body, { balance: 325 });
+  assert.equal(service.calls.length, 3);
+  assert.deepEqual(JSON.parse(service.calls[2].init.body), { user_id: 20, purchasing_chips_id: 1 });
+});
 
 test('party results call the named human and bot overloads with the original bigint party id', async t => {
   for (const [winner, winnings, balance] of [

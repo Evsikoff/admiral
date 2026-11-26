@@ -537,9 +537,12 @@
   .chip-dialog header, .chip-offer { display: flex; align-items: center; gap: 12px; }
   .chip-dialog header { justify-content: space-between; }
   .chip-dialog h2 { margin: 0; font-size: 22px; }
-  .chip-dialog button { color: inherit; border-color: #886237; padding: 3px 10px; font-size: 22px; }
+  .chip-dialog header button { color: inherit; border-color: #886237; padding: 3px 10px; font-size: 22px; }
   .chip-offers { display: grid; gap: 6px; list-style: none; margin: 14px 0 0; padding: 0; }
   .chip-offer { padding: 6px 10px; background: #efc47710; border-radius: 6px; overflow-wrap: anywhere; }
+  button.chip-offer { width: 100%; color: inherit; font: inherit; text-align: left; border: 1px solid #886237; }
+  button.chip-offer:enabled:hover { background: #efc47725; }
+  #menu-chip-status:empty { margin: 0; }
   .chip-offer img { width: 48px; height: 48px; object-fit: contain; }
   .chip-offer-price { margin-left: auto; color: #ffe0a2; font-size: 14px; white-space: nowrap; }
   .chip-icon {
@@ -922,6 +925,7 @@
     </header>
     <ul id="menu-chip-offers" class="chip-offers"></ul>
     <p id="menu-chip-empty" hidden>Сейчас нет доступных пополнений.</p>
+    <p id="menu-chip-status" role="status"></p>
   </dialog>
   <section id="online" class="club" aria-labelledby="ol-heading" hidden>
     <div class="club-card">

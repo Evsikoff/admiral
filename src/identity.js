@@ -45,9 +45,22 @@
     }
   }
 
+  async function acquireChips(purchasingChipsId) {
+    if (api.isVK || !deviceId || !api.onlineTicket) throw new Error('Device login required');
+    const response = await fetch('/api/users/chips/acquire', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ onlineTicket: api.onlineTicket, purchasingChipsId }),
+    });
+    if (!response.ok) throw new Error('Chip acquisition failed');
+    const { balance } = await response.json();
+    if (!Number.isSafeInteger(balance)) throw new Error('Invalid chip balance');
+    api.updateBalance(balance);
+  }
+
   const api = {
     get deviceId() { return deviceId; },
-    isVK: false, purchasingChips: [],
+    isVK: false, purchasingChips: [], acquireChips,
     userId: null, onlineTicket: null, chips: null, onlinePartyPrice: null, shipSets: null, ready: null, acquireShipSet,
     updateBalance(chips, price = api.onlinePartyPrice) {
       if (!Number.isSafeInteger(chips) || !Number.isSafeInteger(price) || price < 0) return;

@@ -130,9 +130,9 @@ export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fe
   const sign = claims => createHmac('sha256', ticketKey).update(claims).digest('base64url');
   function onlineAccount(ticket) {
     if (typeof ticket !== 'string') return null;
-    const match = /^([1-9]\d{0,15})\.(\d{1,16})\.([\w-]{43})$/.exec(ticket);
-    if (!match || !timingSafeEqual(Buffer.from(match[3]), Buffer.from(sign(`${match[1]}.${match[2]}`)))) return null;
-    return { userId: Number(match[1]), loginAt: Number(match[2]) };
+    const match = /^([1-9]\d{0,15})\.(\d{1,16})\.(device|vk)\.([\w-]{43})$/.exec(ticket);
+    if (!match || !timingSafeEqual(Buffer.from(match[4]), Buffer.from(sign(`${match[1]}.${match[2]}.${match[3]}`)))) return null;
+    return { userId: Number(match[1]), loginAt: Number(match[2]), mode: match[3] };
   }
   const log = (level, event, fields) => logger[level](`[admiral:user-login] ${JSON.stringify({ event, ...fields })}`);
   log(enabled ? 'info' : 'warn', 'configuration', { missingEnv, vkConfigured });
@@ -251,9 +251,32 @@ export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fe
     }
   }
 
+  async function acquireChips(req, res) {
+    if (!enabled) return sendJson(res, 503, { error: 'Chip purchases are unavailable' });
+    const body = await readJson(req).catch(() => null);
+    const account = onlineAccount(body?.onlineTicket);
+    if (account?.mode !== 'device') return sendJson(res, 403, { error: 'Device login required' });
+    if (!Number.isSafeInteger(body.purchasingChipsId) || body.purchasingChipsId < 1) {
+      return sendJson(res, 400, { error: 'Invalid chip package' });
+    }
+    try {
+      const response = await rpc('admiral_chips_acquisition', {
+        user_id: account.userId, purchasing_chips_id: body.purchasingChipsId,
+      });
+      if (!response.ok) throw new Error('Chip acquisition failed');
+      const rows = await response.json();
+      if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Expected one balance row');
+      const balance = readInteger(rows[0]?.balance, 'balance', Number.MIN_SAFE_INTEGER);
+      return sendJson(res, 200, { balance });
+    } catch {
+      return sendJson(res, 503, { error: 'Could not confirm chip balance' });
+    }
+  }
+
   async function handleUsers(req, res) {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'Use POST' }, { allow: 'POST' });
     if (req.url.split('?')[0] === '/api/users/ship-sets/acquire') return acquireShipSet(req, res);
+    if (req.url.split('?')[0] === '/api/users/chips/acquire') return acquireChips(req, res);
     const loginId = randomUUID();
     const startedAt = performance.now();
     let mode, supabaseStatus;
@@ -300,7 +323,7 @@ export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fe
       stage = 'rpc_validation';
       const user = readLogin(rows);
       trace('info', 'succeeded', { status: 200, shipSetCount: user.shipSets.length });
-      const claims = `${user.userId}.${loginAt}`;
+      const claims = `${user.userId}.${loginAt}.${mode}`;
       return sendJson(res, 200, { ok: true, ...user, onlineTicket: `${claims}.${sign(claims)}` });
     } catch (error) {
       const reason = error?.name === 'TimeoutError' ? 'rpc_timeout' : `${stage}_failed`;

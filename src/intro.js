@@ -262,6 +262,8 @@
   const chipNumber = new Intl.NumberFormat('ru');
   const chipPlural = new Intl.PluralRules('ru');
   const chipAdd = $('menu-chip-add'), chipDialog = $('menu-chip-dialog');
+  const chipOffers = $('menu-chip-offers'), chipStatus = $('menu-chip-status');
+  let acquiringChips = false;
   const identity = window.AdmiralIdentity;
   const onlineHint = onlineBtn.querySelector('.plank-sub');
   const onlineDescription = onlineHint.textContent;
@@ -279,27 +281,52 @@
   chipAdd.addEventListener('click', () => {
     closeShipSets();
     const offers = identity.purchasingChips;
-    $('menu-chip-offers').replaceChildren(...offers.map(chipOffer));
+    if (!acquiringChips) {
+      chipOffers.replaceChildren(...offers.map(chipOffer));
+      chipStatus.textContent = '';
+    }
     $('menu-chip-empty').hidden = offers.length > 0;
     chipDialog.showModal();
   });
   function chipOffer(offer) {
     const row = document.createElement('li');
-    row.className = 'chip-offer';
     const icon = document.createElement('img');
     icon.src = offer.icon;
     icon.alt = '';
     const label = document.createElement('strong');
     label.textContent = offer.name;
-    row.append(icon, label);
     if (identity.isVK) {
+      row.className = 'chip-offer';
       const price = document.createElement('span');
       price.className = 'chip-offer-price';
       const units = { one: 'голос', few: 'голоса', many: 'голосов' };
       price.textContent = `${chipNumber.format(offer.price_vk)} ${units[chipPlural.select(offer.price_vk)]} VK`;
-      row.append(price);
+      row.append(icon, label, price);
+    } else {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'chip-offer';
+      button.append(icon, label);
+      button.addEventListener('click', () => purchaseChips(offer.id));
+      row.append(button);
     }
     return row;
+  }
+  async function purchaseChips(offerId) {
+    if (acquiringChips) return;
+    acquiringChips = true;
+    const buttons = chipOffers.querySelectorAll('button');
+    for (const button of buttons) button.disabled = true;
+    chipStatus.textContent = 'Получаем фишки…';
+    try {
+      await identity.acquireChips(offerId);
+      chipDialog.close();
+    } catch {
+      chipStatus.textContent = 'Не удалось подтвердить пополнение. Проверьте баланс перед повторной покупкой.';
+    } finally {
+      acquiringChips = false;
+      for (const button of buttons) button.disabled = false;
+    }
   }
   identity?.ready.then((valid) => {
     if (!valid) { onlineBtn.disabled = false; return; }
