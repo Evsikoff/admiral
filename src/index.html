@@ -621,7 +621,7 @@
     animation: club-in .45s cubic-bezier(.2, .8, .3, 1) both;
   }
   @keyframes club-in { from { opacity: 0; transform: translateY(10px) scale(.985); } }
-  #party-result {
+  .party-result {
     width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 28px); overflow: auto;
     padding: clamp(18px, 4vw, 34px); text-align: center; color: var(--ink);
     border: 3px double #cda45e; border-radius: 10px;
@@ -629,11 +629,11 @@
     box-shadow: 0 16px 70px #080f1ac9, inset 0 0 28px #0e1e2d;
     font: 16px/1.35 Georgia, "Times New Roman", serif;
   }
-  #party-result::backdrop { background: #0c1624aa; backdrop-filter: blur(3px); }
-  #party-result[open] { animation: club-in .55s ease-out both; }
+  .party-result::backdrop { background: #0c1624aa; backdrop-filter: blur(3px); }
+  .party-result[open] { animation: club-in .55s ease-out both; }
   .result-colours { display: flex; justify-content: center; align-items: center; gap: .65em; color: #e6d6b7; }
   .result-colours .ol-flag { width: 30px; height: 20px; animation-delay: 0s; }
-  #result-heading { margin: .45em 0; color: #ffe4a8; font: 600 clamp(26px, 6vw, 39px)/1.12 Georgia, serif; overflow-wrap: anywhere; }
+  .party-result h2 { margin: .45em 0; color: #ffe4a8; font: 600 clamp(26px, 6vw, 39px)/1.12 Georgia, serif; overflow-wrap: anywhere; }
   .result-prize { display: grid; justify-items: center; gap: 2px; padding: 12px; border-block: 1px solid #dfb86e66; }
   .result-prize .chip-icon { width: 44px; animation: result-medal .85s cubic-bezier(.15,.7,.25,1) both; }
   @keyframes result-medal { from { opacity: 0; transform: translateY(-10px) rotate(-35deg) scale(.7); } }
@@ -647,9 +647,9 @@
   #result-balances b { color: #ffe4a8; font-variant-numeric: tabular-nums; }
   .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
   .result-actions button { justify-content: center; min-height: 38px; }
-  #result-rematch { width: 100%; color: #ffe4b2; border-color: #b68b49; background: #563a23 var(--asset-plank, url(assets/menu/plank.webp)) center / 100% 100%; }
+  .result-actions .result-primary { width: 100%; color: #ffe4b2; border-color: #b68b49; background: #563a23 var(--asset-plank, url(assets/menu/plank.webp)) center / 100% 100%; }
   @media (prefers-reduced-motion: reduce) {
-    #party-result[open], #party-result .chip-icon, #party-result .ol-flag { animation: none; }
+    .party-result[open], .party-result .chip-icon, .party-result .ol-flag { animation: none; }
   }
   @media (prefers-reduced-motion: reduce) { .club-card { animation: none; } }
   .club button {
@@ -953,7 +953,16 @@
     <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.6 14.4V4.9l9-2.4v9.6"/><circle class="solid" cx="5.4" cy="14.6" r="2.2"/><circle class="solid" cx="14.4" cy="12.2" r="2.2"/><path class="slash-bg" d="M3 3l14 14"/><path class="slash" d="M3 3l14 14"/></svg>
   </button>
 </section>
-<dialog id="party-result" aria-labelledby="result-heading">
+<dialog id="local-result" class="party-result" aria-labelledby="local-result-heading">
+  <div class="result-colours"><img class="ol-flag" alt=""><span></span></div>
+  <h2 id="local-result-heading"></h2>
+  <p>Все пять кораблей выстроились на параде.</p>
+  <div class="result-actions">
+    <button type="button" class="result-primary" id="local-result-new" autofocus>Новая партия</button>
+    <button type="button" id="local-result-menu">В главное меню</button>
+  </div>
+</dialog>
+<dialog id="party-result" class="party-result" aria-labelledby="result-heading">
   <div class="result-colours"><span id="result-flag"></span><span id="result-side"></span></div>
   <h2 id="result-heading"></h2>
   <div class="result-prize" id="result-prize">
@@ -965,7 +974,7 @@
   <h3>Баланс игроков в фишках</h3>
   <ul id="result-balances" aria-live="polite"></ul>
   <div class="result-actions">
-    <button type="button" id="result-rematch" autofocus>Вернуться за стол</button>
+    <button type="button" class="result-primary" id="result-rematch" autofocus>Вернуться за стол</button>
     <button type="button" id="result-lobby">В лобби</button>
     <button type="button" id="result-menu">В главное меню</button>
   </div>

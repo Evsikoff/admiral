@@ -2755,6 +2755,7 @@ function cancelSetup() {
     if (game.acts?.size) autoSelect(); else view(moverQ());
     if (overhead) flyTopView(0.65);
   }
+  if (!online && game.phase === 'over') showLocalResult();
 }
 let startingGame = false;
 async function startGame() {
@@ -2782,6 +2783,24 @@ window.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && ev.target.matches('.pl-name')) { ev.preventDefault(); drawLots(); }
 });
 const newBtn = document.getElementById('t-new'), mainMenuBtn = document.getElementById('t-menu');
+const localResult = document.getElementById('local-result');
+function showLocalResult() {
+  const i = game.winner, winner = game.players[i];
+  localResult.querySelector('img').src = FLAG_URL[winner.q];
+  localResult.querySelector('.result-colours span').textContent = NAMES[winner.q];
+  localResult.querySelector('h2').textContent = `С победой, ${playerName(winner, i)}!`;
+  localResult.showModal();
+}
+document.getElementById('local-result-new').addEventListener('click', () => {
+  localResult.close();
+  openSetup();
+});
+const localResultMenu = document.getElementById('local-result-menu');
+localResultMenu.hidden = !intro;
+localResultMenu.addEventListener('click', () => {
+  localResult.close();
+  leaveLocal();
+});
 mainMenuBtn.hidden = !intro;
 mainMenuBtn.addEventListener('click', leaveLocal);
 newBtn.addEventListener('click', () => {
@@ -3292,7 +3311,10 @@ function checkWin(q) {
   announcer.victory(q, nameHTML(i));
   renderTurn();
   for (const player of game.players) broadcast.finish(player.q);
-  if (!setupIsOpen()) view(q);                                // the whole board, from the winner's side
+  if (!setupIsOpen()) {
+    view(q);
+    if (!online) showLocalResult();
+  }
   return true;
 }
 
