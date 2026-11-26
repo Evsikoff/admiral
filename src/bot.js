@@ -44,7 +44,7 @@ const BOT_DEFAULT = 'careful';
 const botStyleOf = (id) => (Object.hasOwn(BOT_PARAMS, id) ? id : BOT_DEFAULT);
 
 // board: { cells: { q: { f: [null, field 1…13], b: bay, s: [parade place 1…5] } }, harbors, shipyards, prisons } —
-// slot objects with .q and .field (1…13 or 'b'), .star (1…5) or .prison, as app.js builds them (makeBotBoard below
+// slot objects with .q and .field (1…13 or 'b'), .star (1…5) or .prison, as app.js builds them (makeBotBoard
 // builds bare ones for the tests). A ship is { id: 'ru3', q, n, slot }.
 function createBotBrain({ cells, harbors, shipyards, prisons }) {
   // ---- the rules
@@ -287,18 +287,4 @@ function createBotBrain({ cells, harbors, shipyards, prisons }) {
   }
 
   return { model, options, apply, evaluate, decide, playGame, won };
-}
-
-// bare cells for the tests: the same shape as the slots of app.js, without the 3D parts
-function makeBotBoard() {
-  const cells = {}, harbors = {}, shipyards = {}, prisons = {};
-  for (const q of BOT_NATIONS) {
-    const c = (cells[q] = { f: [null], b: { q, field: 'b' }, s: [] });
-    for (let i = 1; i <= 13; i++) c.f.push({ q, field: i });
-    for (let k = 1; k <= 5; k++) c.s.push({ q, star: k });
-    harbors[q] = { q, kind: 'zone', zone: 'harbor' };
-    shipyards[q] = { q, kind: 'zone', zone: 'shipyard' };
-    prisons[q] = { q, kind: 'zone', zone: 'prison', prison: true };
-  }
-  return { cells, harbors, shipyards, prisons };
 }

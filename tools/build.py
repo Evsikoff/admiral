@@ -64,7 +64,7 @@ with zipfile.ZipFile(a / 'three-r160-cannon-0.20.0.zip') as runtime:
 html = html.replace('/*__IMPORTS__*/', json.dumps({'imports': imports}, separators=(',', ':')))
 html = html.replace('<!--__ENGINE_LICENSES__-->', '<!--\n' + licenses + '\n-->')
 app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
-                for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'bot.js', 'app.js'))
+                for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'fleet-rules.js', 'bot.js', 'app.js'))
 html = html.replace('/*__APP__*/', app)
 html = html.replace('/*__RULES_CSS__*/', (root / 'src' / 'rules.css').read_text(encoding='utf8'))
 rules_text = (root / 'src' / 'rules-script.json').read_text(encoding='utf8')

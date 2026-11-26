@@ -163,17 +163,42 @@ export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fe
     return { success, partyId: result.party_id, balances };
   }
 
-  async function startOnlineParty(participants) {
-    // Two tables can contain the same account. Deliver its balances in charge order.
-    const users = new Set(participants.filter(p => p.user_id != null).map(p => p.user_id));
+  // Two tables can contain the same account. Deliver charges and payouts in order.
+  async function withPartyAccounts(users, operation) {
     const previous = [...users].map(id => pendingParties.get(id)).filter(Boolean);
-    const started = Promise.allSettled(previous).then(() => registerParty(participants, users));
+    const started = Promise.allSettled(previous).then(operation);
     for (const id of users) pendingParties.set(id, started);
     try {
       return await started;
     } finally {
       for (const id of users) if (pendingParties.get(id) === started) pendingParties.delete(id);
     }
+  }
+
+  function startOnlineParty(participants) {
+    const users = new Set(participants.filter(p => p.user_id != null).map(p => p.user_id));
+    return withPartyAccounts(users, () => registerParty(participants, users));
+  }
+
+  function finishOnlineParty(partyId, winner) {
+    const botWon = winner.bot_name !== undefined;
+    return withPartyAccounts(botWon ? [] : [winner.winner_user_id], async () => {
+      const response = await rpc('admiral_online_party_results', {
+        party_id: partyId, ...winner,
+      });
+      if (!response.ok) {
+        const error = new Error(`Party results RPC returned HTTP ${response.status}`);
+        error.retryable = response.status >= 500 || [408, 429].includes(response.status);
+        throw error;
+      }
+      const rows = parseLossless(await response.text(), null, { parseNumber: digits => digits });
+      if (!Array.isArray(rows) || rows.length !== 1) throw new LoginPayloadError('Expected one party results row');
+      return {
+        winnings: readInteger(rows[0]?.winnings_amount, 'winnings_amount'),
+        balance: botWon && rows[0].winner_user_balance === null ? null
+          : readInteger(rows[0].winner_user_balance, 'winner_user_balance', Number.MIN_SAFE_INTEGER),
+      };
+    });
   }
 
   async function acquireShipSet(req, res) {
@@ -273,5 +298,5 @@ export function createUserService({ supabaseUrl, secretKey, appId, appSecret, fe
       return fail(503, reason, 'User registration is temporarily unavailable', { validationError });
     }
   }
-  return { handleUsers, onlineAccount, startOnlineParty };
+  return { handleUsers, onlineAccount, startOnlineParty, finishOnlineParty };
 }

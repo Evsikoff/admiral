@@ -22,6 +22,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server server
+COPY src/fleet-rules.js src/fleet-rules.js
 COPY assets assets
 COPY --from=page /app/admiral-3d.html ./
 USER node:node

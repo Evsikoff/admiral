@@ -1,12 +1,13 @@
 // node --test src/ — the brain of the bots (src/bot.js) on a bare board, without the map
 import test from 'node:test';
+import { makeBotBoard } from './fleet-rules.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 // bot.js is a part of the game's module (tools/build.py joins the files); here it is loaded on its own
 const code = readFileSync(new URL('./bot.js', import.meta.url), 'utf8');
-const { createBotBrain, makeBotBoard, BOT_PARAMS, BOT_DEFAULT, botStyleOf } = new Function(
-  `${code}\nreturn { createBotBrain, makeBotBoard, BOT_PARAMS, BOT_DEFAULT, botStyleOf };`)();
+const { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf } = new Function(
+  `${code}\nreturn { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf };`)();
 const board = makeBotBoard();
 const brain = createBotBrain(board);
 const { cells, harbors, shipyards, prisons } = board;

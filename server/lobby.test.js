@@ -6,14 +6,14 @@ import { Lobby, COUNTDOWN_MS, GAME_GRACE_MS, WAIT_GRACE_MS, TURN_MS, BOT_STYLES,
 // a lobby with a clock and timers under the test's control
 function setup(startOnlineParty = async participants => ({
   success: true, partyId: '123', balances: new Map(participants.filter(p => p.user_id).map(p => [p.user_id, 0])),
-})) {
+}), finishOnlineParty = async () => ({ winnings: 40, balance: 40 })) {
   let now = 0, seq = 0, nextUserId = 0;
   const pending = new Map();
   const timers = {
     set: (fn, ms) => { const id = ++seq; pending.set(id, { fn, at: now + ms }); return id; },
     clear: (id) => { pending.delete(id); },
   };
-  const lobby = new Lobby({ now: () => now, timers, startOnlineParty });
+  const lobby = new Lobby({ now: () => now, timers, startOnlineParty, finishOnlineParty });
   const advance = (ms) => {
     const running = [];
     const until = now + ms;
@@ -451,6 +451,31 @@ test('bots: a player\'s screen sends the bot\'s decisions; the log says they wer
   assert.equal(lobby.tables.size, 0);
 });
 
+// Play through the normal relay: repair each ship on a double six, sail six
+// cells, then use double ones to fill the parade from the farthest berth back.
+async function playParade(client, advance, winner) {
+  const g = client.p.table.game;
+  const act = a => client.say({ t: 'act', n: g.log.length, a });
+  for (const seat of g.players) {
+    if (seat.id === winner.id) break;
+    await advance(TURN_MS);
+    act({ kind: 'skip', id: seat.id });
+  }
+  const bot = winner.bot ? { bot: winner.id } : {};
+  const roll = v => act({ kind: 'throw', frames: [], res: [{ v, tilt: 0 }, { v, tilt: 0 }], ...bot });
+  let final;
+  for (let n = 1; n <= 5; n++) {
+    const sail = () => act({ kind: 'act', ship: winner.q + n, k: 0, ...bot });
+    roll(6); sail(); sail();
+    const distance = 13 * g.players.length + 6 - n;
+    for (let pos = 6; pos < distance; pos++) {
+      if (pos % 2 === 0) roll(1);
+      final = sail();
+    }
+  }
+  await final;
+}
+
 test('rematch: a fresh table gathers the remaining players and bots, with nobody ready yet', async () => {
   const { lobby, advance, client } = setup();
   const a = client('A'), b = client('B'), c = client('C');
@@ -462,6 +487,9 @@ test('rematch: a fresh table gathers the remaining players and bots, with nobody
   for (const p of [a, b, c]) p.say({ t: 'ready', on: true });
   await advance(COUNTDOWN_MS);
   c.say({ t: 'leave' });
+  a.say({ t: 'rematch' });
+  assert.equal(a.p.table.no, 1, 'an unfinished game keeps its table');
+  await playParade(a, advance, a.last('start').players.find(p => p.id === a.p.id));
   a.say({ t: 'rematch' });
   const view = a.last('table').table;
   assert.equal(view.no, 2, 'a new table, not the finished game reset in place');
@@ -478,6 +506,55 @@ test('rematch: a fresh table gathers the remaining players and bots, with nobody
   assert.equal(lobby.tables.size, 1, 'another request at the waiting table does not create a third table');
   await advance(COUNTDOWN_MS);
   assert.equal(a.inbox.filter((m) => m.t === 'start').length, starts, 'everybody confirms the next game again');
+});
+
+test('a human win pays the registered account once and snapshots the other starting balances', async () => {
+  const calls = [];
+  let release;
+  const { client, advance } = setup(async () => ({
+    success: true, partyId: '9007199254740993', balances: new Map([[1, 25], [2, 0]]),
+  }), (...args) => { calls.push(args); return new Promise(resolve => { release = resolve; }); });
+  const a = client('A'), b = client('B');
+  a.say({ t: 'create' }); b.say({ t: 'join', no: 1 });
+  for (const player of [a, b]) player.say({ t: 'ready', on: true });
+  await advance(COUNTDOWN_MS);
+  const game = a.p.table.game;
+  const done = playParade(a, advance, game.players.find(p => p.id === a.p.id));
+  await new Promise(setImmediate);
+  assert.deepEqual(calls, [['9007199254740993', { winner_user_id: 1 }]]);
+  assert.equal(b.last('result').result.status, 'pending');
+  assert.deepEqual(b.last('result').result.balances, { [b.p.id]: 0 });
+  a.say({ t: 'rematch' }); b.say({ t: 'retry-result' });
+  const count = game.log.length;
+  a.say({ t: 'act', n: count, a: game.log.at(-1) });
+  assert.equal(game.log.length, count);
+  b.say({ t: 'leave' });
+  release({ winnings: 20, balance: 45 });
+  await done;
+  a.say({ t: 'sync' });
+  assert.deepEqual(a.last('game').result, { winnerId: a.p.id, status: 'paid', winnings: 20,
+    balances: { [a.p.id]: 45, [b.p.id]: 0 } });
+  assert.equal(a.last('balance').chips, 45);
+  assert.equal(calls.length, 1);
+});
+
+test('a bot win retries with the registered bot name and never credits a human account', async () => {
+  const calls = [];
+  const { client, advance } = setup(undefined, async (...args) => {
+    calls.push(args);
+    if (calls.length === 1) throw new TypeError('connection lost');
+    return { winnings: 0, balance: null };
+  });
+  const a = client('A');
+  a.say({ t: 'create' }); a.say({ t: 'bot-add', style: 'corsair' }); a.say({ t: 'ready', on: true });
+  await advance(COUNTDOWN_MS);
+  const bot = a.p.table.game.players.find(p => p.bot);
+  await playParade(a, advance, bot);
+  assert.equal(a.last('result').result.status, 'retrying');
+  await advance(2000);
+  assert.deepEqual(calls, Array(2).fill(['123', { bot_name: bot.name }]));
+  assert.deepEqual(a.last('result').result, { winnerId: bot.id, status: 'bot', balances: { [a.p.id]: 0 } });
+  assert.equal(a.inbox.filter(m => m.t === 'balance').length, 1);
 });
 
 test('bots: the styles of the server are those of the game', async () => {

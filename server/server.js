@@ -34,7 +34,7 @@ if (appId && appSecret && databasePath) {
   }
 }
 handlePayments ??= await createPaymentsHandler();
-const { handleUsers, onlineAccount, startOnlineParty } = createUserService({
+const { handleUsers, onlineAccount, startOnlineParty, finishOnlineParty } = createUserService({
   supabaseUrl: process.env.SUPABASE_URL,
   secretKey: process.env.SUPABASE_SECRET_KEY,
   appId, appSecret,
@@ -106,7 +106,7 @@ function sendAsset(req, res, urlPath) {
 function notFound(res) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('Not found\n'); }
 
 // the time for a decision in a game, in seconds (TURN_SECONDS, at least 15; 60 by default)
-const lobby = new Lobby({ startOnlineParty, turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
+const lobby = new Lobby({ startOnlineParty, finishOnlineParty, turnMs: Math.max(15, Number(process.env.TURN_SECONDS) || 60) * 1000 });
 const server = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
   if (urlPath === '/api/users/register' || urlPath === '/api/users/ship-sets/acquire') return handleUsers(req, res);

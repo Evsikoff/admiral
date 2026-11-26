@@ -51,11 +51,13 @@
   const tableTitle = $('ol-tabletitle'), tableCode = $('ol-tablecode'), seatsEl = $('ol-seats');
   const tableStatus = $('ol-status'), readyBtn = $('ol-ready'), leaveBtn = $('ol-leave');
   const drawList = $('ol-drawlist'), drawNote = $('ol-drawnote');
+  const resultDialog = $('party-result');
 
   let ws = null, connected = false, wanted = false, retry = 0, retryTimer = 0, replaced = false;
   let me = null, token = null, tables = [], table = null, game = null, handler = null, pendingStart = null;
   let open = false, askingNo = null, countdownTimer = 0, drawTimer = 0, msgTimer = 0;
   let preparingReady = false;
+  let leavingGame = false;
   try { token = sessionStorage.getItem(TOKEN_KEY); } catch { /* no storage */ }
 
   function savedName() {
@@ -137,12 +139,20 @@
     netEl.textContent = text;
     netEl.hidden = !text;
     for (const b of [createBtn, findForm.querySelector('button')]) b.disabled = !connected;
+    if (resultDialog.open) renderResult();
   }
 
   function receive(m) {
+    // A disconnected player can leave the result screen. Release their seat on
+    // reconnect before a replay or a rematch can bring the old board back.
+    if (leavingGame && ['table', 'game', 'start', 'result'].includes(m.t)) {
+      if (m.t !== 'table' || m.table) return;
+      leavingGame = false;
+    }
     switch (m.t) {
       case 'welcome':
         me = m.id; token = m.token;
+        if (leavingGame) send({ t: 'leave' });
         try { sessionStorage.setItem(TOKEN_KEY, token); } catch { /* no storage */ }
         if (!window.isVKApp && m.name && m.name !== nameInput.value.trim()) nameInput.value = m.name;
         return;
@@ -152,6 +162,7 @@
         const rematch = next && game && game.no !== next.no;
         table = next;
         if (rematch) {
+          closeResult();
           game = null; pendingStart = null;
           handler?.table?.(table);
           intro.showMenu();
@@ -175,7 +186,7 @@
         return;
       case 'game': {
         const fresh = !game || game.no !== m.no;
-        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {}, assets: m.assets || {} };
+        game = { no: m.no, players: m.players, me: m.me, log: m.log, presence: m.presence, turnMs: m.turnMs, voice: m.voice || {}, assets: m.assets || {}, result: m.result };
         table = null;
         if (pendingStart) { pendingStart = game; deliverStart(); }
         else if (handler && handler.inGame?.()) handler.state(game);
@@ -184,8 +195,12 @@
           if (intro.stage === 'menu' && open) beginGame();
           else syncResume();
         }
+        renderResult();
         return;
       }
+      case 'result':
+        if (game) { game.result = m.result; renderResult(); }
+        return;
       case 'act':
         m.a.by = m.a.bot || m.from;
         if (game) game.log[m.n] = m.a;
@@ -452,7 +467,53 @@
     if (!handler || !pendingStart) return;
     const g = pendingStart; pendingStart = null;
     handler.start(g);
+    renderResult();
   }
+
+  function closeResult() {
+    if (resultDialog.open) resultDialog.close();
+  }
+  function renderResult() {
+    const result = game?.result;
+    if (!result || intro.stage !== 'online-game' || !handler?.inGame?.()) return;
+    const winner = game.players.find(p => p.id === result.winnerId);
+    if (!winner) return;
+    if (!resultDialog.open) {
+      $('result-flag').innerHTML = flagSVG(winner.q);
+      $('result-side').textContent = NATION[winner.q].name;
+      $('result-heading').textContent = `С победой, ${winner.name}!`;
+    }
+    $('result-prize').hidden = !!winner.bot;
+    $('result-amount').textContent = result.winnings?.toLocaleString('ru-RU') ?? '…';
+    const messages = {
+      pending: 'Подтверждаем итог партии…',
+      retrying: 'Связь с базой прервалась. Повторяем запрос…',
+      error: 'Не удалось подтвердить итог партии.',
+      bot: 'Победил бот. Фишки за эту победу не начисляются.',
+    };
+    $('result-status').textContent = connected ? messages[result.status] || '' : 'Восстанавливаем соединение…';
+    $('result-retry').hidden = result.status !== 'error';
+    $('result-retry').disabled = !connected;
+    $('result-rematch').disabled = !connected || result.status === 'pending';
+    const humans = [winner, ...game.players.filter(p => p.id !== winner.id)].filter(p => !p.bot);
+    $('result-balances').replaceChildren(...humans.map(p => {
+      const row = document.createElement('li'), name = document.createElement('span'), chips = document.createElement('b');
+      name.textContent = p.name + (p.id === game.me ? ' (вы)' : '');
+      chips.textContent = result.balances[p.id]?.toLocaleString('ru-RU') ?? '…';
+      row.append(name, chips);
+      return row;
+    }));
+    if (!resultDialog.open) resultDialog.showModal();
+  }
+  resultDialog.addEventListener('cancel', ev => ev.preventDefault());
+  $('result-rematch').addEventListener('click', () => send({ t: 'rematch' }));
+  $('result-retry').addEventListener('click', () => send({ t: 'retry-result' }));
+  $('result-menu').addEventListener('click', () => handler.leave());
+  $('result-lobby').addEventListener('click', () => {
+    handler.leave();
+    intro.stage = 'online';
+    openClub();
+  });
 
   // after a reload the start screen offers to go back to the table or the game instead of the films
   function syncResume() {
@@ -486,6 +547,8 @@
     rematch: () => send({ t: 'rematch' }),
     // leaving the game: the seat is given up; the board goes back to the tavern
     leaveGame() {
+      closeResult();
+      leavingGame = true;
       send({ t: 'leave' });
       game = null; pendingStart = null;
       syncResume();

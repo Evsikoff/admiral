@@ -37,7 +37,7 @@ function signedLaunch(user = userId) {
   return `?${params}`;
 }
 
-async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory, partyResult } = {}) {
+async function setup(t, { configured = true, chips = 125, upstreamError = null, catalog = shipSets, inventory, partyResult, finishResult } = {}) {
   const calls = [], logs = [];
   const captureLog = (...args) => logs.push(args);
   const logger = { info: captureLog, warn: captureLog, error: captureLog };
@@ -49,6 +49,7 @@ async function setup(t, { configured = true, chips = 125, upstreamError = null, 
     assert.equal(init.headers.Authorization, `Bearer ${serverSecret}`);
     assert.equal(init.headers['content-type'], 'application/json');
     if (parsed.pathname === '/rest/v1/rpc/admiral_online_party_start') return new Response(await partyResult);
+    if (parsed.pathname === '/rest/v1/rpc/admiral_online_party_results') return Response.json(finishResult);
     if (parsed.pathname === '/rest/v1/rpc/admiral_inventory_acquisition') {
       return { ok: true, status: 200, json: async () => inventory };
     }
@@ -95,6 +96,18 @@ function events(logs) {
 }
 
 const acquirePath = '/api/users/ship-sets/acquire';
+
+test('party results call the named human and bot overloads with the original bigint party id', async t => {
+  for (const [winner, winnings, balance] of [
+    [{ winner_user_id: 14 }, 20, 0],
+    [{ bot_name: 'Корсар' }, 0, null],
+  ]) {
+    const service = await setup(t, { finishResult: [{ winnings_amount: winnings, winner_user_balance: balance }] });
+    const id = '9007199254740993';
+    assert.deepEqual(await service.finishOnlineParty(id, winner), { winnings, balance });
+    assert.deepEqual(JSON.parse(service.calls[0].init.body), { party_id: id, ...winner });
+  }
+});
 
 test('party RPC sends one entry per seat and preserves a bigint party ID and zero balances', async t => {
   const service = await setup(t, { partyResult: '{"success":true,"party_id":9007199254740993,"user_balances":[{"user_id":20,"chip_balance":0},{"user_id":20,"chip_balance":0}]}' });

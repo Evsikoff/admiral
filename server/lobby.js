@@ -1,5 +1,5 @@
 // The online club: players, tables waiting for players, games in progress.
-// The server does not know the rules of the game. Every client runs the same game; the server keeps the order:
+// Every client runs the same game; the server checks the winning position and keeps the order:
 // it numbers the actions of a game, keeps them (a player who comes back replays them) and passes them on.
 // It draws the sides, and it knows who is still at the table: a player who has gone may have their turns skipped,
 // and so may a player who takes longer than the time for a turn. A countdown waits for every player's assets to reach 100%.
@@ -7,6 +7,7 @@
 // and sends its decisions with the bot's id; the server only checks that the bot plays in that game.
 // After a victory, a rematch request moves everyone still seated, and the bots, to a fresh waiting table.
 import { randomBytes, randomInt } from 'node:crypto';
+import { trackParty } from './party-game.js';
 
 export const NATIONS = ['ru', 'se', 'en', 'nl'];
 const OPPOSITE_PAIRS = [['en', 'ru'], ['se', 'nl']];       // two players sit facing each other, as in a local game
@@ -70,9 +71,10 @@ export function checkAction(a) {
 }
 
 export class Lobby {
-  constructor({ now = () => Date.now(), timers = { set: setTimeout, clear: clearTimeout }, turnMs = TURN_MS, startOnlineParty } = {}) {
+  constructor({ now = () => Date.now(), timers = { set: setTimeout, clear: clearTimeout }, turnMs = TURN_MS, startOnlineParty, finishOnlineParty } = {}) {
     this.now = now; this.timers = timers; this.turnMs = turnMs;
     this.startOnlineParty = startOnlineParty;
+    this.finishOnlineParty = finishOnlineParty;
     this.players = new Map();       // token → player
     this.byId = new Map();          // id → player
     this.tables = new Map();        // number → table
@@ -172,6 +174,9 @@ export class Lobby {
       case 'bot-remove': return this.removeBot(p, msg.id);
       case 'leave': return this.leaveTable(p, true);
       case 'rematch': return this.rematch(p);
+      case 'retry-result':
+        if (p.table?.game?.result?.status === 'error') return this.settleParty(p.table);
+        return;
       case 'act': return this.act(p, msg);
       case 'sync': if (p.table?.status === 'playing') p.conn?.send(this.gameState(p.table, p)); return;
       case 'voice': return this.setVoice(p, !!msg.on);
@@ -246,6 +251,10 @@ export class Lobby {
     this.join(p, Number(s));
   }
   seat(p, table) {
+    if (p.userId && table.players.some(other => other !== p && other.userId === p.userId)) {
+      p.conn?.send({ t: 'error', text: 'Вы уже играете за этим столом в другой вкладке.' });
+      return;
+    }
     if (p.table && p.table !== table) this.leaveTable(p);
     p.table = table; p.online = !!p.conn;
     // a player who sits down during the countdown plays too, once their assets are ready
@@ -369,13 +378,7 @@ export class Lobby {
       }
       return;
     }
-    for (const p of this.players.values()) {
-      const chips = result.balances.get(p.userId);
-      if (chips === undefined) continue;
-      p.balanceUpdate = { t: 'balance', chips, ...(result.price != null ? { onlinePartyPrice: result.price } : {}) };
-      p.balanceUpdatedAt = this.now();
-      p.conn?.send(p.balanceUpdate);
-    }
+    this.updateBalances(result.balances, result.price);
     if (!result.success) {
       table.status = 'waiting';
       for (const p of table.players) {
@@ -394,11 +397,13 @@ export class Lobby {
     table.status = 'playing';
     table.game = {
       partyId: result.partyId,
+      startBalances: result.balances,
       players: seated.map((p, i) => ({ id: p.id, name: p.name, q: sides[i], ...(p.shipSetId != null ? { shipSetId: p.shipSetId } : {}),
         ...(p.style ? { bot: p.style } : {}) })),
       log: [], presence: new Map(table.players.map((p) => [p.id, p.conn ? 'online' : 'offline'])), started: this.now(),
       lastAt: this.now(), bots: new Set(table.bots.map((b) => b.id)),
     };
+    table.game.apply = trackParty(table.game.players);
     for (const p of table.players) {
       p.ready = false;
       if (!p.conn) this.scheduleAway(p);
@@ -408,11 +413,52 @@ export class Lobby {
     for (const p of table.players) p.conn?.send({ t: 'start', no: table.no, players: table.game.players, me: p.id, turnMs: this.turnMs, voice, assets, presence });
     this.listChanged();
   }
-  // The clients detect victory. The first player returning to the table moves the whole company to a fresh one;
+  updateBalances(balances, price) {
+    for (const p of this.players.values()) {
+      const chips = balances.get(p.userId);
+      if (chips === undefined) continue;
+      p.balanceUpdate = { t: 'balance', chips, ...(price != null ? { onlinePartyPrice: price } : {}) };
+      p.balanceUpdatedAt = this.now();
+      p.conn?.send(p.balanceUpdate);
+    }
+  }
+  finish(table, winnerId) {
+    const g = table.game;
+    const balances = Object.fromEntries(table.players.filter(p => p.id !== winnerId)
+      .map(p => [p.id, g.startBalances.get(p.userId)]));
+    g.result = { winnerId, balances };
+    return this.settleParty(table);
+  }
+  async settleParty(table) {
+    const g = table.game, winner = g.players.find(p => p.id === g.result.winnerId);
+    const publish = (changes) => {
+      g.result = { ...g.result, ...changes };
+      this.toGame(table, { t: 'result', result: g.result });
+    };
+    publish({ status: 'pending' });
+    try {
+      const userId = table.players.find(p => p.id === winner.id)?.userId;
+      const account = winner.bot ? { bot_name: winner.name } : { winner_user_id: userId };
+      const { winnings, balance } = await this.finishOnlineParty(g.partyId, account);
+      if (winner.bot) publish({ status: 'bot' });
+      else {
+        this.updateBalances(new Map([[userId, balance]]));
+        publish({ status: 'paid', winnings, balances: { ...g.result.balances, [winner.id]: balance } });
+      }
+    } catch (error) {
+      console.error('Online party results failed:', g.partyId, error.message);
+      if (error.retryable || error.name === 'TimeoutError' || error instanceof TypeError) {
+        g.retryDelay = Math.min(60000, (g.retryDelay || 1000) * 2);
+        publish({ status: 'retrying' });
+        this.timers.set(() => this.settleParty(table), g.retryDelay);
+      } else publish({ status: 'error' });
+    }
+  }
+  // The first player returning to the table moves the whole company to a fresh one;
   // later requests find a waiting table and do nothing. Nobody is ready automatically: the next game is confirmed again.
   rematch(p) {
     const old = p.table;
-    if (!old || old.status !== 'playing') return;
+    if (!old?.game?.result || old.game.result.status === 'pending') return;
     const table = { no: this.freeNumber(), private: old.private, code: old.private ? this.freeCode() : null,
       status: 'waiting', players: [], bots: old.bots, timer: null, startsAt: 0, game: null, created: this.now() };
     this.tables.set(table.no, table);
@@ -432,7 +478,7 @@ export class Lobby {
   gameState(table, p) {
     const g = table.game;
     return { t: 'game', no: table.no, players: g.players, log: g.log, presence: Object.fromEntries(g.presence), me: p.id,
-      turnMs: this.turnMs, voice: this.voiceOf(table), assets: this.assetsOf(table) };
+      turnMs: this.turnMs, voice: this.voiceOf(table), assets: this.assetsOf(table), result: g.result };
   }
   setAssets(p, progress) {
     if (!isInt(progress, 0, 100) || p.assets === progress) return;
@@ -478,7 +524,7 @@ export class Lobby {
   }
   act(p, msg) {
     const table = p.table, g = table?.game;
-    if (!g || table.status !== 'playing' || g.presence.get(p.id) === 'left') return;
+    if (!g || g.result || table.status !== 'playing' || g.presence.get(p.id) === 'left') return;
     const a = checkAction(msg.a);
     // a malformed action is refused like one out of order: the client takes the game from the server again
     if (!a) { p.conn?.send({ t: 'reject', n: msg.n, have: g.log.length, kind: msg.a?.kind === 'skip' ? 'skip' : 'bad' }); return; }
@@ -493,10 +539,12 @@ export class Lobby {
     g.log.push({ ...a, ...(a.kind === 'throw' ? { frames: null } : {}), by: a.bot ?? p.id });
     g.lastAt = this.now();
     this.toGame(table, { t: 'act', n: msg.n, a, from: p.id });
+    const winnerId = g.apply(g.log.at(-1));
+    if (winnerId) return this.finish(table, winnerId);
   }
 
   stats() {
-    let playing = 0; for (const t of this.tables.values()) if (t.status === 'playing') playing++;
+    let playing = 0; for (const t of this.tables.values()) if (t.status === 'playing' && !t.game.result) playing++;
     return { players: this.players.size, online: [...this.players.values()].filter((p) => p.conn).length, tables: this.tables.size, playing };
   }
 }
