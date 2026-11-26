@@ -11,6 +11,7 @@ const serverSecret = 'server-secret';
 const deviceId = '123e4567-e89b-42d3-a456-426614174000';
 const userId = '500013627108';
 const logPrefix = '[admiral:user-login] ';
+const purchasingChips = [{ id: 1, name: '+ 200 фишек', icon: '/assets/menu/chip-x200-square.png', price_vk: 10 }];
 const shipSets = [
   {
     id: 1, name: 'Classic', free: true, icon: 'classic.png', owned: true, prices: [],
@@ -180,7 +181,7 @@ test('an external device receives the numeric balance, online price and ship set
     const { onlineTicket, ...profile } = response.body;
     assert.equal(server.onlineAccount(onlineTicket).userId, 20);
     assert.equal(server.onlineAccount(onlineTicket.replace(/^20\./, '21.')), null);
-    assert.deepEqual(profile, { ok: true, userId: 20, chips: 125, onlinePartyPrice: 10, shipSets });
+    assert.deepEqual(profile, { ok: true, userId: 20, chips: 125, onlinePartyPrice: 10, shipSets, purchasingChips: [] });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'device');
@@ -198,14 +199,14 @@ test('an external device receives the numeric balance, online price and ship set
 });
 
 test('a VK visit enters by vk_id without sending a device identifier', async (t) => {
-  const server = await setup(t, { chips: 80 });
+  const server = await setup(t, { chips: 80, catalog: { ship_sets: shipSets, purchasing_chips: purchasingChips } });
   const body = { vk: true, launchParams: signedLaunch(), deviceId };
   for (let count = 0; count < 2; count++) {
     const response = await server.post(body);
     assert.equal(response.status, 200);
     const { onlineTicket, ...profile } = response.body;
     assert.equal(server.onlineAccount(onlineTicket).userId, 20);
-    assert.deepEqual(profile, { ok: true, userId: 20, chips: 80, onlinePartyPrice: 10, shipSets });
+    assert.deepEqual(profile, { ok: true, userId: 20, chips: 80, onlinePartyPrice: 10, shipSets, purchasingChips });
     const trail = loginEvents(server, response);
     assert.deepEqual(trail.map((entry) => entry.event), ['rpc_started', 'succeeded']);
     assert.equal(trail[0].mode, 'vk');

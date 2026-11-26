@@ -518,6 +518,30 @@
   .menu-balance { display: flex; align-items: center; gap: 7px; padding: 5px 11px; }
   .menu-account-label { display: block; color: #dfbd8d; font: 11px/1.25 "Segoe UI", system-ui, sans-serif; }
   #menu-chip-balance { display: block; font-size: 19px; line-height: 1.1; white-space: nowrap; }
+  .chip-add {
+    display: grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0;
+    border: 1px solid #d5a35b; border-radius: 50%; color: #382512;
+    background: linear-gradient(#ffe6aa, #d5a35b); font: bold 22px/1 system-ui, sans-serif;
+  }
+  .chip-add.low-balance { box-shadow: 0 0 0 2px #ffd27a; }
+  @media (prefers-reduced-motion: no-preference) {
+    .chip-add.low-balance { animation: chip-pulse 1.6s ease-out infinite; }
+    @keyframes chip-pulse { from { box-shadow: 0 0 0 0 #ffd27acc; } to { box-shadow: 0 0 0 7px #ffd27a00; } }
+  }
+  .chip-dialog {
+    width: min(390px, calc(100vw - 32px)); max-height: 85dvh; padding: 18px; overflow-y: auto;
+    color: #f8e8c2; background: linear-gradient(#3e281b, #21150f); border: 1px solid #a87d45;
+    border-radius: 10px; box-shadow: 0 12px 40px #100804cc; font-family: Georgia, "Times New Roman", serif;
+  }
+  .chip-dialog::backdrop { background: #100804bc; }
+  .chip-dialog header, .chip-offer { display: flex; align-items: center; gap: 12px; }
+  .chip-dialog header { justify-content: space-between; }
+  .chip-dialog h2 { margin: 0; font-size: 22px; }
+  .chip-dialog button { color: inherit; border-color: #886237; padding: 3px 10px; font-size: 22px; }
+  .chip-offers { display: grid; gap: 6px; list-style: none; margin: 14px 0 0; padding: 0; }
+  .chip-offer { padding: 6px 10px; background: #efc47710; border-radius: 6px; overflow-wrap: anywhere; }
+  .chip-offer img { width: 48px; height: 48px; object-fit: contain; }
+  .chip-offer-price { margin-left: auto; color: #ffe0a2; font-size: 14px; white-space: nowrap; }
   .chip-icon {
     display: inline-block; flex: none; width: 37px; aspect-ratio: 1;
     background: var(--asset-chip, url(assets/menu/chip.png)) center / contain no-repeat;
@@ -861,6 +885,8 @@
       <div class="menu-balance">
         <span class="chip-icon" aria-hidden="true"></span>
         <span><span class="menu-account-label">Фишки</span><strong id="menu-chip-balance"></strong></span>
+        <button id="menu-chip-add" class="chip-add" type="button" aria-label="Пополнить фишки"
+                aria-haspopup="dialog" aria-controls="menu-chip-dialog">+</button>
       </div>
       <details id="menu-ship-sets" class="menu-ship-sets" hidden>
         <summary>
@@ -889,6 +915,14 @@
       <p id="menu-note" class="menu-note" role="status" aria-live="polite"></p>
     </nav>
   </div>
+  <dialog id="menu-chip-dialog" class="chip-dialog" aria-labelledby="menu-chip-heading">
+    <header>
+      <h2 id="menu-chip-heading">Пополнение фишек</h2>
+      <form method="dialog"><button type="submit" aria-label="Закрыть" autofocus>×</button></form>
+    </header>
+    <ul id="menu-chip-offers" class="chip-offers"></ul>
+    <p id="menu-chip-empty" hidden>Сейчас нет доступных пополнений.</p>
+  </dialog>
   <section id="online" class="club" aria-labelledby="ol-heading" hidden>
     <div class="club-card">
       <header class="club-head">

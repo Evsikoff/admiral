@@ -261,12 +261,14 @@
   const SHIP_SET_KEY = 'admiral.ship-set.v1';
   const chipNumber = new Intl.NumberFormat('ru');
   const chipPlural = new Intl.PluralRules('ru');
+  const chipAdd = $('menu-chip-add'), chipDialog = $('menu-chip-dialog');
   const identity = window.AdmiralIdentity;
   const onlineHint = onlineBtn.querySelector('.plank-sub');
   const onlineDescription = onlineHint.textContent;
   onlineBtn.disabled = !!identity;
   function renderBalance() {
     onlineBtn.disabled = identity.onlinePartyPrice > identity.chips;
+    chipAdd.classList.toggle('low-balance', onlineBtn.disabled);
     onlineHint.textContent = onlineBtn.disabled ? 'Недостаточно фишек. Приобретите фишки для игры онлайн.' : onlineDescription;
     $('menu-chip-balance').textContent = chipNumber.format(identity.chips);
     const price = $('menu-online-price');
@@ -274,6 +276,31 @@
     price.hidden = false;
   }
   window.addEventListener('admiral:balance', renderBalance);
+  chipAdd.addEventListener('click', () => {
+    closeShipSets();
+    const offers = identity.purchasingChips;
+    $('menu-chip-offers').replaceChildren(...offers.map(chipOffer));
+    $('menu-chip-empty').hidden = offers.length > 0;
+    chipDialog.showModal();
+  });
+  function chipOffer(offer) {
+    const row = document.createElement('li');
+    row.className = 'chip-offer';
+    const icon = document.createElement('img');
+    icon.src = offer.icon;
+    icon.alt = '';
+    const label = document.createElement('strong');
+    label.textContent = offer.name;
+    row.append(icon, label);
+    if (identity.isVK) {
+      const price = document.createElement('span');
+      price.className = 'chip-offer-price';
+      const units = { one: 'голос', few: 'голоса', many: 'голосов' };
+      price.textContent = `${chipNumber.format(offer.price_vk)} ${units[chipPlural.select(offer.price_vk)]} VK`;
+      row.append(price);
+    }
+    return row;
+  }
   identity?.ready.then((valid) => {
     if (!valid) { onlineBtn.disabled = false; return; }
     renderBalance();

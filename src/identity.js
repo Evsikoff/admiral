@@ -47,6 +47,7 @@
 
   const api = {
     get deviceId() { return deviceId; },
+    isVK: false, purchasingChips: [],
     userId: null, onlineTicket: null, chips: null, onlinePartyPrice: null, shipSets: null, ready: null, acquireShipSet,
     updateBalance(chips, price = api.onlinePartyPrice) {
       if (!Number.isSafeInteger(chips) || !Number.isSafeInteger(price) || price < 0) return;
@@ -85,7 +86,7 @@
       const result = await response.json();
       if (result?.ok !== true || !Number.isSafeInteger(result.userId) || result.userId < 1 || !Number.isSafeInteger(result.chips) ||
           !Number.isSafeInteger(result.onlinePartyPrice) || result.onlinePartyPrice < 0 ||
-          !Array.isArray(result.shipSets)) {
+          !Array.isArray(result.shipSets) || !Array.isArray(result.purchasingChips ?? [])) {
         logLogin('warn', 'Login response did not match the expected format', response);
         return false;
       }
@@ -94,6 +95,8 @@
       api.chips = result.chips;
       api.onlinePartyPrice = result.onlinePartyPrice;
       api.shipSets = result.shipSets;
+      api.purchasingChips = result.purchasingChips ?? [];
+      api.isVK = vk;
       logLogin('info', 'Login response accepted', response);
       return true;
     } catch {

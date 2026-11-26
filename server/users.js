@@ -91,12 +91,22 @@ function readShipSet(set) {
 function readLogin(rows) {
   if (!Array.isArray(rows) || rows.length !== 1) throw new LoginPayloadError('Expected one login row');
   const [row] = rows;
-  if (!Array.isArray(row?.ship_sets)) throw new LoginPayloadError('Invalid ship_sets');
+  // Older logins returned the ship set array directly in this column.
+  const catalog = Array.isArray(row?.ship_sets) ? row : row?.ship_sets;
+  if (!Array.isArray(catalog?.ship_sets)) throw new LoginPayloadError('Invalid ship_sets');
+  const offers = catalog.purchasing_chips ?? [];
+  if (!Array.isArray(offers)) throw new LoginPayloadError('Invalid purchasing_chips');
   return {
     userId: readInteger(row.user_id, 'user_id', 1),
     chips: readInteger(row.chips_balance, 'chips_balance', Number.MIN_SAFE_INTEGER),
     onlinePartyPrice: readInteger(row.online_party_price, 'online_party_price'),
-    shipSets: row.ship_sets.map(readShipSet),
+    shipSets: catalog.ship_sets.map(readShipSet),
+    purchasingChips: offers.map(offer => ({
+      id: readInteger(offer?.id, 'purchasing_chips.id'),
+      name: readText(offer.name, 'purchasing_chips.name'),
+      icon: readText(offer.icon, 'purchasing_chips.icon'),
+      price_vk: readInteger(offer.price_vk, 'purchasing_chips.price_vk'),
+    })),
   };
 }
 
