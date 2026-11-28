@@ -239,7 +239,7 @@
     .stat-card td, .stat-card thead th:not(:first-child) { width: 15px; }
     .stat-flag { width: 12px; height: 8px; }
   }
-  /* «Ваш ход!», «Перебросьте кости!» in the middle of the screen, until the player moves the mouse or touches
+  /* «Ваш ход!», «Перебросьте кости!», «После дубля — повторный бросок» in the middle of the screen, until the player moves the mouse or touches
      the screen: a headline-sized plaque in the colours of the game's own panels — navy, a cream edge, gold */
   #callout { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
   #callout .callout-plate {
@@ -253,6 +253,9 @@
   }
   /* the longer call keeps the same size while it fits across the screen, and shrinks on a narrow one */
   #callout[data-kind="retry"] .callout-plate { font-size: min(clamp(48px, 13vmin, 128px), 7vw); }
+  /* the call to throw again after a double: two lines, the longer one no longer than «Перебросьте кости!» */
+  #callout[data-kind="double"] .callout-plate { font-size: min(clamp(48px, 13vmin, 128px), 7vw); max-width: 92vw; }
+  #callout[data-kind="double"] .callout-text { white-space: pre-line; text-align: center; line-height: 1.12; }
   /* the call to choose the ship for the trophy steps: two lines, sized by the longer one (17.2em wide with the
      plate's edges); on a screen held upright that line breaks once more, and the words stay as large as the others */
   #callout[data-kind="trophy"] .callout-plate { font-size: min(clamp(40px, 10vmin, 104px), 5.2vw); max-width: 92vw; }

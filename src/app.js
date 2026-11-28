@@ -3246,6 +3246,8 @@ function startTurn(i) {
 //   «Ваш ход!» with a sound, once a turn: online at every turn of this player, in a local game when a person's
 //   turn follows a bot's;
 //   «Перебросьте кости!» each time their throw does not count;
+//   «После дубля — повторный бросок» with the same sound as «Ваш ход!», each time they have played the dice of a
+//   double and throw once more;
 //   «Выберите корабль для трофейного движения» with the same sound as «Ваш ход!», each time a ransom gives this
 //   player six trophy steps and they choose the ship — in another player's turn, so they may not be watching.
 // Moving the mouse or touching the screen takes a call away and silences its sound.
@@ -3266,6 +3268,8 @@ function dueCallout() {
   if (isBot(game.turn)) return null;
   if (!myControl() || !awaiting() || (online && game.players[game.turn].id !== online.me)) return null;
   if (game.again === 'retry') return { kind: 'retry', key: `retry:${game.throws.length}`, text: 'Перебросьте кости!' };
+  if (game.again === 'double') return { kind: 'double', key: `double:${game.throws.length}`, sound: true,
+    text: 'После дубля —\nповторный бросок' };
   if (online || game.afterBot) return { kind: 'turn', key: `turn:${game.turnNumber}`, text: 'Ваш ход!', sound: true };
   return null;
 }
