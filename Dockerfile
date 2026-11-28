@@ -8,6 +8,7 @@
 # 1) the page: tools/build.py puts the sources, the board data, the engine and the ship models into admiral-3d.html
 FROM python:3.12-slim AS page
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir pillow==11.3.0
 COPY tools/build.py tools/commentator_data.py tools/
 COPY src src
@@ -23,7 +24,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY server server
 COPY src/fleet-rules.js src/fleet-rules.js
-COPY assets assets
+COPY --from=page /app/assets assets
 COPY --from=page /app/admiral-3d.html ./
 USER node:node
 EXPOSE 8080

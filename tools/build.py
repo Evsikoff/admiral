@@ -1,5 +1,5 @@
 """Inlines data + app code into a single self-contained admiral-3d.html."""
-import base64, hashlib, io, json, mimetypes, pathlib, sys, tempfile, zipfile
+import base64, hashlib, io, json, mimetypes, pathlib, re, subprocess, sys, tempfile, zipfile
 from urllib.parse import quote, unquote
 from PIL import Image
 root = pathlib.Path(__file__).resolve().parent.parent
@@ -13,6 +13,34 @@ def sound_urls(folder, stems=None):
     return ['/'.join(quote(part) for part in p.relative_to(root).parts)
             for p in sorted(folder.iterdir()) if p.is_file() and p.suffix.lower() in AUDIO_EXT
             and (stems is None or p.stem in stems)]
+
+def integrated_loudness(path):
+    analysis = subprocess.run(['ffmpeg', '-nostdin', '-nostats', '-hide_banner', '-i', str(path),
+                               '-map', '0:a:0', '-af', 'ebur128=framelog=verbose', '-f', 'null', '-'],
+                              stderr=subprocess.PIPE, check=True)
+    return float(re.findall(rb'I:\s+(-?[\d.]+) LUFS', analysis.stderr)[-1])
+
+# Nominal level of the game music. Keep the dynamics of each wave recording.
+ATMOSPHERE_LUFS = -16.5
+def atmosphere_urls(folder):
+    result = []
+    for url in sound_urls(folder):
+        source = root / unquote(url)
+        recipe = f'linear-{ATMOSPHERE_LUFS}-limit0.89'
+        cache_key = hashlib.sha256(recipe.encode() + source.read_bytes()).hexdigest()[:12]
+        target = folder / 'mixed' / f'{source.stem}-{cache_key}.mp3'
+        if not target.is_file():
+            gain = ATMOSPHERE_LUFS - integrated_loudness(source)
+            audio_filter = f'volume={gain:.2f}dB,alimiter=limit=0.89:level=false:latency=true'
+            target.parent.mkdir(exist_ok=True)
+            with tempfile.TemporaryDirectory(dir=target.parent) as tmp:
+                mix = pathlib.Path(tmp) / 'mix.mp3'
+                subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-i', str(source),
+                                '-map', '0:a:0', '-af', audio_filter, '-ar', '48000',
+                                '-codec:a', 'libmp3lame', '-q:a', '2', str(mix)], check=True)
+                mix.replace(target)
+        result.append(quote(target.relative_to(root).as_posix()))
+    return result
 buf = io.BytesIO(); Image.open(a / 'board.jpg').convert('RGB').save(buf, 'JPEG', quality=82, optimize=True)
 sound_dir = a / 'sound'
 commentator = build_catalog()
@@ -25,8 +53,9 @@ data = {
         'music': {**{k: sound_urls(sound_dir / 'music' / k) for k in ('calm', 'anxious')},
                   # the theme of the start screen's main menu (src/intro.js), until a game begins
                   'start': [u for u in sound_urls(sound_dir / 'music') if u.endswith('/start.mp3')]},
-        'effects': {k: sound_urls(sound_dir / 'effects' / k)
-                    for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
+        'effects': {**{k: sound_urls(sound_dir / 'effects' / k)
+                       for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
+                    'atmosphere': atmosphere_urls(sound_dir / 'effects' / 'atmosphere')},
         'commentator': {
             bucket: sound_urls(sound_dir / 'commentator' / bucket,
                                {it['id'] for it in items if it['voice_text'] == it['recorded_text']})
@@ -36,6 +65,13 @@ data = {
     # the commentator writes exactly what the clips say (tools/commentator_data.py)
     'commentatorLines': {bucket: [it['voice_text'] for it in items] for bucket, items in commentator.items()},
 }
+# Music recordings have different mastering levels. Match the sea to the current track,
+# independently of the music slider, including when the player switches music off.
+if data['sounds']['effects']['atmosphere']:
+    data['sounds']['atmosphereTrim'] = {
+        url: round(10 ** ((integrated_loudness(root / unquote(url)) - ATMOSPHERE_LUFS) / 20), 4)
+        for mood in ('calm', 'anxious') for url in data['sounds']['music'][mood]
+    }
 # ship models from Kenney's Pirate Kit (CC0): intact = ship-medium, destroyed = ship-wreck.
 # The GLBs point at Textures/colormap.png; the page swaps that path for the embedded copy.
 kit = root / 'kenney_pirate-kit_2.1' / 'Models' / 'GLB format'
@@ -66,6 +102,7 @@ html = html.replace('<!--__ENGINE_LICENSES__-->', '<!--\n' + licenses + '\n-->')
 app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
                 for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'fleet-rules.js', 'bot.js', 'app.js'))
 html = html.replace('/*__APP__*/', app)
+html = html.replace('/*__AUDIO_CONTROLS__*/', (root / 'src' / 'audio-controls.js').read_text(encoding='utf8'))
 html = html.replace('/*__RULES_CSS__*/', (root / 'src' / 'rules.css').read_text(encoding='utf8'))
 rules_text = (root / 'src' / 'rules-script.json').read_text(encoding='utf8')
 rules = json.loads(rules_text)
@@ -98,7 +135,7 @@ rules_data = {
 # Sizes drive download progress; hashes invalidate cached media after a deployment.
 media = ['assets/video/studio.mp4', 'assets/video/game_intro.mp4', 'assets/game_logo.png']
 media += ['assets/menu/' + name for name in ('plank.webp', 'tavern.webp', 'tavern_portrait.webp', 'parchment.webp', 'chip.png')]
-media += [url for group in data['sounds'].values() for urls in group.values() for url in urls]
+media += [url for kind in ('music', 'effects', 'commentator') for urls in data['sounds'][kind].values() for url in urls]
 if rules_data['audio']: media.append(rules_data['audio'])
 manifest = []
 for url in dict.fromkeys(media):

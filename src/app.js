@@ -1721,7 +1721,11 @@ const playerName = (p, i) => p.name || `Игрок ${i + 1}`;
 // a game: who plays which side; sides nobody plays are out of the game (grey, closed, no ships)
 let game = null;                       // { players: [{ name, q, id, bot }], turn, phase, dice, allActs, acts, … }
 const isBot = (i) => !!game?.players?.[i]?.bot;            // bot: the id of its style of play (src/bot-styles.js)
-function newGame(players) {
+function newGame(players, rotateCamera = false) {
+  const humans = players.filter(p => !p.bot);
+  const viewer = online ? humans.find(p => p.id === online.me) : humans.length === 1 ? humans[0] : null;
+  homeSide = viewer?.q ?? null;
+  autoRotate = rotateCamera;
   overhead = false; overheadReturn = null; syncViewButton();
   broadcast.clear();
   sound.resetGame();
@@ -1892,7 +1896,10 @@ const VIEWS = {
 let fly = null, cameraShot = null, frameArea = null;
 let frameFlight = null, cameraMaxDistance = controls.maxDistance;
 let overhead = false, overheadReturn = null;
+let homeSide = null, autoRotate = false;
 const viewButton = document.getElementById('t-view'), statRail = document.getElementById('broadcast');
+const cameraTools = document.getElementById('camera-tools');
+const rotateButton = document.getElementById('t-auto-rotate'), homeButton = document.getElementById('t-home-view');
 const broadcast = createFleetBroadcast(statRail);
 const cameraOffset = new THREE.Vector3(), orbit = new THREE.Spherical();
 const frameOffset = new THREE.Vector2();
@@ -2098,6 +2105,7 @@ function measureShot(shot) {
   if (!shot.ship) widenShot();
 }
 function setShot(shot,duration=0.65) {
+  if (shot.side !== 'top') shot = { ...shot, side: cameraSide(shot.side) };
   if (overhead && !setupIsOpen()) {                  // the overhead view stays put; the shot waits for the way back
     overheadReturn = {shot};
     return 0;
@@ -2106,17 +2114,29 @@ function setShot(shot,duration=0.65) {
   return startFlight(shotTarget,shotOffset,duration);
 }
 function view(side, instant = false) { setShot({side},instant ? 0 : 0.8); }
+function cameraSide(side) { return homeSide && !autoRotate ? homeSide : side; }
+function returnCameraHome() { if (homeSide && !overhead) view(homeSide); }
 function syncViewButton() {
   viewButton.setAttribute('aria-pressed', String(overhead));
   viewButton.textContent = overhead ? 'Обычный вид' : 'Вид сверху';
+  cameraTools.hidden = !homeSide;
+  rotateButton.setAttribute('aria-pressed', String(autoRotate));
+  rotateButton.title = autoRotate ? 'Выключить автовращение при смене хода' : 'Включить автовращение при смене хода';
+  homeButton.disabled = overhead;
 }
+rotateButton.addEventListener('click', () => {
+  autoRotate = !autoRotate;
+  syncViewButton();
+  view(turnSide());
+});
+homeButton.addEventListener('click', returnCameraHome);
 function toggleOverhead() {
   if (!game || setupIsOpen()) return;
   overhead = !overhead;
   syncViewButton(); syncControls(); endTopGesture();
   if (overhead) {
     overheadReturn = {shot: cameraShot, target: controls.target.clone(), offset: camera.position.clone().sub(controls.target)};
-    const side = turnSide();
+    const side = cameraSide(turnSide());
     Object.assign(topView, { side, turn: game.turnNumber, yaw: ROT[side], spin: null, reset: null, zoom: 1 });
     topView.pan.set(0, 0);
     Object.assign(topView.follow, { ship: null, released: false, k: 0, hold: 0 });
@@ -2132,8 +2152,8 @@ function toggleOverhead() {
 }
 viewButton.addEventListener('click', toggleOverhead);
 
-// ---- the overhead view: the map lies flat with the side whose turn it is at the bottom, and when the turn passes
-// the map turns about its centre. The wheel (or two fingers) zooms in and out; a map larger than the screen is
+// ---- the overhead view: the viewer's harbour stays at the bottom unless the camera follows turns.
+// The wheel (or two fingers) zooms in and out; a map larger than the screen is
 // dragged with the left button (one finger) while no throw is awaited. The view the player set is the base: the
 // game closes in on a ship under sail and, once it has stopped, goes back to it; a new turn resets it.
 const TOP_ELEVATION = Math.PI / 2 - 0.0001, TOP_ZOOM_MAX = 4, TOP_SPIN_TIME = 0.9, TOP_HALF = 15.5;
@@ -2261,11 +2281,12 @@ function flyTopView(duration) {
 // A new turn: the map turns to the side whose turn it is, and the player's zoom and drag go back to the whole
 // board, both at once.
 function stepTopView(dt) {
-  const side = turnSide(), turn = game.turnNumber;
-  if (side !== topView.side || turn !== topView.turn) {
-    const newTurn = turn !== topView.turn;
+  const side = cameraSide(turnSide()), turn = game.turnNumber;
+  const newTurn = turn !== topView.turn && (!homeSide || autoRotate);
+  topView.turn = turn;
+  if (side !== topView.side || newTurn) {
     if (fly) {                                         // still flying in: land on the new turn's view
-      Object.assign(topView, { side, turn, yaw: ROT[side], spin: null, reset: null });
+      Object.assign(topView, { side, yaw: ROT[side], spin: null, reset: null });
       if (newTurn) { topView.zoom = 1; topView.pan.set(0, 0); }
       flyTopView(Math.max(0.2, fly.duration - fly.elapsed));
     } else {
@@ -2278,7 +2299,7 @@ function stepTopView(dt) {
       if (newTurn && (topView.zoom !== 1 || topView.pan.lengthSq() > 0)) {
         topView.reset = { zoom: topView.zoom, x: topView.pan.x, y: topView.pan.y, elapsed: 0 };
       }
-      Object.assign(topView, { side, turn });
+      topView.side = side;
     }
   }
   const spin = topView.spin;
@@ -2379,11 +2400,8 @@ function frameChoices() {
 function followShip(ship) {
   // Let the camera reach the start of the route before a ship on the far side sets sail.
   if (setupIsOpen()) return 0;
-  if (overhead) {                                     // the overhead map closes in on it instead
-    overheadReturn = {shot: {side:ship.q, ship, motion:ship.anim}};
-    return followOnMap(ship);
-  }
-  return setShot({side:ship.q, ship, motion:ship.anim},0.52);
+  const flight = setShot({side:ship.q, ship, motion:ship.anim},0.52);
+  return overhead ? followOnMap(ship) : flight;
 }
 function stepCamera(dt) {
   stepProjection(dt);
@@ -2816,35 +2834,7 @@ function syncNewButton() {
   mainMenuBtn.hidden = !!online || !intro;
 }
 
-// ------------------------------------------------------------------ sound switches: music, sound effects, the commentator's voice
-// Each is remembered between games. With the commentator off his lines are still written at the bottom.
-const AUDIO_KEY = 'admiral.audio.v1';
-const AUDIO_SWITCHES = [['music', 't-music', 'музыку'], ['effects', 't-effects', 'звуковые эффекты'], ['commentator', 't-voice', 'реплики комментатора']];
-let audioOff = null;
-try { audioOff = JSON.parse(localStorage.getItem(AUDIO_KEY)); } catch { /* no storage */ }
-if (!audioOff || typeof audioOff !== 'object') audioOff = {};
-for (const [kind, id, what] of AUDIO_SWITCHES) {
-  const buttons = [document.getElementById(id), ...document.querySelectorAll(`[data-audio="${kind}"]`)];
-  const render = () => {
-    for (const button of buttons) {
-      button.setAttribute('aria-pressed', String(!audioOff[kind]));
-      button.title = `${audioOff[kind] ? 'Включить' : 'Выключить'} ${what}`;
-    }
-  };
-  audioOff[kind] = audioOff[kind] === true;
-  sound.setMuted(kind, audioOff[kind]);
-  render();
-  for (const button of buttons) button.addEventListener('click', () => {
-    audioOff[kind] = !audioOff[kind];
-    sound.setMuted(kind, audioOff[kind]);
-    if (kind === 'music' && !audioOff[kind]) syncMusicMood();
-    render();
-    try { localStorage.setItem(AUDIO_KEY, JSON.stringify(audioOff)); } catch { /* no storage */ }
-    // the others at an online table learn it: bots play at once when nobody there hears the commentator
-    if (kind === 'commentator') window.AdmiralOnline?.setVoice(!audioOff[kind]);
-  });
-}
-window.AdmiralOnline?.setVoice(!audioOff.commentator);
+window.AdmiralAudioControls.connect(sound);
 
 // ------------------------------------------------------------------ turns: a throw of two dice, then the moves; the commentator reports
 // A turn: the commentator names the player, the camera comes round to that player's harbour, and the player
@@ -2996,7 +2986,11 @@ function startTurn(i) {
   introduced.add(i);
   // A bot needs no lesson in throwing. The opening turn can follow the game-start clip.
   announcer.turnStart(game.players[i].q, nameHTML(i), first && !isBot(i), { opening: game.turnNumber === 1 });
-  if (!setupIsOpen()) view(game.players[i].q);             // the board as seen from this player's harbour
+  if (!setupIsOpen()) {
+    const side = game.players[i].q;
+    if (!homeSide || autoRotate) view(side);
+    else if (before < 0 || side === homeSide) returnCameraHome();
+  }
 }
 
 // ---- calls in the middle of the screen, when the game waits for the throw or the move of a person here
@@ -3646,15 +3640,16 @@ function pump() {
 }
 function startOnline(g) {
   if (setupIsOpen()) closeSetup();
+  const rotateCamera = online?.no === g.no && autoRotate;
   online = { no: g.no, me: g.me, applied: 0, queue: [], presence: { ...g.presence }, dirty: false,
     stallKey: '', stallAt: 0, skipKey: '', turnKey: '', turnAt: 0, turnMs: g.turnMs || 0, clock: '', clockLow: false,
     linked: true, hasBots: g.players.some((p) => p.bot), voice: { ...(g.voice || {}) }, assets: { ...(g.assets || {}) } };
   syncNewButton();
   const log = g.log || [];
-  if (!log.length) { newGame(g.players); return; }
+  if (!log.length) { newGame(g.players, rotateCamera); return; }
   // a game rejoined: played through to where it is, silently
   quietly(() => {
-    newGame(g.players);
+    newGame(g.players, rotateCamera);
     for (const a of log) { settle(); applyAction(a); }
     settle();
   });
@@ -3737,6 +3732,7 @@ function closeGame(showMenu) {
   game = null; select(null, false);
   syncFleets([]);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';
+  homeSide = null; autoRotate = false;
   overhead = false; overheadReturn = null; syncViewButton(); syncControls();
   for (const s of ships) { s.slot = shipyards[s.q]; setState(s, 'wreck'); }
   applySides(new Set(NATIONS)); placeShipsNow();
