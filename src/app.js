@@ -1326,6 +1326,7 @@ const DIE = 0.72, DH = DIE / 2;
 const DICE_HZ = 60, DICE_STEP = 1 / DICE_HZ;
 const DICE_SETTLE_TIME = 1;                                     // seconds after the first surface contact
 const DICE_FLIGHT_LIMIT = 12;                                   // fallback if neither die reaches a surface
+const DICE_ZOOM_IN = 0.55, DICE_RESULT_HOLD = 1.15, DICE_ZOOM_OUT = 0.6;
 const DK = DH / 51.96;                                           // dice-box units → board units
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.8 * 400 * DK, 0) });     // ≈ −27 units/s²
@@ -1660,7 +1661,16 @@ function finishDice(res) {
       if (!world.bodies.includes(body)) world.addBody(body);
     }
   }
-  if (roll.onDone) roll.onDone(res);
+  roll.result = res;
+  roll.resultTime = 0;
+  if (!roll.closeup || document.hidden || replaying) finishDicePreview();
+}
+function finishDicePreview() {
+  if (!roll?.result) return;
+  const res = roll.result;
+  roll.result = null;
+  roll.closeup = false;
+  roll.onDone?.(res);
 }
 // ---- an online throw is worked out once, by the thrower, and recorded: every screen then plays the same flight.
 // Frames: 30 a second, two dice each, [x, y, z, qx, qy, qz, qw] per die; land: when the dice first hit the board.
@@ -1716,6 +1726,11 @@ function finishPlayback() {
 function stepDice(dt, elapsed = dt) {
   if (!roll) return;
   if (roll.done) {
+    if (roll.result) {
+      roll.resultTime += elapsed;
+      if (!roll.closeup || document.hidden || roll.resultTime >= DICE_RESULT_HOLD + DICE_ZOOM_OUT) finishDicePreview();
+      return;
+    }
     if (!roll.pushable || (!ships.some((s) => s.obj.visible && s.movedSinceDiceStep)
       && dice.every((d) => d.body.sleepState === CANNON.Body.SLEEPING))) return;
     syncShipBodies(true, true);
@@ -1740,7 +1755,11 @@ function clearDice() {
   for (const d of dice) { d.obj.visible = false; d.ship = null; tintDie(d, false); if (world.bodies.includes(d.body)) world.removeBody(d.body); }
 }
 // play the current throw to its end at once (tests; the page normally steps it frame by frame)
-function settleDice() { let n = 0; while (roll && !roll.done && n++ < 1200) stepDice(DICE_STEP); }
+function settleDice() {
+  let n = 0;
+  while (roll && !roll.done && n++ < 1200) stepDice(DICE_STEP);
+  finishDicePreview();
+}
 
 function setDieLoad(load) {
   dieLoad = load;
@@ -1815,6 +1834,7 @@ canvas.addEventListener('pointermove', (ev) => {
   canvas.style.cursor = canThrow() ? 'grab' : mine || pairs.length ? 'pointer' : topDown() && topMovable() ? 'grab' : '';
 });
 canvas.addEventListener('pointerdown', (ev) => {
+  if (roll) roll.closeup = false;
   boardPointers.add(ev.pointerId);
   downAt = [ev.clientX, ev.clientY];
   if (topDown() && topPointerDown(ev)) { cancelGrab(); return; }    // two fingers zoom the overhead map
@@ -1848,6 +1868,7 @@ const BOARD_HALF = 15;
 const wheelOffset = new THREE.Vector3(), wheelSpot = new THREE.Vector3(), wheelShift = new THREE.Vector3();
 window.addEventListener('wheel', (ev) => {
   if (ev.target !== canvas) return;
+  if (roll) roll.closeup = false;
   ev.stopPropagation();                                   // OrbitControls' own handler on the canvas never sees it
   const overheadZoom = topDown();
   if (!overheadZoom && (!controls.enabled || !controls.enableZoom)) return;
@@ -2353,6 +2374,7 @@ function measureShot(shot) {
   if (!shot.ship) widenShot();
 }
 function setShot(shot,duration=0.65) {
+  if (roll) roll.closeup = false;
   if (shot.side !== 'top') shot = { ...shot, side: cameraSide(shot.side) };
   if (overhead && !setupIsOpen()) {                  // the overhead view stays put; the shot waits for the way back
     overheadReturn = {shot};
@@ -2380,6 +2402,7 @@ rotateButton.addEventListener('click', () => {
 homeButton.addEventListener('click', returnCameraHome);
 function toggleOverhead() {
   if (!game || setupIsOpen()) return;
+  if (roll) roll.closeup = false;
   overhead = !overhead;
   syncViewButton(); syncControls(); endTopGesture();
   if (overhead) {
@@ -2680,6 +2703,38 @@ function stepCamera(dt) {
   controls.maxDistance = Math.max(cameraMaxDistance, camera.position.distanceTo(controls.target));
 }
 function releaseCamera() { if (!overhead) { fly = null; cameraShot = null; } }
+// Render the throw through a second lens so orbit, pan and overhead zoom retain the player's view.
+const diceCamera = new THREE.PerspectiveCamera();
+const diceCenter = new THREE.Vector3(), diceEye = new THREE.Vector3(), diceAim = new THREE.Vector3();
+function cameraForThrow() {
+  if (!roll?.closeup || setupIsOpen()) return camera;
+  const resultTime = roll.resultTime || 0;
+  const enter = easeInOut(Math.min(1, (roll.t + resultTime) / DICE_ZOOM_IN));
+  const leave = easeInOut(clamp((resultTime - DICE_RESULT_HOLD) / DICE_ZOOM_OUT, 0, 1));
+  const weight = enter * (1 - leave);
+  const a = dice[0].obj.position, b = dice[1].obj.position;
+  diceCenter.lerpVectors(a, b, 0.5);
+  orbit.setFromVector3(cameraOffset.subVectors(camera.position, controls.target));
+  orbit.phi = Math.min(orbit.phi, Math.PI / 9);  // see the upper faces even from a low player viewpoint
+  diceEye.setFromSpherical(orbit).normalize();
+  shotRight.crossVectors(Y_UP, diceEye).normalize();
+  shotUp.crossVectors(diceEye, shotRight);
+  const { H, top, bottom, left, right } = frameArea;
+  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / H;
+  // Opposite offsets from the midpoint. Leave room for each entire tumbling cube on both screen axes.
+  corner.subVectors(a, diceCenter);
+  const margin = DIE;
+  const distance = Math.max(5, Math.abs(corner.dot(diceEye)) + margin + Math.max(
+    (Math.abs(corner.dot(shotRight)) + margin) / (tan * Math.max(1, right - left)),
+    (Math.abs(corner.dot(shotUp)) + margin) / (tan * Math.max(1, bottom - top))));
+  diceEye.multiplyScalar(distance).add(diceCenter);
+  diceCamera.position.lerpVectors(camera.position, diceEye, weight);
+  diceCamera.lookAt(diceAim.lerpVectors(controls.target, diceCenter, weight));
+  diceCamera.far = camera.far;
+  diceCamera.projectionMatrix.copy(camera.projectionMatrix);
+  diceCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
+  return diceCamera;
+}
 view('ru', true);
 window.__admiral = { camera, controls, view, THREE, ships, pucks, renderer, scene, CANNON, world, dice, COLL, rollStats, throwDice, stepDice, settleDice, readDie, setDieLoad, THROW };
 
@@ -3391,6 +3446,7 @@ function rollDice(plan) {
   renderTurn();
   const g = game;
   flingDice(plan, (res) => { if (game === g) judge(res); });
+  roll.closeup = true;
 }
 // why a throw does not count; a reason both dice share is said once, for both
 function faults(res) {
@@ -3856,6 +3912,7 @@ function playThrow(a) {
   roll = { t: 0, done: false, landed: false, play: { frames: a.frames, count: a.frames.length / 14, land: a.land, res }, onDone: done };
   poseDice(roll.play, 0);
   if (replaying) finishPlayback();
+  else roll.closeup = true;
 }
 // the decision of a player who has left: their throw or move is passed over, the jailer's six steps are lost
 function skipDecision() {
@@ -3876,6 +3933,7 @@ function skipDecision() {
 // finish at once what is under way: a throw in the air, sailing ships, the pause before the next turn
 function settle() {
   if (roll && roll.play && !roll.done) finishPlayback();
+  finishDicePreview();
   fastForward();
   if (game?.phase === 'pass') { startTurn((game.turn + 1) % game.players.length); fastForward(); }
 }
@@ -4307,8 +4365,9 @@ function frame() {
   // the swing after a swipe dies away in the same time at any frame rate (a 4K television may draw 15 a second)
   controls.dampingFactor = 1 - Math.pow(1 - CAMERA_DAMPING, Math.min(elapsed, 0.1) * 60);
   controls.update();
-  updateReflections(time);
-  renderer.render(scene, camera);
+  const renderCamera = cameraForThrow();
+  updateReflections(time, renderCamera);
+  renderer.render(scene, renderCamera);
   if (firstFrame) {
     firstFrame = false;
     document.getElementById('loading').classList.add('hide');
