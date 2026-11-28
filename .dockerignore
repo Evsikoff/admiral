@@ -10,6 +10,7 @@ debug.log
 # built inside the image
 admiral-3d.html
 assets/sound/effects/atmosphere/mixed
+assets/sound/effects/swimming/mixed
 # sources of the art and old voice takes: not loaded by the game
 assets/menu/raw
 assets/sound/commentator_v1

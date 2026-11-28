@@ -7,3 +7,4 @@ debug.log
 # built by tools/build.py (the Docker image builds it too)
 admiral-3d.html
 assets/sound/effects/atmosphere/mixed/
+assets/sound/effects/swimming/mixed/

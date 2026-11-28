@@ -1562,9 +1562,10 @@ function readDie(quat) {
   for (const [n, v] of FACES) { const y = n.clone().applyQuaternion(q3).y; if (y > best) { best = y; value = v; } }
   return { value, tilt: (Math.acos(clamp(best, -1, 1)) * 180) / Math.PI };
 }
-// degrees: up to this the top face is clearly the top one (the next face is at least twice as far from
-// vertical); a die leaning more — against a wall, a house, a tree or the other die — is cocked and cannot be read
-const MAX_TILT = 30;
+// degrees: up to this the top face is taken for the top one (the next face is at least 50° from vertical, 10° further
+// than it); a die leaning more — against a wall, a house, a tree or the other die — is cocked and cannot be read.
+// A die on its edge, its two faces at 45°, is always cocked.
+const MAX_TILT = 40;
 
 let roll = null;                // the throw in progress: { t, done, landed, onDone }
 world.addEventListener('postStep', () => {
@@ -1839,8 +1840,12 @@ window.addEventListener('blur', () => { boardPointers.clear(); endTopGesture(); 
 // a screen scale of 200 % and more a notch zoomed two or three times less, and below 100 % (browser zoomed out) the
 // divisor is 0 and one notch threw the camera to its nearest or farthest point. Later three.js no longer divides.
 // One notch (100 px, 3 lines or a page) changes the distance 1.5 times as much as OrbitControls' 5 %.
+// It zooms about the pointer: the camera and the point it turns about close in on (or draw back from) the spot of
+// the board under the pointer, so that spot stays under it. Past the board's edge the wheel zooms on the middle of
+// the view, and the point the camera turns about never leaves the board.
 const WHEEL_NOTCH_ZOOM = Math.pow(0.95, 1.5);
-const wheelOffset = new THREE.Vector3();
+const BOARD_HALF = 15;
+const wheelOffset = new THREE.Vector3(), wheelSpot = new THREE.Vector3(), wheelShift = new THREE.Vector3();
 window.addEventListener('wheel', (ev) => {
   if (ev.target !== canvas) return;
   ev.stopPropagation();                                   // OrbitControls' own handler on the canvas never sees it
@@ -1855,9 +1860,22 @@ window.addEventListener('wheel', (ev) => {
   }
   releaseCamera();
   wheelOffset.subVectors(camera.position, controls.target);
-  const distance = THREE.MathUtils.clamp(wheelOffset.length() * Math.pow(WHEEL_NOTCH_ZOOM, -notches),
+  const before = wheelOffset.length();
+  const distance = THREE.MathUtils.clamp(before * Math.pow(WHEEL_NOTCH_ZOOM, -notches),
     controls.minDistance, controls.maxDistance);
-  camera.position.copy(controls.target).add(wheelOffset.setLength(distance));
+  camera.updateMatrixWorld();                             // several notches can come between two frames
+  const spot = topPointAt(ev, wheelSpot);
+  if (spot && Math.abs(spot.x) <= BOARD_HALF && Math.abs(spot.z) <= BOARD_HALF && before > 1e-6) {
+    const k = distance / before;
+    controls.target.sub(spot).multiplyScalar(k).add(spot);
+    camera.position.sub(spot).multiplyScalar(k).add(spot);
+    // drawing back from a spot near the edge must not carry the view off the board
+    wheelShift.set(THREE.MathUtils.clamp(controls.target.x, -BOARD_HALF, BOARD_HALF) - controls.target.x, 0,
+      THREE.MathUtils.clamp(controls.target.z, -BOARD_HALF, BOARD_HALF) - controls.target.z);
+    controls.target.add(wheelShift); camera.position.add(wheelShift);
+  } else {
+    camera.position.copy(controls.target).add(wheelOffset.setLength(distance));
+  }
   controls.update();
 }, {capture:true, passive:false});                       // on window in the capture phase: before the canvas
 canvas.addEventListener('dblclick', (ev) => {
@@ -1895,7 +1913,7 @@ function newGame(players, rotateCamera = false) {
   homeSide = viewer?.q ?? null;
   autoRotate = rotateCamera;
   overhead = false; overheadReturn = null; syncViewButton();
-  broadcast.clear();
+  broadcast.clear(); matchStats.close();
   sound.resetGame();
   chase = null;
   game = { players: players.map((p) => ({ name: p.name, q: p.q, id: p.id ?? null, bot: p.bot || null, shipSetId: p.shipSetId ?? null })) };
@@ -1906,6 +1924,7 @@ function newGame(players, rotateCamera = false) {
   beginTurns();
 }
 window.addEventListener('keydown', (ev) => {
+  if (document.querySelector('dialog[open]')) return;          // Escape closes the window, nothing behind it
   if (ev.key === 'Escape' && overhead && !setupIsOpen()) { ev.preventDefault(); toggleOverhead(); return; }
   if (setupIsOpen() || !game || !myControl() || (ev.target.closest && ev.target.closest('button, input, textarea'))) return;
   if (ev.code !== 'Escape') return;
@@ -2129,6 +2148,7 @@ const viewButton = document.getElementById('t-view'), statRail = document.getEle
 const cameraTools = document.getElementById('camera-tools');
 const rotateButton = document.getElementById('t-auto-rotate'), homeButton = document.getElementById('t-home-view');
 const broadcast = createFleetBroadcast(statRail);
+const matchStats = createMatchStats(document.getElementById('match-stats'), document.getElementById('t-info'), () => broadcast.snapshot());
 const cameraOffset = new THREE.Vector3(), orbit = new THREE.Spherical();
 const frameOffset = new THREE.Vector2();
 const CAMERA_REFIT_TIME = 0.32;
@@ -2943,7 +2963,7 @@ function backToNames() {
   renderNames('#setup-draw');
 }
 function openSetup() {
-  sound.stopSwimming();
+  sound.stopSwimming(); matchStats.close();
   if (!game) sound.setMood(intro ? 'start' : 'calm');      // the menu's theme plays on until the game begins
   // a bot named after its style («Корсар», «Корсар 2») has no name of its own: in the next game it is named afresh
   const styleNamed = (p) => { const t = botStyleInfo(p.bot).title; return p.name === t || new RegExp(`^${t} \\d+$`).test(p.name); };
@@ -3195,7 +3215,7 @@ function syncControls() {
   controls.mouseButtons.LEFT = t ? -1 : THREE.MOUSE.ROTATE;
   controls.touches.ONE = t ? -1 : THREE.TOUCH.ROTATE;
 }
-function renderTurn() { renderWho(); renderRoll(); renderMenu(); syncControls(); }
+function renderTurn() { renderWho(); renderRoll(); renderMenu(); syncControls(); matchStats.refresh(); }
 function beginTurns() {
   cancelGrab(); clearDice(); capEl.innerHTML = ''; commentary.length = 0;
   Object.assign(game, { turn: 0, phase: 'idle', again: false, throws: [], winner: null, chases: new Set(), captured: new Set(),
@@ -3225,30 +3245,39 @@ function startTurn(i) {
 // (online — of this player):
 //   «Ваш ход!» with a sound, once a turn: online at every turn of this player, in a local game when a person's
 //   turn follows a bot's;
-//   «Перебросьте кости!» each time their throw does not count.
+//   «Перебросьте кости!» each time their throw does not count;
+//   «Выберите корабль для трофейного движения» with the same sound as «Ваш ход!», each time a ransom gives this
+//   player six trophy steps and they choose the ship — in another player's turn, so they may not be watching.
 // Moving the mouse or touching the screen takes a call away and silences its sound.
 const calloutEl = document.getElementById('callout'), calloutText = calloutEl.querySelector('.callout-text');
 const CALLOUT_MOVE = 4;            // px: the mouse has moved (not a jitter of the hand, nor a move the browser makes up)
 const CALLOUT_SEEN = 500;          // ms: a mouse already moving lets the call be seen before it takes it away
-let callout = null;                // { game, turn, throws, shownAt, at: where the mouse was when it came up }
+let callout = null;                // { game, kind, turn, throws, shownAt, at: where the mouse was when it came up }
 let mouseAt = null;
 // the call due now, if any; each is made once (its key is kept by the game)
 function dueCallout() {
-  if (!game || replaying || setupIsOpen() || game.phase === 'over' || isBot(game.turn)) return null;
+  if (!game || replaying || setupIsOpen() || game.phase === 'over') return null;
+  if (game.phase === 'comp') {                       // the jailer's choice: whose turn it is does not matter
+    if (!myControl() || !awaiting()) return null;
+    const spent = game.dice?.filter((d) => d.used).length ?? 0;      // a second ransom in the turn is called again
+    return { kind: 'trophy', key: `trophy:${game.turnNumber}:${game.throws.length}:${spent}`, sound: true,
+      text: 'Выберите корабль\nдля трофейного движения' };
+  }
+  if (isBot(game.turn)) return null;
   if (!myControl() || !awaiting() || (online && game.players[game.turn].id !== online.me)) return null;
   if (game.again === 'retry') return { kind: 'retry', key: `retry:${game.throws.length}`, text: 'Перебросьте кости!' };
-  if (online || game.afterBot) return { kind: 'turn', key: `turn:${game.turnNumber}`, text: 'Ваш ход!' };
+  if (online || game.afterBot) return { kind: 'turn', key: `turn:${game.turnNumber}`, text: 'Ваш ход!', sound: true };
   return null;
 }
 function showCallout(due) {
   hideCallout();
   void calloutEl.offsetWidth;      // a call that replaces another comes up afresh
   (game.callouts ??= new Set()).add(due.key);
-  callout = { game, turn: game.turnNumber, throws: game.throws.length, shownAt: performance.now(), at: mouseAt };
+  callout = { game, kind: due.kind, turn: game.turnNumber, throws: game.throws.length, shownAt: performance.now(), at: mouseAt };
   calloutText.textContent = due.text;
   calloutEl.dataset.kind = due.kind;
   calloutEl.hidden = false;
-  if (due.kind === 'turn') sound.callTurn();
+  if (due.sound) sound.callTurn();
 }
 function hideCallout() {
   if (!callout) return;
@@ -3258,7 +3287,7 @@ function hideCallout() {
 // every tick: make the call that is due; a call whose moment has passed (a throw, another turn) goes away by itself
 function calloutTick() {
   if (callout && (callout.game !== game || callout.turn !== game.turnNumber || callout.throws !== game.throws.length
-    || game.phase === 'over')) hideCallout();
+    || game.phase === 'over' || (callout.kind === 'trophy' && game.phase !== 'comp'))) hideCallout();
   const due = dueCallout();
   if (due && !game.callouts?.has(due.key)) showCallout(due);
 }
@@ -3958,7 +3987,7 @@ function setClock(ms) {
 }
 // leaving a game: the board is cleared and, normally, the tavern comes back
 function closeGame(showMenu) {
-  cancelGrab(); clearDice(); hideCallout(); sound.stopVoice(); sound.stopSwimming();
+  cancelGrab(); clearDice(); hideCallout(); sound.stopVoice(); sound.stopSwimming(); matchStats.close();
   game = null; select(null, false);
   syncFleets([]);
   hudEl.hidden = true; rollHud.hidden = true; broadcast.clear(); capEl.innerHTML = ''; menuEl.innerHTML = '';

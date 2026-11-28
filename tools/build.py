@@ -20,17 +20,21 @@ def integrated_loudness(path):
                               stderr=subprocess.PIPE, check=True)
     return float(re.findall(rb'I:\s+(-?[\d.]+) LUFS', analysis.stderr)[-1])
 
-# Nominal level of the game music. Keep the dynamics of each wave recording.
+# Recordings of one kind come at very different levels: each is brought to one loudness by a gain of its own,
+# keeping its dynamics, into a 'mixed' folder beside it (built here and in the Docker image, not kept in git).
+# The sea: the nominal level of the game music. The water under a ship under way: the recordings came 13 to 27 dB
+# under the music as the game plays it (−27 LUFS), unheard; now 5 dB over it and 5 dB under the commentator (−17).
 ATMOSPHERE_LUFS = -16.5
-def atmosphere_urls(folder):
+SWIMMING_LUFS = -22
+def leveled_urls(folder, lufs):
     result = []
     for url in sound_urls(folder):
         source = root / unquote(url)
-        recipe = f'linear-{ATMOSPHERE_LUFS}-limit0.89'
+        recipe = f'linear-{lufs}-limit0.89'
         cache_key = hashlib.sha256(recipe.encode() + source.read_bytes()).hexdigest()[:12]
         target = folder / 'mixed' / f'{source.stem}-{cache_key}.mp3'
         if not target.is_file():
-            gain = ATMOSPHERE_LUFS - integrated_loudness(source)
+            gain = lufs - integrated_loudness(source)
             audio_filter = f'volume={gain:.2f}dB,alimiter=limit=0.89:level=false:latency=true'
             target.parent.mkdir(exist_ok=True)
             with tempfile.TemporaryDirectory(dir=target.parent) as tmp:
@@ -54,8 +58,9 @@ data = {
                   # the theme of the start screen's main menu (src/intro.js), until a game begins
                   'start': [u for u in sound_urls(sound_dir / 'music') if u.endswith('/start.mp3')]},
         'effects': {**{k: sound_urls(sound_dir / 'effects' / k)
-                       for k in ('repair', 'swimming', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
-                    'atmosphere': atmosphere_urls(sound_dir / 'effects' / 'atmosphere')},
+                       for k in ('repair', 'dice', 'boarding', 'parade', 'redemption', 'victory', 'turn')},
+                    'swimming': leveled_urls(sound_dir / 'effects' / 'swimming', SWIMMING_LUFS),
+                    'atmosphere': leveled_urls(sound_dir / 'effects' / 'atmosphere', ATMOSPHERE_LUFS)},
         'commentator': {
             bucket: sound_urls(sound_dir / 'commentator' / bucket,
                                {it['id'] for it in items if it['voice_text'] == it['recorded_text']})
@@ -100,7 +105,7 @@ with zipfile.ZipFile(a / 'three-r160-cannon-0.20.0.zip') as runtime:
 html = html.replace('/*__IMPORTS__*/', json.dumps({'imports': imports}, separators=(',', ':')))
 html = html.replace('<!--__ENGINE_LICENSES__-->', '<!--\n' + licenses + '\n-->')
 app = '\n'.join((root / 'src' / name).read_text(encoding='utf8')
-                for name in ('sea.js', 'coast.js', 'broadcast.js', 'sound.js', 'commentator.js', 'fleet-rules.js', 'bot.js', 'app.js'))
+                for name in ('sea.js', 'coast.js', 'broadcast.js', 'match-stats.js', 'sound.js', 'commentator.js', 'fleet-rules.js', 'bot.js', 'app.js'))
 html = html.replace('/*__APP__*/', app)
 html = html.replace('/*__AUDIO_CONTROLS__*/', (root / 'src' / 'audio-controls.js').read_text(encoding='utf8'))
 html = html.replace('/*__RULES_CSS__*/', (root / 'src' / 'rules.css').read_text(encoding='utf8'))
