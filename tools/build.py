@@ -22,7 +22,7 @@ def integrated_loudness(path):
 
 # Recordings of one kind come at very different levels: each is brought to one loudness by a gain of its own,
 # keeping its dynamics, into a 'mixed' folder beside it (built here and in the Docker image, not kept in git).
-# The sea: the nominal level of the game music. The water under a ship under way: the recordings came 13 to 27 dB
+# The sea: the nominal level of the game music. The creaking of a ship under way: the recordings come 8 to 15 dB
 # under the music as the game plays it (−27 LUFS), unheard; now 5 dB over it and 5 dB under the commentator (−17).
 ATMOSPHERE_LUFS = -16.5
 SWIMMING_LUFS = -22
