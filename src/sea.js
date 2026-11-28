@@ -169,7 +169,7 @@ function createSea(terrainTexture, boardTexture, chartTexture, sunDirection) {
     scene.traverse(obj => { if (obj.isLight) obj.layers.enable(1); });
     let lastTime = -Infinity;
     const lastPosition = new THREE.Vector3();
-    return function refresh(time) {
+    return function refresh(time, camera) {
       if (time-lastTime < 0.18 && lastPosition.distanceToSquared(camera.position)<2.25) return;
       camera.updateMatrixWorld();
       mirror.onBeforeRender(renderer,scene,camera);
