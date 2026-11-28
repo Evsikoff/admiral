@@ -1,13 +1,13 @@
 // node --test src/ — the brain of the bots (src/bot.js) on a bare board, without the map
 import test from 'node:test';
-import { makeBotBoard } from './fleet-rules.js';
+import { createFleetRules, makeBotBoard, singleMoverRoutes } from './fleet-rules.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 // bot.js is a part of the game's module (tools/build.py joins the files); here it is loaded on its own
 const code = readFileSync(new URL('./bot.js', import.meta.url), 'utf8');
-const { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf } = new Function(
-  `${code}\nreturn { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf };`)();
+const { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf } = new Function('singleMoverRoutes',
+  `${code}\nreturn { createBotBrain, BOT_PARAMS, BOT_DEFAULT, botStyleOf };`)(singleMoverRoutes);
 const board = makeBotBoard();
 const brain = createBotBrain(board);
 const { cells, harbors, shipyards, prisons } = board;
@@ -42,6 +42,31 @@ function playThrow(ships, d, style = 'careful') {
     ships = brain.apply(ships, a, 'ru');
   }
 }
+
+test('a lone mover must use the sum when both single-die distances and the sum are legal', () => {
+  const sides = new Set(['ru', 'en']);
+  function check(at, roll, expected, { captured = [], expectedRepair = false } = {}) {
+    const ships = position([...sides], { ru1: harbors.ru, ...at });
+    const held = new Set(ships.filter(s => captured.includes(s.id)));
+    const rules = createFleetRules({ ...board, ships }, q => sides.has(q));
+    const actions = rules.options('ru', roll, false, held).acts;
+    const botActions = brain.options(brain.model(sides), ships, 'ru', roll, new Set(captured));
+    const ship = ships.find(s => s.id === 'ru1');
+    for (const moves of [actions.get(ship), botActions.filter(a => a.ship === ship.id)]) {
+      assert.deepEqual(moves.map(a => [a.slot.field, a.use]), expected);
+    }
+    assert.equal([...actions.values()].flat().some(a => a.kind === 'repair'), expectedRepair);
+    assert.equal(botActions.some(a => a.kind === 'repair'), expectedRepair);
+  }
+  check({}, dice(2, 3), [[5, [0, 1]]]); // the shorter route also has a bay landing
+  check({ ru1: cells.en.f[12] }, dice(1, 2), [[2, [0, 1]], ['b', [0, 1]]]);
+  check({ ru2: cells.ru.f[6] }, dice(1, 3), [[1, [0]], [3, [1]], [4, [0, 1]]]);
+  check({ ru2: cells.ru.f[6] }, dice(1, 3), [[4, [0, 1]]], { captured: ['ru2'] });
+  check({ en1: cells.ru.f[3] }, dice(2, 3), [[2, [0]], ['b', [0]], [3, [1]]]);
+  check({}, dice(2, 2), [[2, [0]], ['b', [0]], [4, [0, 1]]]);
+  check({}, [{ v: 2, used: true }, { v: 3 }], [[3, [1]]]);
+  check({}, dice(6, 2), [[8, [0, 1]]], { expectedRepair: true });
+});
 
 test('every style of the game has its weights, and an unknown one plays the default', () => {
   assert.deepEqual(STYLE_IDS.slice().sort(), Object.keys(BOT_PARAMS).sort());

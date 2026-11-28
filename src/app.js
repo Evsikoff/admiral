@@ -1699,12 +1699,14 @@ canvas.addEventListener('dblclick', (ev) => {
   const u = pick(ev); const target = u && (u.slot ? u.slot.pos : u.ship ? u.ship.obj.position : null);
   if (target) flyTo(target.clone(), camera.position.clone().sub(controls.target).setLength(9));
 });
-// a click on the board: pick one of the highlighted ships, then one of its marked destinations
+// Clicking a ship sails its only route or selects it to choose a destination.
 function boardClick(u) {
   if (!game || !game.acts || !myControl()) return;
   const ship = u && u.ship, slot = u && u.slot;
   if (ship && actionable(ship)) {
-    select(selected === ship && game.acts.size > 1 ? null : ship);
+    const targets = game.acts.get(ship);
+    if (targets.length === 1) userPerform(ship, targets[0]);
+    else select(selected === ship && game.acts.size > 1 ? null : ship);
     return;
   }
   // A marked cell, or an enemy ship on one. Ships leaving the harbour are interchangeable;
@@ -3189,7 +3191,9 @@ function nextAction(first, dicePair = null) {
   Object.assign(game, { phase: 'move', allActs: o.acts, acts:moves.size ? moves : null, chooser: i });
   const prompt = isBot(i) ? ''
     : !moves.size || o.repair || o.ransom ? 'Выберите действие.'
-      : moves.size === 1 ? 'Нажмите на клетку назначения.' : 'Выберите корабль, затем клетку его цвета.';
+      : moves.size > 1 ? 'Нажмите на корабль. Если у него несколько маршрутов, выберите клетку его цвета.'
+      : moves.values().next().value.length === 1 ? 'Нажмите на корабль или на клетку назначения.'
+      : 'Нажмите на клетку назначения.';
   announcer.afterRollOrStep({ q, first, dice: dicePair, leftV: left[0]?.v, o, detail: optionsDetail(o), prompt });
   renderTurn(); autoSelect();
   if (!moves.size && !setupIsOpen()) {

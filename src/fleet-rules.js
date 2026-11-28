@@ -1,5 +1,11 @@
 export const NEXT = { ru: 'nl', nl: 'en', en: 'se', se: 'ru' };                  // 6 → 7 of this neighbour
 
+export function singleMoverRoutes(moves) {
+  // Count distances so the optional bay landing is not mistaken for another die choice.
+  const distances = new Set(moves.map(move => move.len));
+  return distances.size === 3 ? moves.filter(move => move.use.length === 2) : moves;
+}
+
 // ------------------------------------------------------------------ rules: where a ship may sail
 // A ship leaves its harbour for field 1 of its own side and sails round the board through every side in
 // play: 1…6, then field 7 of the next side (past a side out of the game along the ring round the wheel),
@@ -54,6 +60,10 @@ export function createFleetRules({ cells, harbors, shipyards, ships }, sideActiv
       add(s, { kind: 'move', slot, path, len: L.len, use: L.use, victims: (occ.get(slot) || []).filter((o) => o.q !== q) });
     }
     const movers = acts.size;
+    if (movers === 1) {
+      const [ship, moves] = acts.entries().next().value;
+      acts.set(ship, singleMoverRoutes(moves));
+    }
     const six = movesOnly ? -1 : free.find((i) => dice[i].v === 6) ?? -1;
     let repair = false, ransom = false;
     if (six >= 0) {

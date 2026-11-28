@@ -105,7 +105,7 @@ function createBotBrain({ cells, harbors, shipyards, prisons }) {
     const lens = [];
     for (const i of free) if (!lens.some((l) => l.use.length === 1 && l.len === dice[i].v)) lens.push({ len: dice[i].v, use: [i] });
     if (free.length === 2) lens.push({ len: dice[free[0]].v + dice[free[1]].v, use: free });
-    const out = [];
+    let out = [];
     for (const s of ships) {
       if (s.q !== q || !canSail(s) || captured.has(s.id)) continue;
       for (const L of lens) for (const path of paths(M, s, L.len, occ)) {
@@ -114,6 +114,7 @@ function createBotBrain({ cells, harbors, shipyards, prisons }) {
           victims: (occ.get(slot) || []).filter((o) => o.q !== q).map((o) => o.id) });
       }
     }
+    if (lens.length === 3 && out.every(move => move.ship === out[0].ship)) out = singleMoverRoutes(out);
     const six = movesOnly ? -1 : free.find((i) => dice[i].v === 6) ?? -1;
     if (six >= 0) {
       const wreck = ships.find((s) => s.q === q && s.slot === shipyards[q]);
