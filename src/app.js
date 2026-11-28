@@ -249,22 +249,140 @@ scene.add(terrain);
 const OVERLAY_S = Math.min(4096, renderer.capabilities.maxTextureSize);
 const overlayCanvas = document.createElement('canvas');
 overlayCanvas.width = overlayCanvas.height = OVERLAY_S;
+// Kept in memory, not on the GPU: the tiles that change with the routes are read back from it (see drawRoutes).
+const overlayInk = overlayCanvas.getContext('2d', { willReadFrequently: true });
 const overlayTex = new THREE.CanvasTexture(overlayCanvas);
 overlayTex.colorSpace = THREE.SRGBColorSpace; overlayTex.anisotropy = maxAniso;
 const sea = createSea(terrTex, boardTex, overlayTex, SUN_DIR);
 scene.add(sea.mesh);
 const INK = 'rgba(24, 36, 46, 0.9)', INK_OFF = 'rgba(92, 100, 107, 0.45)';
+// The legs of the routes that can be chosen now: their dots turn into arrows in the colours of those routes.
+// legs: `${from}>${to}` → colours, a cell named by side and field ('ru6', 'rub', 'rus1' — the first parade place);
+// ring: [{ from, to, colors }] — from field 6 of side `from` round the wheel to field 7 of side `to`.
+const NO_ROUTES = { legs: new Map(), ring: [] };
+let overlaySides = new Set(NATIONS), overlayRoutes = NO_ROUTES;
+const CHART_AT = {};                                     // where the chart puts a cell, by its name
+for (const q of NATIONS) {
+  const F = D.fields[q];
+  for (let i = 1; i <= 13; i++) CHART_AT[q + i] = F[i];
+  CHART_AT[q + 'b'] = F.b;
+  F.stars.forEach((pt, i) => { CHART_AT[`${q}s${i + 1}`] = pt; });
+}
+// the ring of bypass routes round the wheel: a route round it leaves field 6 for the ring, follows it the way the
+// angle grows (as the ships sail it) and comes off it to field 7
+const TAU = Math.PI * 2, [WHEEL_X, WHEEL_Y] = Z.center, WHEEL_R = Z.ringRadius;
+const wheelAngle = (q, key) => { const [x, y] = D.fields[q][key]; return Math.atan2(y - WHEEL_Y, x - WHEEL_X); };
+const wheelAt = (a) => [WHEEL_X + Math.cos(a) * WHEEL_R, WHEEL_Y + Math.sin(a) * WHEEL_R];
+function wheelArc({ from, to, colors }) {
+  const a0 = wheelAngle(from, 6); let a1 = wheelAngle(to, 7); while (a1 <= a0) a1 += TAU;
+  return { a0, a1, colors };
+}
+const cssHex = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
+
 function drawOverlay(active) {
-  const g = overlayCanvas.getContext('2d'), k = OVERLAY_S / 1500;
+  overlaySides = active;
+  const g = overlayInk;
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, OVERLAY_S, OVERLAY_S);
+  inkChart(g);
+  overlayTex.needsUpdate = true;
+}
+// When only the routes change, just the tiles round their legs, old and new, are redrawn and sent to the texture
+// as plain pixels: sending the whole canvas, or pieces of it as canvases, stalls the game for a fifth of a second.
+const TILE = 64, TILES = Math.ceil(OVERLAY_S / TILE);
+function drawRoutes(routes) {
+  const k = OVERLAY_S / 1500, r = 10, dirty = new Set();  // an arrow reaches 7 from its leg
+  for (const [x, y] of [...routeSpots(overlayRoutes), ...routeSpots(routes)]) {
+    const i0 = Math.max(0, Math.floor(((x - r) * k) / TILE)), i1 = Math.min(TILES - 1, Math.floor(((x + r) * k) / TILE));
+    const j0 = Math.max(0, Math.floor(((y - r) * k) / TILE)), j1 = Math.min(TILES - 1, Math.floor(((y + r) * k) / TILE));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) dirty.add(j * TILES + i);
+  }
+  overlayRoutes = routes;
+  if (!dirty.size) return;
+  // runs of dirty tiles along each row, sent as one strip each
+  const runs = [];
+  for (const t of [...dirty].sort((a, b) => a - b)) {
+    const i = t % TILES, j = Math.floor(t / TILES), last = runs[runs.length - 1];
+    if (last && last.j === j && last.i1 === i - 1) last.i1 = i; else runs.push({ j, i0: i, i1: i });
+  }
+  const g = overlayInk;
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.beginPath();
+  for (const { j, i0, i1 } of runs) g.rect(i0 * TILE, j * TILE, (i1 - i0 + 1) * TILE, TILE);
+  g.clip(); g.clearRect(0, 0, OVERLAY_S, OVERLAY_S);
+  inkChart(g);
+  g.restore();
+  // three.js rebuilds the mipmaps after every strip; let only the last one do it
+  runs.forEach(({ j, i0, i1 }, n) => {
+    const x = i0 * TILE, y = j * TILE, w = Math.min(OVERLAY_S, (i1 + 1) * TILE) - x, h = Math.min(TILE, OVERLAY_S - y);
+    const strip = new THREE.DataTexture(new Uint8Array(g.getImageData(x, y, w, h).data.buffer), w, h);
+    overlayTex.generateMipmaps = n === runs.length - 1;
+    renderer.copyTextureToTexture(new THREE.Vector2(x, OVERLAY_S - y - h), strip, overlayTex);   // GL rows go up
+  });
+  overlayTex.generateMipmaps = true;
+}
+// points every few units along the ink of the routes' legs: the chart changes only round them
+function routeSpots({ legs, ring }) {
+  const out = [];
+  const line = ([x1, y1], [x2, y2]) => {
+    const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 4);
+    for (let i = 0; i <= n; i++) out.push([x1 + ((x2 - x1) * i) / n, y1 + ((y2 - y1) * i) / n]);
+  };
+  for (const key of legs.keys()) {
+    const [a, b] = key.split('>');
+    if (CHART_AT[a] && CHART_AT[b]) line(CHART_AT[a], CHART_AT[b]);
+  }
+  for (const r of ring) {
+    const { a0, a1 } = wheelArc(r), from = a0 - 10 / WHEEL_R, to = a1 + 10 / WHEEL_R;
+    line(D.fields[r.from][6], wheelAt(a0)); line(wheelAt(a1), D.fields[r.to][7]);
+    const n = Math.ceil((WHEEL_R * (to - from)) / 4);
+    for (let i = 0; i <= n; i++) out.push(wheelAt(from + ((to - from) * i) / n));
+  }
+  return out;
+}
+
+function inkChart(g) {
+  const active = overlaySides, routes = overlayRoutes, k = OVERLAY_S / 1500;
   g.setTransform(k, 0, 0, k, 0, 0);
   const on = (q) => active.has(q);
-  function dots(x1, y1, x2, y2, ink, r1 = 30, r2 = 30, step = 8.5) {
+  // evenly spaced places between two cells (r1, r2: the room each cell keeps clear around its centre)
+  function along(x1, y1, x2, y2, r1, r2, step, put) {
     const L = Math.hypot(x2 - x1, y2 - y1); if (L < r1 + r2) return;
     const ux = (x2 - x1) / L, uy = (y2 - y1) / L;
     const a = r1 + 5, b = L - r2 - 5, n = Math.max(1, Math.round((b - a) / step));
+    for (let i = 0; i <= n; i++) { const s = a + ((b - a) * i) / n; put(x1 + ux * s, y1 + uy * s, ux, uy); }
+  }
+  function dots(x1, y1, x2, y2, ink, r1 = 30, r2 = 30, step = 8.5) {
     g.fillStyle = ink;
-    for (let i = 0; i <= n; i++) { const s = a + ((b - a) * i) / n; g.beginPath(); g.arc(x1 + ux * s, y1 + uy * s, 1.9, 0, 7); g.fill(); }
+    along(x1, y1, x2, y2, r1, r2, step, (x, y) => { g.beginPath(); g.arc(x, y, 1.9, 0, 7); g.fill(); });
+  }
+  // An arrowhead pointing along (ux, uy), larger than a dot and spaced wider, so it reads from across the board.
+  // Several routes share it in bands running along it.
+  const ARROW_STEP = 12.5, W = 4.9;
+  function arrow(x, y, ux, uy, colors) {
+    const vx = -uy, vy = ux;
+    const at = (s, t) => [x + ux * s + vx * t, y + uy * s + vy * t];
+    const dart = () => {
+      g.beginPath(); g.moveTo(...at(5.6, 0)); g.lineTo(...at(-4.4, W)); g.lineTo(...at(-1.7, 0)); g.lineTo(...at(-4.4, -W)); g.closePath();
+    };
+    dart();
+    if (colors.length === 1) { g.fillStyle = cssHex(colors[0]); g.fill(); }
+    else {
+      g.save(); g.clip();
+      colors.forEach((c, j) => {
+        const t0 = -W + (2 * W * j) / colors.length, t1 = -W + (2 * W * (j + 1)) / colors.length;
+        g.fillStyle = cssHex(c); g.beginPath();
+        g.moveTo(...at(-5, t0)); g.lineTo(...at(6, t0)); g.lineTo(...at(6, t1)); g.lineTo(...at(-5, t1)); g.closePath(); g.fill();
+      });
+      g.restore(); dart();
+    }
+    g.strokeStyle = INK; g.lineWidth = 1.1; g.lineJoin = 'round'; g.stroke();
+  }
+  function arrows(x1, y1, x2, y2, colors, r1 = 30, r2 = 30) {
+    along(x1, y1, x2, y2, r1, r2, ARROW_STEP, (x, y, ux, uy) => arrow(x, y, ux, uy, colors));
+  }
+  // dots from cell a to cell b, or arrows where a route takes that leg
+  function leg(a, b, ink) {
+    const colors = routes.legs.get(`${a}>${b}`);
+    if (colors) arrows(...CHART_AT[a], ...CHART_AT[b], colors); else dots(...CHART_AT[a], ...CHART_AT[b], ink);
   }
   function dottedCircle(x, y, r, ink, step = 8.5, rad = 1.6) {
     const n = Math.round((2 * Math.PI * r) / step); g.fillStyle = ink;
@@ -291,33 +409,51 @@ function drawOverlay(active) {
   }
   // routes: a side's own paths are grey when it does not play, and so is the passage into a side that does not play
   for (const q of NATIONS) {
-    const F = D.fields[q], ink = on(q) ? INK : INK_OFF;
-    for (let i = 1; i < 6; i++) dots(...F[i], ...F[i + 1], ink);
-    for (let i = 7; i < 13; i++) dots(...F[i], ...F[i + 1], ink);
-    dots(...F[13], ...F[1], ink);
-    dots(...F.b, ...F[1], ink); dots(...F.b, ...F[3], ink);
-    dots(...F[13], ...F.stars[0], ink);
-    dots(...F[6], ...D.fields[NEXT[q]][7], on(q) && on(NEXT[q]) ? INK : INK_OFF);
+    const ink = on(q) ? INK : INK_OFF;
+    for (let i = 1; i < 6; i++) leg(q + i, q + (i + 1), ink);
+    for (let i = 7; i < 13; i++) leg(q + i, q + (i + 1), ink);
+    leg(q + 13, q + 1, ink);
+    leg(q + 1, q + 'b', ink); leg(q + 'b', q + 3, ink);
+    leg(q + 13, q + 's1', ink);
+    leg(q + 6, NEXT[q] + 7, on(q) && on(NEXT[q]) ? INK : INK_OFF);
   }
   // central ring of bypass routes
-  const [cx, cy] = Z.center, R = Z.ringRadius;
-  dottedCircle(cx, cy, R, INK, 9, 1.9);
+  const arcs = routes.ring.map(wheelArc);
+  const mix = (list) => list.flatMap(r => r.colors).filter((c, i, all) => all.indexOf(c) === i);
+  const covers = (r, a, pad = 0) => ((a - r.a0 + pad) % TAU + TAU) % TAU <= r.a1 - r.a0 + 2 * pad;
+  {
+    const n = Math.round((TAU * WHEEL_R) / 9), clear = 7 / WHEEL_R;     // the dots give way to the arrows of an arc
+    g.fillStyle = INK;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      if (!arcs.some(r => covers(r, a, clear))) { g.beginPath(); g.arc(...wheelAt(a), 1.9, 0, 7); g.fill(); }
+    }
+    for (const { a0, a1 } of arcs) {
+      const from = a0 + 8 / WHEEL_R, to = a1 - 8 / WHEEL_R, m = Math.max(1, Math.round((WHEEL_R * (to - from)) / ARROW_STEP));
+      for (let j = 0; j <= m; j++) {
+        const a = from + ((to - from) * j) / m;
+        arrow(...wheelAt(a), -Math.sin(a), Math.cos(a), mix(arcs.filter(r => covers(r, a))));
+      }
+    }
+  }
   for (const q of NATIONS) for (const key of [6, 7]) {
-    const [x, y] = D.fields[q][key], a = Math.atan2(y - cy, x - cx);
-    dots(x, y, cx + Math.cos(a) * R, cy + Math.sin(a) * R, on(q) ? INK : INK_OFF, 30, 0);
+    const [x, y] = D.fields[q][key], ring = wheelAt(wheelAngle(q, key));
+    const colors = mix(routes.ring.filter(r => (key === 6 ? r.from : r.to) === q));
+    if (!colors.length) dots(x, y, ...ring, on(q) ? INK : INK_OFF, 30, 0);
+    else if (key === 6) arrows(x, y, ...ring, colors, 30, 0);
+    else arrows(...ring, x, y, colors, 0, 30);
   }
   const ringText = { '-90': 'если Англии не в игре', '0': 'если Швеции не в игре', '90': 'если России не в игре', '180': 'если Голландии не в игре' };
   g.font = `11px ${FONT}`; g.fillStyle = '#16212b'; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const [deg, text] of Object.entries(ringText)) {
-    const phi = (+deg * Math.PI) / 180, rr = R + 9;
+    const phi = (+deg * Math.PI) / 180, rr = WHEEL_R + 9;
     const widths = [...text].map((ch) => g.measureText(ch).width), total = widths.reduce((s, w) => s + w, 0);
     let s = -total / 2;
     [...text].forEach((ch, i) => {
       const a = phi + (s + widths[i] / 2) / rr; s += widths[i];
-      g.save(); g.translate(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); g.rotate(a + Math.PI / 2); g.fillText(ch, 0, 0); g.restore();
+      g.save(); g.translate(WHEEL_X + Math.cos(a) * rr, WHEEL_Y + Math.sin(a) * rr); g.rotate(a + Math.PI / 2); g.fillText(ch, 0, 0); g.restore();
     });
   }
-  overlayTex.needsUpdate = true;
 }
 drawOverlay(new Set(NATIONS));
 
@@ -328,8 +464,8 @@ function flatPlane(tex, size, x, y, z, rot) {
   m.position.set(x, y, z); m.renderOrder = 3; m.receiveShadow = true;
   return m;
 }
-function canvasTex(size, draw) {
-  const c = document.createElement('canvas'); c.width = c.height = size;
+function canvasTex(size, draw, height = size) {
+  const c = document.createElement('canvas'); c.width = size; c.height = height;
   draw(c.getContext('2d'), size);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
   return t;
@@ -953,6 +1089,33 @@ const pinMap = canvasTex(128, (g) => {
 // about as tall on screen as a cell from afar (in pixels); in board units, never smaller than close up nor larger
 // (the chosen ship's arrow is a quarter larger)
 const PIN_PX = 30, PIN_MIN = 0.42, PIN_MAX = 1.2, PIN_SELECTED = 1.25;
+// A ship out on the board — on the water, on the parade or in a prison — that has no arrow over it carries its
+// side's flag there instead, in a thick frame of the colour of its side's sails, so whose ship stands where can
+// be read at a glance. The badge's tail points down at the mast; like the arrow it keeps its size on screen.
+// It is not pickable: it must not get in the way of the cells behind it.
+const BADGE_W = 240, BADGE_H = 210, BADGE_PX = 26, BADGE_MIN = 0.34, BADGE_MAX = 1.0;
+const badgeMat = {};
+for (const q of NATIONS) {
+  const map = canvasTex(BADGE_W, (g) => {
+    const O = 6, FRAME = 28, body = 178, r = 20, tail = 22;   // outline, frame, height without the tail
+    const x0 = O, y0 = O, x1 = BADGE_W - O, y1 = body - O, cx = BADGE_W / 2;
+    g.beginPath();
+    g.moveTo(x0 + r, y0);
+    g.lineTo(x1 - r, y0); g.arcTo(x1, y0, x1, y0 + r, r);
+    g.lineTo(x1, y1 - r); g.arcTo(x1, y1, x1 - r, y1, r);
+    g.lineTo(cx + tail, y1); g.lineTo(cx, BADGE_H - O); g.lineTo(cx - tail, y1);
+    g.lineTo(x0 + r, y1); g.arcTo(x0, y1, x0, y1 - r, r);
+    g.lineTo(x0, y0 + r); g.arcTo(x0, y0, x0 + r, y0, r);
+    g.closePath();
+    g.lineJoin = 'round'; g.lineWidth = 2 * O; g.strokeStyle = '#172733'; g.stroke();
+    g.fillStyle = TEAM_COLOR[q]; g.fill();
+    const fx = O + FRAME, fy = O + FRAME, fw = BADGE_W - 2 * fx, fh = body - 2 * fy;
+    g.save(); g.beginPath(); g.rect(fx, fy, fw, fh); g.clip(); g.translate(fx, fy); drawFlag(q, g, fw, fh); g.restore();
+    g.lineWidth = 3; g.strokeStyle = '#172733'; g.strokeRect(fx, fy, fw, fh);
+  }, BADGE_H);
+  badgeMat[q] = new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+}
+const onBoard = (s) => s.slot.field != null || s.slot.star != null || !!s.slot.prison;   // not harbour, not shipyard
 for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   const ship = new THREE.Group();
   const model = new THREE.Group(); ship.add(model);
@@ -965,9 +1128,11 @@ for (const q of NATIONS) for (let n = 1; n <= SHIPS_PER_NATION; n++) {
   ship.scale.setScalar(SHIP_SCALE);
   const pin = new THREE.Sprite(new THREE.SpriteMaterial({map:pinMap, transparent:true, depthTest:false, depthWrite:false, toneMapped:false}));
   pin.center.set(0.5, 0); pin.position.copy(masthead); pin.position.y += 0.1; pin.visible=false; pin.renderOrder=8; ship.add(pin);
+  const badge = new THREE.Sprite(badgeMat[q]);
+  badge.center.set(0.5, 0); badge.position.copy(pin.position); badge.visible = false; badge.renderOrder = 7; ship.add(badge);
   scene.add(ship);
   const s = {
-    q, n, obj: ship, model, intact, wreck: wreck.g, smoke: wreck.smoke, ring, pin, state: 'wreck', slot: shipyards[q],
+    q, n, obj: ship, model, intact, wreck: wreck.g, smoke: wreck.smoke, ring, pin, badge, state: 'wreck', slot: shipyards[q],
     stockBodies: [intactBody, wreck.body], stockAccents, rag: wreck.rag, skinBodies: [],
     anim: null, heading: 0, rest: null, pulse: 1, seed: rnd() * 10, offset: new THREE.Vector3(), wake: createWake(sea, wakeMaterial),
   };
@@ -1047,6 +1212,7 @@ function showFleet(q, skins, shared, mask, painted) {
     });
     s.pin.position.copy(skins[0]?.flagAt ?? masthead);
     s.pin.position.y += 0.1;
+    s.badge.position.copy(s.pin.position);
   }
 }
 
@@ -1805,7 +1971,36 @@ for (let i = 0; i < 48; i++) {
   pickables.push(ring, fill);
   markers.push({ g, edge, ring, fill, label });
 }
-function showMarkers(list) {
+// a cell a route passes on its way: a translucent disc over the cell, in sectors of the routes' colours
+// lined up with the arcs of the ring round a destination
+const discCache = new Map();
+function coloredDisc(colors) {
+  const key = colors.join(',');
+  if (!discCache.has(key)) {
+    const geo = new THREE.CircleGeometry(0.56, 60).toNonIndexed(), count = geo.attributes.position.count;
+    const tint = new Float32Array(count * 3), palette = colors.map(hex => new THREE.Color(hex));
+    for (let i = 0; i < count; i++) palette[Math.floor(Math.floor(i/3)*palette.length/60)].toArray(tint, i*3);
+    geo.setAttribute('color', new THREE.BufferAttribute(tint, 3)); discCache.set(key, geo);
+  }
+  return discCache.get(key);
+}
+const passMarks = [];
+function showPasses(list) {
+  while (passMarks.length < list.length) {
+    const m = new THREE.Mesh(coloredDisc([0xffffff]), new THREE.MeshBasicMaterial({
+      vertexColors: true, transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = 3; m.visible = false;
+    scene.add(m); passMarks.push(m);
+  }
+  passMarks.forEach((m, i) => {
+    const pass = list[i]; m.visible = !!pass;
+    if (!pass) return;
+    m.geometry = coloredDisc(pass.colors);
+    m.position.copy(pass.slot.pos); m.position.y = Math.max(sea.maxHeight, pass.slot.pos.y) + 0.008;
+  });
+}
+// passing: cells routes pass on their way; a destination among them is filled by its disc
+function showMarkers(list, passing = new Map()) {
   markers.forEach((m, i) => {
     const mark = list[i]; m.g.visible = !!mark;
     if (!mark) return;
@@ -1814,7 +2009,7 @@ function showMarkers(list) {
     m.edge.material.color.setHex(capture ? 0xbe382c : 0x1a2e39);
     m.edge.material.opacity = 0.92;
     m.fill.material.color.setHex(colors.length === 1 ? colors[0] : 0xf4eedb);
-    m.fill.material.opacity = selected || mark === game?.destinationMark ? 0.21 : 0.1;
+    m.fill.material.opacity = passing.has(t.slot) ? 0 : selected || mark === game?.destinationMark ? 0.21 : 0.1;
     const zone = t.slot.kind === 'zone';
     m.g.position.copy(t.slot.pos); m.g.position.y = Math.max(sea.maxHeight, m.g.position.y) + 0.012; m.g.scale.setScalar(zone ? 1.5 : 1);
     m.label.position.y = zone ? 0.55 : 0.8;
@@ -1823,8 +2018,35 @@ function showMarkers(list) {
     m.ring.userData.slot = m.fill.userData.slot = t.slot;
   });
 }
+// a cell as the chart names it: side and field, 'rub' for the bay, 'rus1' for the first place of the parade
+const cellId = (c) => c.q + (c.star ? 's' + c.star : c.field);
+let chartKey = '';
+// the chart is redrawn only when the legs to show as arrows change
+function paintChart(legs, ring) {
+  const key = [...legs].map(([k, c]) => `${k}=${c}`).concat([...ring].map(([k, c]) => `@${k}=${c}`)).join(';');
+  if (key === chartKey) return;
+  chartKey = key;
+  drawRoutes({
+    legs, ring: [...ring].map(([k, colors]) => { const [from, to] = k.split('>'); return { from, to, colors }; }),
+  });
+}
 function paintRoutes() {
   const groups = [], colorsByShip = new Map(), marks = new Map();
+  const passes = new Map(), legs = new Map(), ring = new Map();
+  const tint = (map, key, color) => {
+    if (!map.has(key)) map.set(key, []);
+    if (!map.get(key).includes(color)) map.get(key).push(color);
+  };
+  // the cells a route passes before its last one, and the legs between all of them from where the ship stands
+  // (the chart has no dots out of the harbour or between the places of the parade)
+  const trace = (from, path, color) => {
+    for (const c of path.slice(0, -1)) tint(passes, c, color);
+    [from, ...path].forEach((a, i, all) => {
+      const b = all[i + 1]; if (!b || a.field == null) return;
+      if (a.field === 6 && b.field === 7 && b.q !== NEXT[a.q]) tint(ring, `${a.q}>${b.q}`, color);
+      else tint(legs, `${cellId(a)}>${cellId(b)}`, color);
+    });
+  };
   for (const [ship, moves] of (!setupIsOpen() && game?.acts) || []) {
     const slots = new Set(moves.map(move => move.slot));
     let group = groups.find(g => g.slots.size === slots.size && moves.every(move => g.slots.has(move.slot)));
@@ -1836,13 +2058,17 @@ function paintRoutes() {
       const {colors, lengths} = marks.get(move.slot);
       if (!colors.includes(group.color)) colors.push(group.color);
       if (!lengths.includes(move.len)) { lengths.push(move.len); lengths.sort((a, b) => a - b); }
+      trace(ship.slot, move.path, group.color);
     }
   }
-  if (!setupIsOpen() && game?.phase === 'anim' && game.destinationMark) {
-    showMarkers([game.destinationMark]);
-  } else {
-    showMarkers([...marks.values()]);
+  const sailing = !setupIsOpen() && game?.phase === 'anim' && game.destinationMark;
+  if (sailing) {                                   // the chosen route stays marked while the ship sails it
+    const { target, from, colors } = game.destinationMark;
+    if (from) for (const color of colors) trace(from, target.path, color);
   }
+  showMarkers(sailing ? [game.destinationMark] : [...marks.values()], passes);
+  showPasses([...passes].map(([slot, colors]) => ({ slot, colors })));
+  paintChart(legs, ring);
   for (const s of ships) {
     const color = colorsByShip.get(s);
     s.ring.visible = s.pin.visible = color !== undefined;
@@ -3235,7 +3461,7 @@ function perform(s, t) {
   }
   // A forced trophy move may have no selection stage. Keep its destination identifiable while sailing.
   game.destinationMark = t.kind === 'move'
-    ? { target: t, colors: [s.ring.visible ? s.ring.material.color.getHex() : ROUTE_COLORS[s.n - 1]] }
+    ? { target: t, from: s.slot, colors: [s.ring.visible ? s.ring.material.color.getHex() : ROUTE_COLORS[s.n - 1]] }
     : null;
   Object.assign(game, { acts: null, allActs: null, phase: 'anim' }); select(null); renderTurn();
   if (t.kind === 'move') {
@@ -4017,6 +4243,11 @@ function frame() {
       s.pin.center.y = selected ? 0 : -0.22 * bob;
       const k = s === selected ? PIN_SELECTED : 1, size = PIN_PX * perPx * camera.position.distanceTo(s.obj.position);
       s.pin.scale.setScalar((k * clamp(size, PIN_MIN, PIN_MAX)) / SHIP_SCALE);
+    }
+    s.badge.visible = s.obj.visible && !s.pin.visible && onBoard(s);
+    if (s.badge.visible) {
+      const h = clamp(BADGE_PX * perPx * camera.position.distanceTo(s.obj.position), BADGE_MIN, BADGE_MAX) / SHIP_SCALE;
+      s.badge.scale.set((h * BADGE_W) / BADGE_H, h, 1);
     }
     if (!(s.anim && s.anim.turn && s.anim.started) && s.rest !== null) {
       let d = s.rest - s.heading; d = Math.atan2(Math.sin(d), Math.cos(d));

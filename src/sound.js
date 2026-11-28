@@ -5,6 +5,7 @@
 const MUSIC_MOODS = ['start', 'calm', 'anxious'];
 const SESSION_KINDS = new Set(['turn']);
 const ATMOSPHERE_FADE = 2; // seconds of overlap between recordings
+const ATMOSPHERE_LEVEL = 0.9; // the sea, matched to the loudness of the music track, plays 10% quieter than it
 
 // One gesture-unlocked context plays short clips, including events received over WebSocket.
 // Decode on demand with a small cache, rather than retaining all voice clips as PCM audio.
@@ -212,7 +213,7 @@ function createSoundDirector(manifest = {}) {
     const fade = Math.min(ATMOSPHERE_FADE, audio.duration / 2);
     const time = audio.currentTime;
     const envelope = Math.max(0, Math.min(1, time / fade, (audio.duration - time) / fade));
-    audio.volume = quiet ? 0 : Math.min(1, envelope * musicLevel() * atmosphereTrim * 1.1 * volumes.effects);
+    audio.volume = quiet ? 0 : Math.min(1, envelope * musicLevel() * atmosphereTrim * ATMOSPHERE_LEVEL * volumes.effects);
   }
 
   function tickAtmosphere() {

@@ -115,7 +115,7 @@ test('sea recordings rotate in game, crossfade and follow the effects fader', ()
   first.duration = 30;
   first.currentTime = 10;
   sound.tick(1);
-  const full = 0.3 * 1.1;
+  const full = 0.3 * 0.9;
   assert.equal(first.volume, full);
   sound.setMuted('music', true);
   sound.setMood('anxious');
@@ -164,7 +164,7 @@ test('sea level follows the mastering of the current music independently of its 
   sound.setMood('anxious');
   sound.setVolume('music', 0.2);
   sound.tick(1);
-  assert.equal(sea.volume, 0.3 * 1.5 * 1.1);
+  assert.equal(sea.volume, 0.3 * 1.5 * 0.9);
 });
 
 test('the call to a turn plays the least-played sound of the session, across games, and stops when answered', () => {
