@@ -1327,6 +1327,7 @@ const DICE_HZ = 60, DICE_STEP = 1 / DICE_HZ;
 const DICE_SETTLE_TIME = 1;                                     // seconds after the first surface contact
 const DICE_FLIGHT_LIMIT = 12;                                   // fallback if neither die reaches a surface
 const DICE_ZOOM_IN = 0.55, DICE_RESULT_HOLD = 1.15, DICE_ZOOM_OUT = 0.6;
+const DICE_LANDING_FLIGHT = 1.0, DICE_MAP_HALF_SPAN = 5.5;     // board units on either side of the landing
 const DK = DH / 51.96;                                           // dice-box units → board units
 const Y_UP = new THREE.Vector3(0, 1, 0);
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.8 * 400 * DK, 0) });     // ≈ −27 units/s²
@@ -1664,13 +1665,17 @@ function finishDice(res) {
   roll.result = res;
   roll.resultTime = 0;
   if (!roll.closeup || document.hidden || replaying) finishDicePreview();
+  else if (!overhead && !setupIsOpen()) frameDiceLanding();
 }
 function finishDicePreview() {
   if (!roll?.result) return;
+  const landing = cameraShot?.dice ? cameraShot : null;
   const res = roll.result;
   roll.result = null;
   roll.closeup = false;
   roll.onDone?.(res);
+  // The move or the next turn normally sets its own shot. Otherwise return to the player's framing.
+  if (landing && cameraShot === landing) restoreView(landing.beforeLanding);
 }
 // ---- an online throw is worked out once, by the thrower, and recorded: every screen then plays the same flight.
 // Frames: 30 a second, two dice each, [x, y, z, qx, qy, qz, qw] per die; land: when the dice first hit the board.
@@ -1728,7 +1733,8 @@ function stepDice(dt, elapsed = dt) {
   if (roll.done) {
     if (roll.result) {
       roll.resultTime += elapsed;
-      if (!roll.closeup || document.hidden || roll.resultTime >= DICE_RESULT_HOLD + DICE_ZOOM_OUT) finishDicePreview();
+      const transition = overhead ? DICE_ZOOM_OUT : DICE_LANDING_FLIGHT;
+      if (!roll.closeup || document.hidden || roll.resultTime >= DICE_RESULT_HOLD + transition) finishDicePreview();
       return;
     }
     if (!roll.pushable || (!ships.some((s) => s.obj.visible && s.movedSinceDiceStep)
@@ -2340,6 +2346,10 @@ function widenShot() {
 }
 // Fit the bounds to the unobscured part of the screen. Each corner must fit both perspective axes.
 function measureShot(shot) {
+  if (shot.dice) {
+    measureDicePair(shot.dice, shot.beforeLanding.offset, false);
+    return;
+  }
   const {W,H,top,bottom,left,right,fov} = frameArea;
   if (!shot.ship) {
     measureBoard(shot.side, Math.max(1, right-left-4), Math.max(1, bottom-top-4));
@@ -2386,6 +2396,15 @@ function setShot(shot,duration=0.65) {
 function view(side, instant = false) { setShot({side},instant ? 0 : 0.8); }
 function cameraSide(side) { return homeSide && !autoRotate ? homeSide : side; }
 function returnCameraHome() { if (homeSide && !overhead) view(homeSide); }
+function saveView() {
+  return cameraShot?.beforeLanding ?? { shot: cameraShot, target: controls.target.clone(), offset: camera.position.clone().sub(controls.target) };
+}
+function restoreView(back) {
+  if (back.shot?.ship && !back.shot.ship.anim) {
+    setShot({side: back.shot.side, points: [back.shot.ship.obj.position.clone()]});
+  } else if (back.shot) setShot(back.shot);
+  else flyTo(back.target, back.offset);
+}
 function syncViewButton() {
   viewButton.setAttribute('aria-pressed', String(overhead));
   viewButton.textContent = overhead ? 'Обычный вид' : 'Вид сверху';
@@ -2406,7 +2425,7 @@ function toggleOverhead() {
   overhead = !overhead;
   syncViewButton(); syncControls(); endTopGesture();
   if (overhead) {
-    overheadReturn = {shot: cameraShot, target: controls.target.clone(), offset: camera.position.clone().sub(controls.target)};
+    overheadReturn = saveView();
     const side = cameraSide(turnSide());
     Object.assign(topView, { side, turn: game.turnNumber, yaw: ROT[side], spin: null, reset: null, zoom: 1 });
     topView.pan.set(0, 0);
@@ -2416,10 +2435,7 @@ function toggleOverhead() {
   }
   applyFrame();                                         // the frame around the HUD again
   const back = overheadReturn; overheadReturn = null;
-  if (back.shot?.ship && !back.shot.ship.anim) {
-    setShot({side: back.shot.side, points: [back.shot.ship.obj.position.clone()]});
-  } else if (back.shot) setShot(back.shot);
-  else flyTo(back.target, back.offset);
+  restoreView(back);
 }
 viewButton.addEventListener('click', toggleOverhead);
 
@@ -2703,33 +2719,50 @@ function stepCamera(dt) {
   controls.maxDistance = Math.max(cameraMaxDistance, camera.position.distanceTo(controls.target));
 }
 function releaseCamera() { if (!overhead) { fly = null; cameraShot = null; } }
-// Render the throw through a second lens so orbit, pan and overhead zoom retain the player's view.
+// In normal view, fly once to the settled pair. Keeping the player's azimuth and a patch of the
+// surrounding chart in frame makes the landing easy to locate even when the dice end up together.
+const dicePositions = dice.map(d => d.obj.position);
+function frameDiceLanding() {
+  cameraShot = { beforeLanding: saveView(), dice: dicePositions.map(p => p.clone()) };
+  measureShot(cameraShot);
+  startFlight(shotTarget, shotOffset, DICE_LANDING_FLIGHT);
+}
+// Fit both dice into the unobstructed HUD area. The overhead close-up also follows them in flight.
+function measureDicePair(points, offset, fromAbove) {
+  shotTarget.lerpVectors(points[0], points[1], 0.5);
+  if (!fromAbove) {  // a throw off the board still shows the edge it went over
+    shotTarget.x = clamp(shotTarget.x, -BOARD_HALF, BOARD_HALF);
+    shotTarget.z = clamp(shotTarget.z, -BOARD_HALF, BOARD_HALF);
+  }
+  orbit.setFromVector3(offset);
+  orbit.phi = Math.min(orbit.phi, THREE.MathUtils.degToRad(fromAbove ? 20 : 50));
+  shotOffset.setFromSpherical(orbit).normalize();
+  shotRight.crossVectors(Y_UP, shotOffset).normalize();
+  shotUp.crossVectors(shotOffset, shotRight);
+  const { H, top, bottom, left, right } = frameArea;
+  const fov = fromAbove ? camera.fov : frameArea.fov;
+  const tan = Math.tan(THREE.MathUtils.degToRad(fov / 2)) / H;
+  const tanX = tan * Math.max(1, right - left), tanY = tan * Math.max(1, bottom - top);
+  let distance = fromAbove ? 5 : DICE_MAP_HALF_SPAN / Math.min(tanX, tanY);
+  for (const point of points) {
+    corner.subVectors(point, shotTarget);
+    distance = Math.max(distance, corner.dot(shotOffset) + DIE + Math.max(
+      (Math.abs(corner.dot(shotRight)) + DIE) / tanX, (Math.abs(corner.dot(shotUp)) + DIE) / tanY));
+  }
+  shotOffset.multiplyScalar(distance);
+}
+// A second lens leaves the overhead map's pan and zoom available when its close-up ends.
 const diceCamera = new THREE.PerspectiveCamera();
-const diceCenter = new THREE.Vector3(), diceEye = new THREE.Vector3(), diceAim = new THREE.Vector3();
+const diceAim = new THREE.Vector3();
 function cameraForThrow() {
-  if (!roll?.closeup || setupIsOpen()) return camera;
+  if (!overhead || !roll?.closeup || setupIsOpen()) return camera;
   const resultTime = roll.resultTime || 0;
   const enter = easeInOut(Math.min(1, (roll.t + resultTime) / DICE_ZOOM_IN));
   const leave = easeInOut(clamp((resultTime - DICE_RESULT_HOLD) / DICE_ZOOM_OUT, 0, 1));
   const weight = enter * (1 - leave);
-  const a = dice[0].obj.position, b = dice[1].obj.position;
-  diceCenter.lerpVectors(a, b, 0.5);
-  orbit.setFromVector3(cameraOffset.subVectors(camera.position, controls.target));
-  orbit.phi = Math.min(orbit.phi, Math.PI / 9);  // see the upper faces even from a low player viewpoint
-  diceEye.setFromSpherical(orbit).normalize();
-  shotRight.crossVectors(Y_UP, diceEye).normalize();
-  shotUp.crossVectors(diceEye, shotRight);
-  const { H, top, bottom, left, right } = frameArea;
-  const tan = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / H;
-  // Opposite offsets from the midpoint. Leave room for each entire tumbling cube on both screen axes.
-  corner.subVectors(a, diceCenter);
-  const margin = DIE;
-  const distance = Math.max(5, Math.abs(corner.dot(diceEye)) + margin + Math.max(
-    (Math.abs(corner.dot(shotRight)) + margin) / (tan * Math.max(1, right - left)),
-    (Math.abs(corner.dot(shotUp)) + margin) / (tan * Math.max(1, bottom - top))));
-  diceEye.multiplyScalar(distance).add(diceCenter);
-  diceCamera.position.lerpVectors(camera.position, diceEye, weight);
-  diceCamera.lookAt(diceAim.lerpVectors(controls.target, diceCenter, weight));
+  measureDicePair(dicePositions, cameraOffset.subVectors(camera.position, controls.target), true);
+  diceCamera.position.lerpVectors(camera.position, shotOffset.add(shotTarget), weight);
+  diceCamera.lookAt(diceAim.lerpVectors(controls.target, shotTarget, weight));
   diceCamera.far = camera.far;
   diceCamera.projectionMatrix.copy(camera.projectionMatrix);
   diceCamera.projectionMatrixInverse.copy(camera.projectionMatrixInverse);
@@ -3028,7 +3061,7 @@ function openSetup() {
   draft.players = null;
   draft.shipSetIds = game && !online ? game.players.map(p => p.shipSetId) : [];
   applyVKSeat();
-  setupBack = game ? { pos: camera.position.clone(), target: controls.target.clone(), shot:cameraShot, selected,
+  setupBack = game ? { ...saveView(), selected,
     turn:game.turn, phase:game.phase, acts:game.acts } : null;
   setupCancel.hidden = !game && !intro;
   setupCancel.textContent = game ? 'Отмена' : 'В меню';
@@ -3070,8 +3103,7 @@ function cancelSetup() {
   if (setupBack.turn === game.turn && setupBack.phase === game.phase && setupBack.acts === game.acts) {
     select(setupBack.selected,false);
     if (overhead) flyTopView(0.65);
-    else if (setupBack.shot) setShot(setupBack.shot);
-    else flyTo(setupBack.target, setupBack.pos.clone().sub(setupBack.target));
+    else restoreView(setupBack);
   } else {
     if (game.acts?.size) autoSelect(); else view(moverQ());
     if (overhead) flyTopView(0.65);
@@ -4361,7 +4393,7 @@ function frame() {
   }
 
   if (ticksHere) { stepDice(dt, elapsed); onlineTick(); botTick(dt); calloutTick(); }
-  stepCamera(dt);
+  stepCamera(cameraShot?.dice ? Math.min(elapsed, 0.1) : dt);
   // the swing after a swipe dies away in the same time at any frame rate (a 4K television may draw 15 a second)
   controls.dampingFactor = 1 - Math.pow(1 - CAMERA_DAMPING, Math.min(elapsed, 0.1) * 60);
   controls.update();

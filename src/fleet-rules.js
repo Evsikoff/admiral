@@ -60,15 +60,15 @@ export function createFleetRules({ cells, harbors, shipyards, ships }, sideActiv
       add(s, { kind: 'move', slot, path, len: L.len, use: L.use, victims: (occ.get(slot) || []).filter((o) => o.q !== q) });
     }
     const movers = acts.size;
-    if (movers === 1) {
-      const [ship, moves] = acts.entries().next().value;
-      acts.set(ship, singleMoverRoutes(moves));
-    }
     const six = movesOnly ? -1 : free.find((i) => dice[i].v === 6) ?? -1;
     let repair = false, ransom = false;
     if (six >= 0) {
       for (const s of mine) if (s.slot === shipyards[q]) { add(s, { kind: 'repair', slot: harbors[q], len: 6, use: [six] }); repair = true; }
       for (const s of mine) if (s.slot.prison) { add(s, { kind: 'ransom', slot: shipyards[q], len: 6, use: [six] }); ransom = true; }
+    }
+    if (movers === 1 && !repair && !ransom) {
+      const [ship, moves] = acts.entries().next().value;
+      acts.set(ship, singleMoverRoutes(moves));
     }
     return { acts, movers, repair, ransom, six: six >= 0, sailing: mine.filter((s) => atSea(s) && !blocked?.has(s)).length, held: held.length };
   }
